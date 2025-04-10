@@ -1,0 +1,59 @@
+// generator client {
+//   provider = "prisma-client-js"
+//   output   = "../generated/prisma"
+// }
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  image     String?
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Product {
+  id            Int      @id @default(autoincrement())
+  name          String?
+  brand         String?
+  Category      String?
+  Sub_Category  String?
+  typeOfShoes   String?
+  productDesc   String?
+  price         String?
+  availability  Boolean?
+  offer         String?
+  size          String?
+  feetFirstFit  String?
+  footLength    String?
+  color         String?
+  technicalData String?
+  Company       String?
+  gender        Gender?
+  images        String[]
+  createdAt     DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNISEX
+}
