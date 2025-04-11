@@ -283,7 +283,9 @@ export const queryProducts = async (req: Request, res: Response) => {
       total: totalCount,
       page: parseInt(page as string),
       totalPages: take ? Math.ceil(totalCount / take) : 1,
+      nextPage: take ? parseInt(page as string) < Math.ceil(totalCount / take) : false,
     });
+    
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -305,8 +307,4 @@ export const queryProducts = async (req: Request, res: Response) => {
 // Pagination: /products/query?page=2&limit=10
 
 // Sorting: /products/query?sortBy=price&sortOrder=desc
-
-
-
-
 
