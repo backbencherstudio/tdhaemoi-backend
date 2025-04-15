@@ -33,9 +33,9 @@ model Product {
   Sub_Category  String?
   typeOfShoes   String?
   productDesc   String?
-  price         String?
+  price         Float?
   availability  Boolean?
-  offer         String?
+  offer         Float?
   size          String?
   feetFirstFit  String?
   footLength    String?

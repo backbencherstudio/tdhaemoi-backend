@@ -4,6 +4,7 @@ import morgan from "morgan";
 
 import users from "./module/users/users.routes";
 import products from "./module/products/products.routes";
+import excel from "./module/excel/excel.routes";
 
 import path from "path";
 
@@ -37,7 +38,7 @@ app.use(morgan("dev"));
 
 app.use("/users", users);
 app.use("/products", products); // Add this line
-
+app.use("/excel", excel)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 

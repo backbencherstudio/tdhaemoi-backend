@@ -30,24 +30,28 @@ export const createProduct = async (req: Request, res: Response) => {
     const files = req.files as Multer.File[];
     const images = files ? files.map((file) => file.filename) : [];
 
+    // Convert price and offer to numbers
+    const numericPrice = price ? parseFloat(price) : null;
+    const numericOffer = offer ? parseFloat(offer) : null;
+
     const product = await prisma.product.create({
       data: {
-        name,
-        brand,
-        Category,
-        Sub_Category,
-        typeOfShoes,
-        productDesc,
-        price,
+        name: name || null,
+        brand: brand || null,
+        Category: Category || null,
+        Sub_Category: Sub_Category || null,
+        typeOfShoes: typeOfShoes || null,
+        productDesc: productDesc || null,
+        price: numericPrice,
         availability: availability === "true",
-        offer,
-        size,
-        feetFirstFit,
-        footLength,
-        color,
-        technicalData,
-        Company,
-        gender: gender || null,
+        offer: numericOffer,
+        size: size || null,
+        feetFirstFit: feetFirstFit || null,
+        footLength: footLength || null,
+        color: color || null,
+        technicalData: technicalData || null,
+        Company: Company || null,
+        gender: gender ? (gender.toUpperCase() as any) : null,
         images,
       },
     });
@@ -74,10 +78,11 @@ export const createProduct = async (req: Request, res: Response) => {
         }
       });
     }
+    console.error("Create Product Error:", error);
     res.status(500).json({
       success: false,
-      message: "Something went wrong",
-      error,
+      message: "Failed to create product",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -133,7 +138,11 @@ export const updateProduct = async (req: Request, res: Response) => {
 
 export const getAllProducts = async (req: Request, res: Response) => {
   try {
-    const products = await prisma.product.findMany();
+    const products = await prisma.product.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
     const productsWithImageUrls = products.map((product) => ({
       ...product,
@@ -157,7 +166,6 @@ export const deleteImage = async (req: Request, res: Response) => {
   const { id, imageName } = req.params;
 
   try {
-    // 1. Find the product
     const product = await prisma.product.findUnique({
       where: { id: Number(id) },
     });
@@ -167,7 +175,6 @@ export const deleteImage = async (req: Request, res: Response) => {
       return;
     }
 
-    // 2. Check if the image exists in product.images
     const imageExists = product.images.includes(imageName);
     if (!imageExists) {
       res.status(404).json({
@@ -177,13 +184,11 @@ export const deleteImage = async (req: Request, res: Response) => {
       return;
     }
 
-    // 3. Remove image from filesystem
     const filePath = path.join(__dirname, "../../uploads", imageName);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
 
-    // 4. Remove image from database
     const updatedProduct = await prisma.product.update({
       where: { id: Number(id) },
       data: {
@@ -191,7 +196,6 @@ export const deleteImage = async (req: Request, res: Response) => {
       },
     });
 
-    // 5. Return success response
     res.json({
       success: true,
       message: "Image deleted",
@@ -205,7 +209,109 @@ export const deleteImage = async (req: Request, res: Response) => {
   }
 };
 
+// export const queryProducts = async (req: Request, res: Response) => {
+//   try {
+//     const {
+//       name,
+//       brand,
+//       category,
+//       subCategory,
+//       typeOfShoes,
+//       minPrice,
+//       maxPrice,
+//       offer,
+//       size,
+//       color,
+//       company,
+//       gender,
+//       availability,
+//       sortBy = "createdAt",
+//       sortOrder = "desc",
+//       limit = "10",
+//       page = "1",
+//     } = req.query;
 
+//     const where: any = {};
+
+//     // Filter conditions
+//     if (name) where.name = { contains: name as string, mode: "insensitive" };
+//     if (brand) where.brand = { contains: brand as string, mode: "insensitive" };
+//     if (category) where.Category = { contains: category as string, mode: "insensitive" };
+//     if (subCategory) where.Sub_Category = { contains: subCategory as string, mode: "insensitive" };
+//     if (typeOfShoes) where.typeOfShoes = { contains: typeOfShoes as string, mode: "insensitive" };
+//     if (offer) where.offer = { contains: offer as string, mode: "insensitive" };
+//     if (size) where.size = { contains: size as string, mode: "insensitive" };
+//     if (color) where.color = { contains: color as string, mode: "insensitive" };
+//     if (company) where.Company = { contains: company as string, mode: "insensitive" };
+//     if (gender) {
+//       const normalizedGender = gender.toString().toUpperCase();
+//       if (['MALE', 'FEMALE', 'UNISEX'].includes(normalizedGender)) {
+//         where.gender = normalizedGender;
+//       }
+//     }
+//     if (availability) where.availability = availability === "true";
+
+//     // Price range filter
+//     if (minPrice || maxPrice) {
+//       where.price = {};
+//       if (minPrice) where.price.gte = Number(minPrice);
+//       if (maxPrice) where.price.lte = Number(maxPrice);
+//     }
+
+//     // Sorting options
+//     const allowedSortFields = ['createdAt', 'price', 'name', 'brand'];
+//     const orderBy: any = {};
+
+//     if (sortBy && allowedSortFields.includes(sortBy as string)) {
+//       orderBy[sortBy as string] = sortOrder === 'asc' ? 'asc' : 'desc';
+//     } else {
+//       orderBy.createdAt = 'desc';
+//     }
+
+//     // Pagination
+//     const itemsPerPage = Math.min(parseInt(limit as string), 50); // Limit maximum items per page
+//     const currentPage = Math.max(parseInt(page as string), 1); // Ensure page is at least 1
+//     const skip = (currentPage - 1) * itemsPerPage;
+
+//     const [products, totalCount] = await prisma.$transaction([
+//       prisma.product.findMany({
+//         where,
+//         orderBy,
+//         take: itemsPerPage,
+//         skip,
+//       }),
+//       prisma.product.count({ where }),
+//     ]);
+
+//     // Convert images to URLs
+//     const productsWithImageUrls = products.map((product) => ({
+//       ...product,
+//       images: product.images.map((image) => getImageUrl(`/uploads/${image}`)),
+//     }));
+
+//     const totalPages = Math.ceil(totalCount / itemsPerPage);
+
+//     res.status(200).json({
+//       success: true,
+//       products: productsWithImageUrls,
+//       pagination: {
+//         total: totalCount,
+//         currentPage,
+//         totalPages,
+//         itemsPerPage,
+//         hasNextPage: currentPage < totalPages,
+//         hasPreviousPage: currentPage > 1
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Query Products Error:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Error while querying products",
+//       error: error instanceof Error ? error.message : 'Unknown error'
+//     });
+//   }
+// };
 
 export const queryProducts = async (req: Request, res: Response) => {
   try {
@@ -223,69 +329,144 @@ export const queryProducts = async (req: Request, res: Response) => {
       company,
       gender,
       availability,
-      sortBy,
-      sortOrder = 'asc',
-      limit,
-      page = 1,
+      search, // New search parameter
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      limit = "10",
+      page = "1",
     } = req.query;
 
     const where: any = {};
 
-    if (name) where.name = { contains: name as string, mode: 'insensitive' };
-    if (brand) where.brand = { contains: brand as string, mode: 'insensitive' };
-    if (category) where.Category = { contains: category as string, mode: 'insensitive' };
-    if (subCategory) where.Sub_Category = { contains: subCategory as string, mode: 'insensitive' };
-    if (typeOfShoes) where.typeOfShoes = { contains: typeOfShoes as string, mode: 'insensitive' };
-    if (offer) where.offer = { contains: offer as string, mode: 'insensitive' };
-    if (size) where.size = { contains: size as string, mode: 'insensitive' };
-    if (color) where.color = { contains: color as string, mode: 'insensitive' };
-    if (company) where.Company = { contains: company as string, mode: 'insensitive' };
-    if (gender) where.gender = gender as any;
-    if (availability) where.availability = availability === 'true';
+    if (search) {
+      where.OR = [
+        { name: { contains: search as string, mode: "insensitive" } },
+        { brand: { contains: search as string, mode: "insensitive" } },
+        { size: { contains: search as string, mode: "insensitive" } },
+        { Company: { contains: search as string, mode: "insensitive" } },
+        ...(isNaN(Number(search))
+          ? []
+          : [{ price: { equals: Number(search) } }]),
+      ];
+    } else {
+      if (name) where.name = { contains: name as string, mode: "insensitive" };
+      if (brand)
+        where.brand = { contains: brand as string, mode: "insensitive" };
+      if (category)
+        where.Category = { contains: category as string, mode: "insensitive" };
+      if (subCategory)
+        where.Sub_Category = {
+          contains: subCategory as string,
+          mode: "insensitive",
+        };
+      if (typeOfShoes)
+        where.typeOfShoes = {
+          contains: typeOfShoes as string,
+          mode: "insensitive",
+        };
+      if (offer)
+        where.offer = { contains: offer as string, mode: "insensitive" };
+      if (size) where.size = { contains: size as string, mode: "insensitive" };
+      if (color)
+        where.color = { contains: color as string, mode: "insensitive" };
+      if (company)
+        where.Company = { contains: company as string, mode: "insensitive" };
+    }
+
+    if (gender) {
+      const normalizedGender = gender.toString().toUpperCase();
+      if (["MALE", "FEMALE", "UNISEX"].includes(normalizedGender)) {
+        where.gender = normalizedGender;
+      }
+    }
+    if (availability) where.availability = availability === "true";
 
     if (minPrice || maxPrice) {
       where.price = {};
-      if (minPrice) where.price.gte = minPrice as string;
-      if (maxPrice) where.price.lte = maxPrice as string;
+      if (minPrice) where.price.gte = Number(minPrice);
+      if (maxPrice) where.price.lte = Number(maxPrice);
     }
 
-    // Sorting options
+    const allowedSortFields = ["createdAt", "price", "name", "brand"];
     const orderBy: any = {};
-    if (sortBy) {
-      orderBy[sortBy as string] = sortOrder;
+
+    if (sortBy && allowedSortFields.includes(sortBy as string)) {
+      orderBy[sortBy as string] = sortOrder === "asc" ? "asc" : "desc";
     } else {
-      orderBy.createdAt = 'desc'; // Default sort by newest
+      orderBy.createdAt = "desc";
     }
 
-    // Pagination
-    const take = limit ? parseInt(limit as string) : undefined;
-    const skip = take ? (parseInt(page as string) - 1) * take : undefined;
+    const itemsPerPage = Math.min(parseInt(limit as string), 50);
+    const currentPage = Math.max(parseInt(page as string), 1);
+    const skip = (currentPage - 1) * itemsPerPage;
 
     const [products, totalCount] = await prisma.$transaction([
       prisma.product.findMany({
         where,
         orderBy,
-        take,
+        take: itemsPerPage,
         skip,
       }),
       prisma.product.count({ where }),
     ]);
 
-    // Convert images to URLs
     const productsWithImageUrls = products.map((product) => ({
       ...product,
       images: product.images.map((image) => getImageUrl(`/uploads/${image}`)),
     }));
 
+    const totalPages = Math.ceil(totalCount / itemsPerPage);
+
     res.status(200).json({
       success: true,
       products: productsWithImageUrls,
-      total: totalCount,
-      page: parseInt(page as string),
-      totalPages: take ? Math.ceil(totalCount / take) : 1,
-      nextPage: take ? parseInt(page as string) < Math.ceil(totalCount / take) : false,
+      pagination: {
+        total: totalCount,
+        currentPage,
+        totalPages,
+        itemsPerPage,
+        hasNextPage: currentPage < totalPages,
+        hasPreviousPage: currentPage > 1,
+      },
     });
-    
+  } catch (error) {
+    console.error("Query Products Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error while querying products",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const deleteProduct = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: Number(id) },
+    });
+
+    if (!product) {
+      res.status(404).json({ success: false, message: "Product not found" });
+      return;
+    }
+
+    for (const image of product.images) {
+      const filePath = path.join(__dirname, "../../uploads", image);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    await prisma.product.delete({
+      where: { id: Number(id) },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Product and images deleted successfully",
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -294,7 +475,6 @@ export const queryProducts = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 // Basic filtering: /products/query?name=nike&brand=nike
 
@@ -308,3 +488,36 @@ export const queryProducts = async (req: Request, res: Response) => {
 
 // Sorting: /products/query?sortBy=price&sortOrder=desc
 
+export const getSingleProduct = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: Number(id) },
+    });
+
+    if (!product) {
+      res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+      return;
+    }
+
+    const productWithImageUrls = {
+      ...product,
+      images: product.images.map((image) => getImageUrl(`/uploads/${image}`)),
+    };
+
+    res.status(200).json({
+      success: true,
+      product: productWithImageUrls,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : error,
+    });
+  }
+};
