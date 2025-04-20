@@ -27,6 +27,8 @@ app.use(
       "http://192.168.30.102:*",
       "http://localhost:3002",
       "http://192.168.40.10:4000",
+      "http://localhost:3001",
+      "file:///D:/z-bbs/tdhaemoi-backend/public/index.html"
     ],
   })
 );
@@ -54,5 +56,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     error: err.message,
   });
 });
+
+// Make sure this line is before your routes
+app.use(express.static(path.join(__dirname, "public")));
 
 export default app;

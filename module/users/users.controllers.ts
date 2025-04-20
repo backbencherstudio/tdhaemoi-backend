@@ -232,7 +232,7 @@ export const loginUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.user;
-    const { name } = req.body;
+    const { name, email } = req.body;
     const newImage = req.file;
 
     // Retrieve the existing user from the database
@@ -267,6 +267,7 @@ export const updateUser = async (req: Request, res: Response) => {
       where: { id: String(id) },
       data: {
         name: name || existingUser.name,
+        email: email || existingUser.email,
         image: newImage ? newImage.filename : existingUser.image,
       },
     });

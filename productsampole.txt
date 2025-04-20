@@ -1,0 +1,149 @@
+export const createProduct = async (req: Request, res: Response) => {
+  console.log(req.body);
+  try {
+    const {
+      name,
+      brand,
+      Category,
+      Sub_Category,
+      typeOfShoes,
+      productDesc,
+      price,
+      availability,
+      offer,
+      size,
+      feetFirstFit,
+      footLength,
+      technicalData,
+      Company,
+      gender,
+      colors, // This comes as a string from the frontend
+    } = req.body;
+
+    const files = req.files;
+    if (!files) {
+      res.status(400).json({
+        success: false,
+        message: "No files uploaded",
+      });
+      return;
+    }
+
+    // Validate required fields
+    if (!name || !brand) {
+      res.status(400).json({
+        success: false,
+        message: "Name and brand are required fields",
+      });
+      return;
+    }
+
+    // Parse the colors string into an object
+    let parsedColors;
+    try {
+      parsedColors = colors ? JSON.parse(colors) : [];
+    } catch (e) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid colors format",
+      });
+      return;
+    }
+
+    // Map uploaded files to colors
+    let fileIndex = 0;
+    const colorsWithFiles = parsedColors.map((color: any) => {
+      const colorImages = [];
+      const imageCount = color.images.length;
+
+      for (let i = 0; i < imageCount && fileIndex < files.length; i++) {
+        colorImages.push(files[fileIndex].filename);
+        fileIndex++;
+      }
+
+      return {
+        colorName: color.colorName,
+        colorCode: color.colorCode,
+        images: colorImages,
+      };
+    });
+
+    // Convert price and offer to numbers
+    const numericPrice = price ? parseFloat(price) : null;
+    const numericOffer = offer ? parseFloat(offer) : null;
+
+    // Validate and normalize gender
+    let normalizedGender = null;
+    if (gender) {
+      const upperGender = gender.toString().toUpperCase();
+      if (["MALE", "FEMALE", "UNISEX"].includes(upperGender)) {
+        normalizedGender = upperGender as "MALE" | "FEMALE" | "UNISEX";
+      }
+    }
+
+    // Create product with nested color and image creation
+    const product = await prisma.product.create({
+      data: {
+        name,
+        brand,
+        Category: Category || null,
+        Sub_Category: Sub_Category || null,
+        typeOfShoes: typeOfShoes || null,
+        productDesc: productDesc || null,
+        price: numericPrice,
+        availability: availability === "true",
+        offer: numericOffer,
+        size: size || null,
+        feetFirstFit: feetFirstFit || null,
+        footLength: footLength || null,
+        technicalData: technicalData || null,
+        Company: Company || null,
+        gender: normalizedGender,
+        colors: {
+          create: colorsWithFiles.map((color: any) => ({
+            colorName: color.colorName,
+            colorCode: color.colorCode,
+            images: {
+              create: color.images.map((filename: string) => ({
+                url: filename,
+              })),
+            },
+          })),
+        },
+      },
+      include: {
+        colors: {
+          include: {
+            images: true,
+          },
+        },
+      },
+    });
+
+    console.log(product);
+    // Transform response to include full image URLs
+    const productWithUrls = {
+      ...product,
+      colors: product.colors.map((color) => ({
+        ...color,
+        images: color.images.map((image) => ({
+          ...image,
+          url: getImageUrl(`/uploads/${image.url}`),
+        })),
+      })),
+    };
+
+    res.status(201).json({
+      success: true,
+      message: "Product created successfully",
+      product: productWithUrls,
+    });
+  } catch (error) {
+    console.error("Create Product Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create product",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};

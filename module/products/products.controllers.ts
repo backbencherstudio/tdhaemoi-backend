@@ -6,6 +6,149 @@ import { getImageUrl } from "../../utils/base_utl";
 import { Multer } from "multer";
 const prisma = new PrismaClient();
 
+// -------------------------------------------
+const normalizeGender = (gender: string) => {
+  const g = gender.toUpperCase();
+  return ["MALE", "FEMALE", "UNISEX"].includes(g) ? g : null;
+};
+
+const buildSearchQuery = (search: string) => {
+  const isNumber = !isNaN(Number(search));
+  return {
+    OR: [
+      { name: { contains: search, mode: "insensitive" } },
+      { brand: { contains: search, mode: "insensitive" } },
+      { size: { contains: search, mode: "insensitive" } },
+      { Company: { contains: search, mode: "insensitive" } },
+      {
+        colors: {
+          some: {
+            OR: [
+              { colorName: { contains: search, mode: "insensitive" } },
+              { colorCode: { contains: search, mode: "insensitive" } }
+            ]
+          }
+        }
+      },
+      ...(isNumber ? [{ price: { equals: Number(search) } }] : []),
+    ],
+  };
+};
+
+const buildFilterQuery = (query: any) => {
+  const {
+    name,
+    brand,
+    category,
+    subCategory,
+    typeOfShoes,
+    offer,
+    size,
+    colorName,
+    colorCode,
+    company,
+    gender,
+    availability,
+    minPrice,
+    maxPrice,
+  } = query;
+
+  const where: any = {};
+
+  if (name) where.name = { contains: name, mode: "insensitive" };
+  if (brand) where.brand = { contains: brand, mode: "insensitive" };
+  if (category) where.Category = { contains: category, mode: "insensitive" };
+  if (subCategory) where.Sub_Category = { contains: subCategory, mode: "insensitive" };
+  
+  // Handle multiple types of shoes
+  if (typeOfShoes) {
+    const typeArray = Array.isArray(typeOfShoes) ? typeOfShoes : [typeOfShoes];
+    where.typeOfShoes = {
+      in: typeArray,
+      mode: "insensitive"
+    };
+  }
+
+  if (offer) where.offer = { contains: offer, mode: "insensitive" };
+  
+  // Handle multiple sizes
+  if (size) {
+    const sizeArray = Array.isArray(size) ? size : [size];
+    where.size = {
+      in: sizeArray,
+      mode: "insensitive"
+    };
+  }
+
+  // Handle multiple colors
+  if (colorName || colorCode) {
+    const colorNames = Array.isArray(colorName) ? colorName : colorName ? [colorName] : [];
+    const colorCodes = Array.isArray(colorCode) ? colorCode : colorCode ? [colorCode] : [];
+
+    where.colors = {
+      some: {
+        OR: [
+          ...(colorNames.length > 0 ? [{
+            colorName: {
+              in: colorNames,
+              mode: "insensitive"
+            }
+          }] : []),
+          ...(colorCodes.length > 0 ? [{
+            colorCode: {
+              in: colorCodes,
+              mode: "insensitive"
+            }
+          }] : [])
+        ]
+      }
+    };
+  }
+
+  if (company) where.Company = { contains: company, mode: "insensitive" };
+  if (gender) where.gender = normalizeGender(gender);
+  if (availability !== undefined) where.availability = availability === "true";
+
+  if (minPrice || maxPrice) {
+    where.price = {};
+    if (minPrice) where.price.gte = Number(minPrice);
+    if (maxPrice) where.price.lte = Number(maxPrice);
+  }
+
+  return where;
+};
+
+const paginate = (limit: string, page: string) => {
+  const itemsPerPage = Math.min(parseInt(limit), 50);
+  const currentPage = Math.max(parseInt(page), 1);
+  const skip = (currentPage - 1) * itemsPerPage;
+  return { itemsPerPage, currentPage, skip };
+};
+
+const sortQuery = (sortBy: string, sortOrder: string) => {
+  const allowed = ["createdAt", "price", "name", "brand"];
+  const orderBy: any = {};
+  if (allowed.includes(sortBy)) {
+    orderBy[sortBy] = sortOrder === "asc" ? "asc" : "desc";
+  } else {
+    orderBy.createdAt = "desc";
+  }
+  return orderBy;
+};
+
+const formatProductsWithImageUrls = (products: any[]) =>
+  products.map((product) => ({
+    ...product,
+    colors: product.colors.map((color) => ({
+      ...color,
+      images: color.images.map((image) => ({
+        ...image,
+        url: getImageUrl(`/uploads/${image.url}`),
+      })),
+    })),
+  }));
+// ----------------------------------------------------------
+
 export const createProduct = async (req: Request, res: Response) => {
   try {
     const {
@@ -21,23 +164,76 @@ export const createProduct = async (req: Request, res: Response) => {
       size,
       feetFirstFit,
       footLength,
-      color,
       technicalData,
       Company,
       gender,
+      colors, // Expected as a stringified JSON from the frontend
     } = req.body;
 
-    const files = req.files as Multer.File[];
-    const images = files ? files.map((file) => file.filename) : [];
+    const files = req.files;
 
-    // Convert price and offer to numbers
+    // Validation: check required fields
+    if (!name || !brand) {
+       res.status(400).json({
+        success: false,
+        message: "Name and brand are required fields",
+      });
+      return
+    }
+
+    if (!files || !Array.isArray(files) || files.length === 0) {
+       res.status(400).json({
+        success: false,
+        message: "No image files uploaded",
+      });
+      return
+    }
+
+    // Parse and validate colors JSON
+    let parsedColors: any[] = [];
+    try {
+      parsedColors = colors ? JSON.parse(colors) : [];
+    } catch {
+      res.status(400).json({
+        success: false,
+        message: "Invalid colors JSON format",
+      });
+      return;
+    }
+
+    // Handle gender normalization
+    const normalizedGender = normalizeGender(gender);
+
+    // Parse numeric fields
     const numericPrice = price ? parseFloat(price) : null;
     const numericOffer = offer ? parseFloat(offer) : null;
 
-    const product = await prisma.product.create({
+    // Associate uploaded files with colors
+    let fileIndex = 0;
+    const colorsWithFiles = parsedColors.map((color) => {
+      const imageFilenames: string[] = [];
+
+      for (
+        let i = 0;
+        i < color.images.length && fileIndex < files.length;
+        i++
+      ) {
+        imageFilenames.push(files[fileIndex].filename);
+        fileIndex++;
+      }
+
+      return {
+        colorName: color.colorName,
+        colorCode: color.colorCode,
+        images: imageFilenames,
+      };
+    });
+
+    // Create the product and related nested data
+    const createdProduct = await prisma.product.create({
       data: {
-        name: name || null,
-        brand: brand || null,
+        name,
+        brand,
         Category: Category || null,
         Sub_Category: Sub_Category || null,
         typeOfShoes: typeOfShoes || null,
@@ -48,36 +244,39 @@ export const createProduct = async (req: Request, res: Response) => {
         size: size || null,
         feetFirstFit: feetFirstFit || null,
         footLength: footLength || null,
-        color: color || null,
         technicalData: technicalData || null,
         Company: Company || null,
-        gender: gender ? (gender.toUpperCase() as any) : null,
-        images,
+        gender: normalizedGender as "MALE" | "FEMALE" | "UNISEX" | null,
+        colors: {
+          create: colorsWithFiles.map((color) => ({
+            colorName: color.colorName,
+            colorCode: color.colorCode,
+            images: {
+              create: color.images.map((filename) => ({
+                url: filename,
+              })),
+            },
+          })),
+        },
+      },
+      include: {
+        colors: {
+          include: {
+            images: true,
+          },
+        },
       },
     });
 
-    const imageUrls = product.images.map((image) =>
-      getImageUrl(`/uploads/${image}`)
-    );
+    // Attach full image URLs
+    const productWithUrls = formatProductsWithImageUrls([createdProduct])[0];
 
     res.status(201).json({
       success: true,
       message: "Product created successfully",
-      product: {
-        ...product,
-        images: imageUrls,
-      },
+      product: productWithUrls,
     });
   } catch (error) {
-    if (req.files) {
-      const files = req.files as Multer.File[];
-      files.forEach((file) => {
-        const filePath = path.join(__dirname, "../../uploads", file.filename);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      });
-    }
     console.error("Create Product Error:", error);
     res.status(500).json({
       success: false,
@@ -88,50 +287,163 @@ export const createProduct = async (req: Request, res: Response) => {
 };
 
 export const updateProduct = async (req: Request, res: Response) => {
+  console.log(req.body);
   try {
     const { id } = req.params;
-    const files = req.files as Multer.File[];
-    const newImages = files ? files.map((file) => file.filename) : [];
+    const {
+      name,
+      brand,
+      Category,
+      Sub_Category,
+      typeOfShoes,
+      productDesc,
+      price,
+      availability,
+      offer,
+      size,
+      feetFirstFit,
+      footLength,
+      technicalData,
+      Company,
+      gender,
+      colors,
+    } = req.body;
+
+    const files = req.files;
 
     const existingProduct = await prisma.product.findUnique({
-      where: { id: Number(id) },
+      where: {
+        id: String(id),
+      },
+      include: {
+        colors: {
+          include: {
+            images: true,
+          },
+        },
+      },
     });
 
     if (!existingProduct) {
-      res.status(404).json({ message: "Product not found" });
+      res.status(404).json({
+        message: "Product not found",
+      });
       return;
     }
 
-    const updateData: any = {
-      ...req.body,
-      availability: req.body.availability === "true",
-    };
+    let parsedColors;
+    try {
+      parsedColors = colors ? JSON.parse(colors) : [];
+    } catch (e) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid colors format",
+      });
+      return;
+    }
 
-    // Combine existing images with new ones
-    updateData.images = [...(existingProduct.images || []), ...newImages];
+    // Map uploaded files to colors while preserving existing images
+    let fileIndex = 0;
+    const colorsWithFiles = parsedColors.map((color: any) => {
+      const colorImages = [];
 
-    const updatedProduct = await prisma.product.update({
-      where: { id: Number(id) },
-      data: updateData,
+      // If this is an existing color, include its existing images
+      if (color.id) {
+        const existingColor = existingProduct.colors.find(
+          (ec) => ec.id === color.id
+        );
+        if (existingColor) {
+          colorImages.push(...existingColor.images.map((img) => img.url));
+        }
+      }
+
+      // Add new images
+      if (color.images) {
+        for (const image of color.images) {
+          if (image.isNew && files && fileIndex < files.length) {
+            colorImages.push(files[fileIndex].filename);
+            fileIndex++;
+          } else if (!image.isNew && image.filename) {
+            colorImages.push(image.filename);
+          }
+        }
+      }
+
+      return {
+        id: color.id,
+        colorName: color.colorName,
+        colorCode: color.colorCode,
+        images: colorImages,
+      };
     });
 
-    const imageUrls = updatedProduct.images.map((image) =>
-      getImageUrl(`/uploads/${image}`)
-    );
+    // Update product with color handling
+    const updatedProduct = await prisma.product.update({
+      where: {
+        id: String(id),
+      },
+      data: {
+        name,
+        brand,
+        Category: Category || null,
+        Sub_Category: Sub_Category || null,
+        typeOfShoes: typeOfShoes || null,
+        productDesc: productDesc || null,
+        price: price ? parseFloat(price) : null,
+        availability: availability === "true",
+        offer: offer ? parseFloat(offer) : null,
+        size: size || null,
+        feetFirstFit: feetFirstFit || null,
+        footLength: footLength || null,
+        technicalData: technicalData || null,
+        Company: Company || null,
+        gender: gender
+          ? (gender.toString().toUpperCase() as "MALE" | "FEMALE" | "UNISEX")
+          : null,
+        colors: {
+          deleteMany: {}, // Delete all existing colors
+          create: colorsWithFiles.map((color: any) => ({
+            colorName: color.colorName,
+            colorCode: color.colorCode,
+            images: {
+              create: color.images.map((filename: string) => ({
+                url: filename,
+              })),
+            },
+          })),
+        },
+      },
+      include: {
+        colors: {
+          include: {
+            images: true,
+          },
+        },
+      },
+    });
+
+    const productWithUrls = {
+      ...updatedProduct,
+      colors: updatedProduct.colors.map((color) => ({
+        ...color,
+        images: color.images.map((image) => ({
+          ...image,
+          url: getImageUrl(`/uploads/${image.url}`),
+        })),
+      })),
+    };
 
     res.status(200).json({
       success: true,
       message: "Product updated successfully",
-      product: {
-        ...updatedProduct,
-        images: imageUrls,
-      },
+      product: productWithUrls,
     });
   } catch (error) {
+    console.error("Update Product Error:", error);
     res.status(500).json({
       success: false,
-      message: "Something went wrong",
-      error: error instanceof Error ? error.message : error,
+      message: "Failed to update product",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -142,11 +454,24 @@ export const getAllProducts = async (req: Request, res: Response) => {
       orderBy: {
         createdAt: "desc",
       },
+      include: {
+        colors: {
+          include: {
+            images: true,
+          },
+        },
+      },
     });
 
     const productsWithImageUrls = products.map((product) => ({
       ...product,
-      images: product.images.map((image) => getImageUrl(`/uploads/${image}`)),
+      colors: product.colors.map((color) => ({
+        ...color,
+        images: color.images.map((image) => ({
+          ...image,
+          url: getImageUrl(`/uploads/${image.url}`),
+        })),
+      })),
     }));
 
     res.status(200).json({
@@ -157,7 +482,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error,
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -166,20 +491,26 @@ export const deleteImage = async (req: Request, res: Response) => {
   const { id, imageName } = req.params;
 
   try {
-    const product = await prisma.product.findUnique({
-      where: { id: Number(id) },
+    const image = await prisma.image.findFirst({
+      where: {
+        url: imageName,
+        color: {
+          productId: String(id),
+        },
+      },
+      include: {
+        color: {
+          include: {
+            product: true,
+          },
+        },
+      },
     });
 
-    if (!product) {
-      res.status(404).json({ success: false, error: "Product not found" });
-      return;
-    }
-
-    const imageExists = product.images.includes(imageName);
-    if (!imageExists) {
+    if (!image) {
       res.status(404).json({
         success: false,
-        error: "Image not found in this post",
+        error: "Image not found in this product",
       });
       return;
     }
@@ -189,10 +520,10 @@ export const deleteImage = async (req: Request, res: Response) => {
       fs.unlinkSync(filePath);
     }
 
-    const updatedProduct = await prisma.product.update({
-      where: { id: Number(id) },
-      data: {
-        images: product.images.filter((img) => img !== imageName),
+    // Delete the image record from database
+    await prisma.image.delete({
+      where: {
+        id: image.id,
       },
     });
 
@@ -209,196 +540,25 @@ export const deleteImage = async (req: Request, res: Response) => {
   }
 };
 
-// export const queryProducts = async (req: Request, res: Response) => {
-//   try {
-//     const {
-//       name,
-//       brand,
-//       category,
-//       subCategory,
-//       typeOfShoes,
-//       minPrice,
-//       maxPrice,
-//       offer,
-//       size,
-//       color,
-//       company,
-//       gender,
-//       availability,
-//       sortBy = "createdAt",
-//       sortOrder = "desc",
-//       limit = "10",
-//       page = "1",
-//     } = req.query;
-
-//     const where: any = {};
-
-//     // Filter conditions
-//     if (name) where.name = { contains: name as string, mode: "insensitive" };
-//     if (brand) where.brand = { contains: brand as string, mode: "insensitive" };
-//     if (category) where.Category = { contains: category as string, mode: "insensitive" };
-//     if (subCategory) where.Sub_Category = { contains: subCategory as string, mode: "insensitive" };
-//     if (typeOfShoes) where.typeOfShoes = { contains: typeOfShoes as string, mode: "insensitive" };
-//     if (offer) where.offer = { contains: offer as string, mode: "insensitive" };
-//     if (size) where.size = { contains: size as string, mode: "insensitive" };
-//     if (color) where.color = { contains: color as string, mode: "insensitive" };
-//     if (company) where.Company = { contains: company as string, mode: "insensitive" };
-//     if (gender) {
-//       const normalizedGender = gender.toString().toUpperCase();
-//       if (['MALE', 'FEMALE', 'UNISEX'].includes(normalizedGender)) {
-//         where.gender = normalizedGender;
-//       }
-//     }
-//     if (availability) where.availability = availability === "true";
-
-//     // Price range filter
-//     if (minPrice || maxPrice) {
-//       where.price = {};
-//       if (minPrice) where.price.gte = Number(minPrice);
-//       if (maxPrice) where.price.lte = Number(maxPrice);
-//     }
-
-//     // Sorting options
-//     const allowedSortFields = ['createdAt', 'price', 'name', 'brand'];
-//     const orderBy: any = {};
-
-//     if (sortBy && allowedSortFields.includes(sortBy as string)) {
-//       orderBy[sortBy as string] = sortOrder === 'asc' ? 'asc' : 'desc';
-//     } else {
-//       orderBy.createdAt = 'desc';
-//     }
-
-//     // Pagination
-//     const itemsPerPage = Math.min(parseInt(limit as string), 50); // Limit maximum items per page
-//     const currentPage = Math.max(parseInt(page as string), 1); // Ensure page is at least 1
-//     const skip = (currentPage - 1) * itemsPerPage;
-
-//     const [products, totalCount] = await prisma.$transaction([
-//       prisma.product.findMany({
-//         where,
-//         orderBy,
-//         take: itemsPerPage,
-//         skip,
-//       }),
-//       prisma.product.count({ where }),
-//     ]);
-
-//     // Convert images to URLs
-//     const productsWithImageUrls = products.map((product) => ({
-//       ...product,
-//       images: product.images.map((image) => getImageUrl(`/uploads/${image}`)),
-//     }));
-
-//     const totalPages = Math.ceil(totalCount / itemsPerPage);
-
-//     res.status(200).json({
-//       success: true,
-//       products: productsWithImageUrls,
-//       pagination: {
-//         total: totalCount,
-//         currentPage,
-//         totalPages,
-//         itemsPerPage,
-//         hasNextPage: currentPage < totalPages,
-//         hasPreviousPage: currentPage > 1
-//       }
-//     });
-//   } catch (error) {
-//     console.error('Query Products Error:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Error while querying products",
-//       error: error instanceof Error ? error.message : 'Unknown error'
-//     });
-//   }
-// };
-
 export const queryProducts = async (req: Request, res: Response) => {
   try {
     const {
-      name,
-      brand,
-      category,
-      subCategory,
-      typeOfShoes,
-      minPrice,
-      maxPrice,
-      offer,
-      size,
-      color,
-      company,
-      gender,
-      availability,
-      search, // New search parameter
+      search,
       sortBy = "createdAt",
       sortOrder = "desc",
       limit = "10",
       page = "1",
     } = req.query;
 
-    const where: any = {};
+    const where = search
+      ? buildSearchQuery(search as string)
+      : buildFilterQuery(req.query);
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search as string, mode: "insensitive" } },
-        { brand: { contains: search as string, mode: "insensitive" } },
-        { size: { contains: search as string, mode: "insensitive" } },
-        { Company: { contains: search as string, mode: "insensitive" } },
-        ...(isNaN(Number(search))
-          ? []
-          : [{ price: { equals: Number(search) } }]),
-      ];
-    } else {
-      if (name) where.name = { contains: name as string, mode: "insensitive" };
-      if (brand)
-        where.brand = { contains: brand as string, mode: "insensitive" };
-      if (category)
-        where.Category = { contains: category as string, mode: "insensitive" };
-      if (subCategory)
-        where.Sub_Category = {
-          contains: subCategory as string,
-          mode: "insensitive",
-        };
-      if (typeOfShoes)
-        where.typeOfShoes = {
-          contains: typeOfShoes as string,
-          mode: "insensitive",
-        };
-      if (offer)
-        where.offer = { contains: offer as string, mode: "insensitive" };
-      if (size) where.size = { contains: size as string, mode: "insensitive" };
-      if (color)
-        where.color = { contains: color as string, mode: "insensitive" };
-      if (company)
-        where.Company = { contains: company as string, mode: "insensitive" };
-    }
-
-    if (gender) {
-      const normalizedGender = gender.toString().toUpperCase();
-      if (["MALE", "FEMALE", "UNISEX"].includes(normalizedGender)) {
-        where.gender = normalizedGender;
-      }
-    }
-    if (availability) where.availability = availability === "true";
-
-    if (minPrice || maxPrice) {
-      where.price = {};
-      if (minPrice) where.price.gte = Number(minPrice);
-      if (maxPrice) where.price.lte = Number(maxPrice);
-    }
-
-    const allowedSortFields = ["createdAt", "price", "name", "brand"];
-    const orderBy: any = {};
-
-    if (sortBy && allowedSortFields.includes(sortBy as string)) {
-      orderBy[sortBy as string] = sortOrder === "asc" ? "asc" : "desc";
-    } else {
-      orderBy.createdAt = "desc";
-    }
-
-    const itemsPerPage = Math.min(parseInt(limit as string), 50);
-    const currentPage = Math.max(parseInt(page as string), 1);
-    const skip = (currentPage - 1) * itemsPerPage;
+    const orderBy = sortQuery(sortBy as string, sortOrder as string);
+    const { itemsPerPage, currentPage, skip } = paginate(
+      limit as string,
+      page as string
+    );
 
     const [products, totalCount] = await prisma.$transaction([
       prisma.product.findMany({
@@ -406,20 +566,23 @@ export const queryProducts = async (req: Request, res: Response) => {
         orderBy,
         take: itemsPerPage,
         skip,
+        include: {
+          colors: {
+            include: {
+              images: true,
+            },
+          },
+        },
       }),
       prisma.product.count({ where }),
     ]);
 
-    const productsWithImageUrls = products.map((product) => ({
-      ...product,
-      images: product.images.map((image) => getImageUrl(`/uploads/${image}`)),
-    }));
-
+    const productsWithUrls = formatProductsWithImageUrls(products);
     const totalPages = Math.ceil(totalCount / itemsPerPage);
 
     res.status(200).json({
       success: true,
-      products: productsWithImageUrls,
+      products: productsWithUrls,
       pagination: {
         total: totalCount,
         currentPage,
@@ -438,36 +601,52 @@ export const queryProducts = async (req: Request, res: Response) => {
     });
   }
 };
+// -----------------------------------------
 
 export const deleteProduct = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
     const product = await prisma.product.findUnique({
-      where: { id: Number(id) },
+      where: { id: String(id) },
+      include: {
+        colors: {
+          include: {
+            images: true,
+          },
+        },
+      },
     });
 
     if (!product) {
-      res.status(404).json({ success: false, message: "Product not found" });
+      res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
       return;
     }
 
-    for (const image of product.images) {
-      const filePath = path.join(__dirname, "../../uploads", image);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+    for (const color of product.colors) {
+      for (const image of color.images) {
+        const filePath = path.join(__dirname, "../../uploads", image.url);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
       }
     }
 
     await prisma.product.delete({
-      where: { id: Number(id) },
+      where: {
+        id: String(id),
+      },
     });
 
     res.status(200).json({
       success: true,
-      message: "Product and images deleted successfully",
+      message: "Product and associated images deleted successfully",
     });
   } catch (error) {
+    console.error("Delete Product Error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
@@ -493,7 +672,14 @@ export const getSingleProduct = async (req: Request, res: Response) => {
 
   try {
     const product = await prisma.product.findUnique({
-      where: { id: Number(id) },
+      where: { id: String(id) },
+      include: {
+        colors: {
+          include: {
+            images: true,
+          },
+        },
+      },
     });
 
     if (!product) {
@@ -506,7 +692,13 @@ export const getSingleProduct = async (req: Request, res: Response) => {
 
     const productWithImageUrls = {
       ...product,
-      images: product.images.map((image) => getImageUrl(`/uploads/${image}`)),
+      colors: product.colors.map((color) => ({
+        ...color,
+        images: color.images.map((image) => ({
+          ...image,
+          url: getImageUrl(`/uploads/${image.url}`),
+        })),
+      })),
     };
 
     res.status(200).json({
@@ -514,6 +706,7 @@ export const getSingleProduct = async (req: Request, res: Response) => {
       product: productWithImageUrls,
     });
   } catch (error) {
+    console.error("Get Single Product Error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
@@ -521,3 +714,4 @@ export const getSingleProduct = async (req: Request, res: Response) => {
     });
   }
 };
+ 

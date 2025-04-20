@@ -7,8 +7,8 @@ import { isAdmin } from "../../middleware/isAdmin";
 
 const router = express.Router();
 
-router.post("/", verifyUser,  upload.array("images", 10), createProduct);
-router.put("/:id", verifyUser,  upload.array("images", 10), updateProduct);
+router.post("/", verifyUser,  upload.array("images", 1000), createProduct);
+router.put("/:id", verifyUser,  upload.array("images", 1000), updateProduct);
 router.get("/", getAllProducts);
 router.delete("/:id/:imageName", verifyUser, deleteImage); 
 router.get("/query", queryProducts);
