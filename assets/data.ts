@@ -99,5 +99,85 @@ export const data = [
       image: "20.png",
       text: "Breite Sohle für mehr Stabilität",
     },
+    {
+      id: 21,
+      image: "21.png",
+      text: "Nylonplatte in Sohle integriert",
+    },
+    {
+      id: 22,
+      image: "22.png",
+      text: "Sitzt kompakter als herkömmliche Schuhe",
+    },
+    {
+      id: 23,
+      image: "23.png",
+      text: "Gehkomfort",
+    },
+    {
+      id: 24,
+      image: "24.png",
+      text: "Wechselbares Fußbett",
+    },
+    {
+      id: 25,
+      image: "25.png",
+      text: "Angenehm Gedämpftes Laufgefühl",
+    },
+    {
+      id: 26,
+      image: "26.png",
+      text: "Boa®-Verschlusssystem",
+    },
+    {
+      id: 27,
+      image: "27.png",
+      text: "FeetF1rst Empfehlung",
+    },
+    {
+      id: 28,
+      image: "28.png",
+      text: "Fortschrittliches Dämpfungssystem",
+    },
+    {
+      id: 29,
+      image: "29.png",
+      text: "Hochwertige Vibram®-Außensohle",
+    },
+    {
+      id: 30,
+      image: "30.png",
+      text: "Hochwertige Continental™-Außensohle",
+    },
+    {
+      id: 31,
+      image: "31.png",
+      text: "Mehr Stabilität als herkömmliche Modelle",
+    },
+    {
+      id: 32,
+      image: "32.png",
+      text: "Hoher Drop – ideal für Fersenläufer:innen",
+    },
+    {
+      id: 33,
+      image: "33.png",
+      text: "Niedriger Drop – optimal für Mittel- und Vorfußläufer:innen",
+    },
+    {
+      id: 34,
+      image: "34.png",
+      text: "Integrierter Zehenschutz",
+    },
+    {
+      id: 35,
+      image: "35.png",
+      text: "Rocker-Platte mit integrierter Schutzfunktion",
+    },
+    {
+      id: 36,
+      image: "36.png",
+      text: "Carbonplatte in Sohle integriert",
+    },
   ];
   
