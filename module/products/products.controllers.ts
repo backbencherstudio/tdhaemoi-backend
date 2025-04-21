@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { data } from "../../assets/data";
 import { getImageUrl } from "../../utils/base_utl";
+import { data as characteristicIcons } from "../../assets/data";
 import { Multer } from "multer";
 const prisma = new PrismaClient();
 
@@ -154,9 +155,22 @@ const sortQuery = (sortBy: string, sortOrder: string) => {
   return orderBy;
 };
 
+// const formatProductsWithImageUrls = (products: any[]) =>
+//   products.map((product) => ({
+//     ...product,
+//     colors: product.colors.map((color) => ({
+//       ...color,
+//       images: color.images.map((image) => ({
+//         ...image,
+//         url: getImageUrl(`/uploads/${image.url}`),
+//       })),
+//     })),
+//   }));
+
 const formatProductsWithImageUrls = (products: any[]) =>
   products.map((product) => ({
     ...product,
+    characteristics: mapCharacteristicsToDetails(product.characteristics || []),
     colors: product.colors.map((color) => ({
       ...color,
       images: color.images.map((image) => ({
@@ -165,6 +179,17 @@ const formatProductsWithImageUrls = (products: any[]) =>
       })),
     })),
   }));
+
+
+const mapCharacteristicsToDetails = (ids: number[]) => {
+  return characteristicIcons.filter((item) => ids.includes(item.id)).map((item) => ({
+    id: item.id,
+    text: item.text,
+    image: getImageUrl(`/assets/KeinTitel/${item.image}`),
+  }));
+};
+
+
 // ----------------------------------------------------------
 
 export const createProduct = async (req: Request, res: Response) => {
@@ -730,6 +755,13 @@ export const getSingleProduct = async (req: Request, res: Response) => {
 
     const productWithImageUrls = {
       ...product,
+      characteristics: product.characteristics ? product.characteristics.map((id: number) => {
+        const item = data.find(item => item.id === id);
+        return item ? {
+          ...item,
+          image: getImageUrl(`/assets/KeinTitel/${item.image}`)
+        } : null;
+      }).filter(Boolean) : [],
       colors: product.colors.map((color) => ({
         ...color,
         images: color.images.map((image) => ({
