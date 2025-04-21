@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
+import { data } from "../../assets/data";
 import { getImageUrl } from "../../utils/base_utl";
 import { Multer } from "multer";
 const prisma = new PrismaClient();
@@ -25,10 +26,10 @@ const buildSearchQuery = (search: string) => {
           some: {
             OR: [
               { colorName: { contains: search, mode: "insensitive" } },
-              { colorCode: { contains: search, mode: "insensitive" } }
-            ]
-          }
-        }
+              { colorCode: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
       },
       ...(isNumber ? [{ price: { equals: Number(search) } }] : []),
     ],
@@ -58,50 +59,67 @@ const buildFilterQuery = (query: any) => {
   if (name) where.name = { contains: name, mode: "insensitive" };
   if (brand) where.brand = { contains: brand, mode: "insensitive" };
   if (category) where.Category = { contains: category, mode: "insensitive" };
-  if (subCategory) where.Sub_Category = { contains: subCategory, mode: "insensitive" };
-  
+  if (subCategory)
+    where.Sub_Category = { contains: subCategory, mode: "insensitive" };
+
   // Handle multiple types of shoes
   if (typeOfShoes) {
     const typeArray = Array.isArray(typeOfShoes) ? typeOfShoes : [typeOfShoes];
     where.typeOfShoes = {
       in: typeArray,
-      mode: "insensitive"
+      mode: "insensitive",
     };
   }
 
   if (offer) where.offer = { contains: offer, mode: "insensitive" };
-  
+
   // Handle multiple sizes
   if (size) {
     const sizeArray = Array.isArray(size) ? size : [size];
     where.size = {
       in: sizeArray,
-      mode: "insensitive"
+      mode: "insensitive",
     };
   }
 
   // Handle multiple colors
   if (colorName || colorCode) {
-    const colorNames = Array.isArray(colorName) ? colorName : colorName ? [colorName] : [];
-    const colorCodes = Array.isArray(colorCode) ? colorCode : colorCode ? [colorCode] : [];
+    const colorNames = Array.isArray(colorName)
+      ? colorName
+      : colorName
+      ? [colorName]
+      : [];
+    const colorCodes = Array.isArray(colorCode)
+      ? colorCode
+      : colorCode
+      ? [colorCode]
+      : [];
 
     where.colors = {
       some: {
         OR: [
-          ...(colorNames.length > 0 ? [{
-            colorName: {
-              in: colorNames,
-              mode: "insensitive"
-            }
-          }] : []),
-          ...(colorCodes.length > 0 ? [{
-            colorCode: {
-              in: colorCodes,
-              mode: "insensitive"
-            }
-          }] : [])
-        ]
-      }
+          ...(colorNames.length > 0
+            ? [
+                {
+                  colorName: {
+                    in: colorNames,
+                    mode: "insensitive",
+                  },
+                },
+              ]
+            : []),
+          ...(colorCodes.length > 0
+            ? [
+                {
+                  colorCode: {
+                    in: colorCodes,
+                    mode: "insensitive",
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
     };
   }
 
@@ -167,29 +185,28 @@ export const createProduct = async (req: Request, res: Response) => {
       technicalData,
       Company,
       gender,
-      colors, // Expected as a stringified JSON from the frontend
+      colors,
+      characteristics,
     } = req.body;
 
     const files = req.files;
 
-    // Validation: check required fields
     if (!name || !brand) {
-       res.status(400).json({
+      res.status(400).json({
         success: false,
         message: "Name and brand are required fields",
       });
-      return
+      return;
     }
 
     if (!files || !Array.isArray(files) || files.length === 0) {
-       res.status(400).json({
+      res.status(400).json({
         success: false,
         message: "No image files uploaded",
       });
-      return
+      return;
     }
 
-    // Parse and validate colors JSON
     let parsedColors: any[] = [];
     try {
       parsedColors = colors ? JSON.parse(colors) : [];
@@ -201,14 +218,36 @@ export const createProduct = async (req: Request, res: Response) => {
       return;
     }
 
-    // Handle gender normalization
+    let parsedCharacteristics: number[] = [];
+    try {
+      if (typeof characteristics === 'string') {
+        // Remove any extra quotes that might make it a string instead of an array
+        const cleanedString = characteristics.replace(/^"|"$/g, '');
+        parsedCharacteristics = JSON.parse(cleanedString);
+      } else {
+        parsedCharacteristics = characteristics || [];
+      }
+
+      if (!Array.isArray(parsedCharacteristics)) {
+        throw new Error("Characteristics must be an array");
+      }
+
+      parsedCharacteristics = parsedCharacteristics.map(Number);
+    } catch (err) {
+      console.log("Characteristics parsing error:", err);
+      res.status(400).json({
+        success: false,
+        message: "Invalid characteristics format",
+        error: err.message,
+      });
+      return;
+    }
+
     const normalizedGender = normalizeGender(gender);
 
-    // Parse numeric fields
     const numericPrice = price ? parseFloat(price) : null;
     const numericOffer = offer ? parseFloat(offer) : null;
 
-    // Associate uploaded files with colors
     let fileIndex = 0;
     const colorsWithFiles = parsedColors.map((color) => {
       const imageFilenames: string[] = [];
@@ -229,7 +268,6 @@ export const createProduct = async (req: Request, res: Response) => {
       };
     });
 
-    // Create the product and related nested data
     const createdProduct = await prisma.product.create({
       data: {
         name,
@@ -247,6 +285,7 @@ export const createProduct = async (req: Request, res: Response) => {
         technicalData: technicalData || null,
         Company: Company || null,
         gender: normalizedGender as "MALE" | "FEMALE" | "UNISEX" | null,
+        characteristics: parsedCharacteristics,
         colors: {
           create: colorsWithFiles.map((color) => ({
             colorName: color.colorName,
@@ -268,7 +307,6 @@ export const createProduct = async (req: Request, res: Response) => {
       },
     });
 
-    // Attach full image URLs
     const productWithUrls = formatProductsWithImageUrls([createdProduct])[0];
 
     res.status(201).json({
@@ -714,4 +752,24 @@ export const getSingleProduct = async (req: Request, res: Response) => {
     });
   }
 };
- 
+
+export const characteristicsIcons = async (req: Request, res: Response) => {
+  try {
+    const iconsWithUrls = data.map((icon) => ({
+      ...icon,
+      image: getImageUrl(`/assets/KeinTitel/${icon.image}`),
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: iconsWithUrls,
+    });
+  } catch (error) {
+    console.error("Get Technical Icons Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch technical icons",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};

@@ -26,43 +26,43 @@ model User {
 }
 
 model Product {
-  id            String    @id @default(uuid())
-  name          String?
-  brand         String?
-  Category      String?
-  Sub_Category  String?
-  typeOfShoes   String?
-  productDesc   String?
-  price         Float?
-  availability  Boolean?
-  offer         Float?
-  size          String?
-  feetFirstFit  String?
-  footLength    String?
-  technicalData String?
-  Company       String?
-  gender        Gender?
-  createdAt     DateTime  @default(now())
+  id              String   @id @default(uuid())
+  name            String?
+  brand           String?
+  Category        String?
+  Sub_Category    String?
+  typeOfShoes     String?
+  productDesc     String?
+  price           Float?
+  availability    Boolean?
+  offer           Float?
+  size            String?
+  feetFirstFit    String?
+  footLength      String?
+  technicalData   String?
+  characteristics Int[]
+  Company         String?
+  gender          Gender?
+  createdAt       DateTime @default(now())
 
-  colors        Color[]
+  colors Color[]
 }
 
 model Color {
-  id         String    @id @default(uuid())
-  colorName  String
-  colorCode  String
-  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId  String
-  images     Image[]
+  id        String  @id @default(uuid())
+  colorName String
+  colorCode String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  images    Image[]
 }
 
 model Image {
-  id       String    @id @default(uuid())
-  url      String
-  color    Color     @relation(fields: [colorId], references: [id], onDelete: Cascade)
-  colorId  String
+  id      String @id @default(uuid())
+  url     String
+  color   Color  @relation(fields: [colorId], references: [id], onDelete: Cascade)
+  colorId String
 }
-
 
 enum Role {
   ADMIN

@@ -42,7 +42,7 @@ app.use("/users", users);
 app.use("/products", products); // Add this line
 app.use("/excel", excel)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.status(404).json({
