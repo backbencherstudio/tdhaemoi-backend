@@ -526,16 +526,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
       },
     });
 
-    const productsWithImageUrls = products.map((product) => ({
-      ...product,
-      colors: product.colors.map((color) => ({
-        ...color,
-        images: color.images.map((image) => ({
-          ...image,
-          url: getImageUrl(`/uploads/${image.url}`),
-        })),
-      })),
-    }));
+    const productsWithImageUrls = formatProductsWithImageUrls(products);
 
     res.status(200).json({
       success: true,
