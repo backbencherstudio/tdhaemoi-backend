@@ -370,6 +370,7 @@ export const updateProduct = async (req: Request, res: Response) => {
       Company,
       gender,
       colors,
+      characteristics, // Add characteristics to destructuring
     } = req.body;
 
     const files = req.files;
@@ -440,7 +441,32 @@ export const updateProduct = async (req: Request, res: Response) => {
       };
     });
 
-    // Update product with color handling
+    // Parse characteristics
+    let parsedCharacteristics: number[] = [];
+    try {
+      if (typeof characteristics === 'string') {
+        const cleanedString = characteristics.replace(/^"|"$/g, '');
+        parsedCharacteristics = JSON.parse(cleanedString);
+      } else {
+        parsedCharacteristics = characteristics || [];
+      }
+
+      if (!Array.isArray(parsedCharacteristics)) {
+        throw new Error("Characteristics must be an array");
+      }
+
+      parsedCharacteristics = parsedCharacteristics.map(Number);
+    } catch (err) {
+      console.log("Characteristics parsing error:", err);
+      res.status(400).json({
+        success: false,
+        message: "Invalid characteristics format",
+        error: err.message,
+      });
+      return;
+    }
+
+    // Update product with color handling and characteristics
     const updatedProduct = await prisma.product.update({
       where: {
         id: String(id),
@@ -463,6 +489,7 @@ export const updateProduct = async (req: Request, res: Response) => {
         gender: gender
           ? (gender.toString().toUpperCase() as "MALE" | "FEMALE" | "UNISEX")
           : null,
+        characteristics: parsedCharacteristics, // Add characteristics update
         colors: {
           deleteMany: {}, // Delete all existing colors
           create: colorsWithFiles.map((color: any) => ({
