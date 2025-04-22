@@ -771,6 +771,31 @@ export const getSingleProduct = async (req: Request, res: Response) => {
       return;
     }
 
+    // Fetch recommended products based on similar attributes
+    const recommendedProducts = await prisma.product.findMany({
+      where: {
+        AND: [
+          { id: { not: product.id } }, // Exclude current product
+          {
+            OR: [
+              { brand: product.brand },
+              { Category: product.Category },
+              // { typeOfShoes: product.typeOfShoes },
+              // { Sub_Category: product.Sub_Category },
+            ],
+          },
+        ],
+      },
+      take: 4, // Limit to 4 recommended products
+      include: {
+        colors: {
+          include: {
+            images: true,
+          },
+        },
+      },
+    });
+
     const productWithImageUrls = {
       ...product,
       characteristics: product.characteristics ? product.characteristics.map((id: number) => {
@@ -789,9 +814,13 @@ export const getSingleProduct = async (req: Request, res: Response) => {
       })),
     };
 
+    // Format recommended products with image URLs
+    const recommendedWithUrls = formatProductsWithImageUrls(recommendedProducts);
+
     res.status(200).json({
       success: true,
       product: productWithImageUrls,
+      recommendedProducts: recommendedWithUrls,
     });
   } catch (error) {
     console.error("Get Single Product Error:", error);

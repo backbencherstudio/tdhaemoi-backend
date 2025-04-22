@@ -28,6 +28,7 @@ app.use(
       "http://localhost:3002",
       "http://192.168.40.10:4000",
       "http://localhost:3001",
+      "https://landing-page-iota-eight-94.vercel.app",
       "file:///D:/z-bbs/tdhaemoi-backend/public/index.html"
     ],
   })

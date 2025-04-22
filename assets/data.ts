@@ -174,10 +174,10 @@ export const data = [
       image: "35.png",
       text: "Rocker-Platte mit integrierter Schutzfunktion",
     },
-    {
-      id: 36,
-      image: "36.png",
-      text: "Carbonplatte in Sohle integriert",
-    },
+    // {
+    //   id: 36,
+    //   image: "36.png",
+    //   text: "Carbonplatte in Sohle integriert",
+    // },
   ];
   
