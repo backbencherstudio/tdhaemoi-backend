@@ -270,7 +270,6 @@ http://localhost:3000/products/query?page=1&limit=10
 ```
 
 ---
-
 ## Notes for Frontend Developers
 - Image URLs are automatically generated for both user and product images
 - All requests with file uploads must use `multipart/form-data`
