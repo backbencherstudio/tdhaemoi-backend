@@ -175,26 +175,6 @@ export const questionnaireData = [
                                     "questions": [
                                         {
                                             "id": 1,
-                                            "question": "Welche Körpergröße haben Sie?",
-                                            "options": [
-                                                {
-                                                    "id": 1,
-                                                    "option": "Bitte geben Sie Ihre Körpergröße in Cm an: ______ cm"
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "id": 2,
-                                            "question": "Wie viel wiegen Sie?",
-                                            "options": [
-                                                {
-                                                    "id": 1,
-                                                    "option": "Bitte geben Sie Ihr Gewicht in Kg an: ______ kg"
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "id": 3,
                                             "question": "Welche Art von Ski benötigen Sie?",
                                             "options": [
                                                 {
@@ -295,26 +275,6 @@ export const questionnaireData = [
                                         },
                                         {
                                             "id": 4,
-                                            "question": "Welche Körpergröße haben Sie?",
-                                            "options": [
-                                                {
-                                                    "id": 1,
-                                                    "option": "Bitte geben Sie Ihre Körpergröße in Cm an: ______ cm"
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "id": 5,
-                                            "question": "Wie viel wiegen Sie?",
-                                            "options": [
-                                                {
-                                                    "id": 1,
-                                                    "option": "Bitte geben Sie Ihr Gewicht in Kg an: ______ kg"
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "id": 6,
                                             "question": "Welche Art von Ski benötigen Sie?",
                                             "options": [
                                                 {
