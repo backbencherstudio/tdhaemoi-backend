@@ -43,9 +43,9 @@ model Product {
   characteristics Int[]
   Company         String?
   gender          Gender?
+  question        Json?
+  colors          Color[]
   createdAt       DateTime @default(now())
-
-  colors Color[]
 }
 
 model Color {
