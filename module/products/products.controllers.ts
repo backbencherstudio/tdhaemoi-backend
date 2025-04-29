@@ -20,7 +20,6 @@ const buildSearchQuery = (search: string) => {
     OR: [
       { name: { contains: search, mode: "insensitive" } },
       { brand: { contains: search, mode: "insensitive" } },
-      { size: { contains: search, mode: "insensitive" } },
       { Company: { contains: search, mode: "insensitive" } },
       {
         colors: {
@@ -180,15 +179,15 @@ const formatProductsWithImageUrls = (products: any[]) =>
     })),
   }));
 
-
 const mapCharacteristicsToDetails = (ids: number[]) => {
-  return characteristicIcons.filter((item) => ids.includes(item.id)).map((item) => ({
-    id: item.id,
-    text: item.text,
-    image: getImageUrl(`/assets/KeinTitel/${item.image}`),
-  }));
+  return characteristicIcons
+    .filter((item) => ids.includes(item.id))
+    .map((item) => ({
+      id: item.id,
+      text: item.text,
+      image: getImageUrl(`/assets/KeinTitel/${item.image}`),
+    }));
 };
-
 
 // ----------------------------------------------------------
 
@@ -211,8 +210,11 @@ export const createProduct = async (req: Request, res: Response) => {
       Company,
       gender,
       colors,
+      question,
       characteristics,
     } = req.body;
+
+    console.log(question)
 
     const files = req.files;
 
@@ -245,9 +247,9 @@ export const createProduct = async (req: Request, res: Response) => {
 
     let parsedCharacteristics: number[] = [];
     try {
-      if (typeof characteristics === 'string') {
+      if (typeof characteristics === "string") {
         // Remove any extra quotes that might make it a string instead of an array
-        const cleanedString = characteristics.replace(/^"|"$/g, '');
+        const cleanedString = characteristics.replace(/^"|"$/g, "");
         parsedCharacteristics = JSON.parse(cleanedString);
       } else {
         parsedCharacteristics = characteristics || [];
@@ -311,6 +313,7 @@ export const createProduct = async (req: Request, res: Response) => {
         Company: Company || null,
         gender: normalizedGender as "MALE" | "FEMALE" | "UNISEX" | null,
         characteristics: parsedCharacteristics,
+        question: question || null,
         colors: {
           create: colorsWithFiles.map((color) => ({
             colorName: color.colorName,
@@ -369,10 +372,12 @@ export const updateProduct = async (req: Request, res: Response) => {
       technicalData,
       Company,
       gender,
+      question,
       colors,
       characteristics, // Add characteristics to destructuring
     } = req.body;
-
+ 
+    console.log("question", question)
     const files = req.files;
 
     const existingProduct = await prisma.product.findUnique({
@@ -444,8 +449,8 @@ export const updateProduct = async (req: Request, res: Response) => {
     // Parse characteristics
     let parsedCharacteristics: number[] = [];
     try {
-      if (typeof characteristics === 'string') {
-        const cleanedString = characteristics.replace(/^"|"$/g, '');
+      if (typeof characteristics === "string") {
+        const cleanedString = characteristics.replace(/^"|"$/g, "");
         parsedCharacteristics = JSON.parse(cleanedString);
       } else {
         parsedCharacteristics = characteristics || [];
@@ -486,6 +491,7 @@ export const updateProduct = async (req: Request, res: Response) => {
         footLength: footLength || null,
         technicalData: technicalData || null,
         Company: Company || null,
+        question: question || null,
         gender: gender
           ? (gender.toString().toUpperCase() as "MALE" | "FEMALE" | "UNISEX")
           : null,
@@ -629,7 +635,11 @@ export const queryProducts = async (req: Request, res: Response) => {
       sortOrder = "desc",
       limit = "10",
       page = "1",
+      question,
     } = req.query;
+
+
+
 
     const where = search
       ? buildSearchQuery(search as string)
@@ -671,7 +681,9 @@ export const queryProducts = async (req: Request, res: Response) => {
         itemsPerPage,
         hasNextPage: currentPage < totalPages,
         hasPreviousPage: currentPage > 1,
+        question
       },
+     
     });
   } catch (error) {
     console.error("Query Products Error:", error);
@@ -683,6 +695,13 @@ export const queryProducts = async (req: Request, res: Response) => {
   }
 };
 // -----------------------------------------
+
+
+// Helper normalize function (ignore case, spaces, symbols)
+const normalize = (text: string) => {
+  return text.toLowerCase().replace(/[^\w\s]/gi, "").replace(/\s+/g, "_").trim();
+};
+
 
 export const deleteProduct = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -798,13 +817,19 @@ export const getSingleProduct = async (req: Request, res: Response) => {
 
     const productWithImageUrls = {
       ...product,
-      characteristics: product.characteristics ? product.characteristics.map((id: number) => {
-        const item = data.find(item => item.id === id);
-        return item ? {
-          ...item,
-          image: getImageUrl(`/assets/KeinTitel/${item.image}`)
-        } : null;
-      }).filter(Boolean) : [],
+      characteristics: product.characteristics
+        ? product.characteristics
+            .map((id: number) => {
+              const item = data.find((item) => item.id === id);
+              return item
+                ? {
+                    ...item,
+                    image: getImageUrl(`/assets/KeinTitel/${item.image}`),
+                  }
+                : null;
+            })
+            .filter(Boolean)
+        : [],
       colors: product.colors.map((color) => ({
         ...color,
         images: color.images.map((image) => ({
@@ -815,7 +840,8 @@ export const getSingleProduct = async (req: Request, res: Response) => {
     };
 
     // Format recommended products with image URLs
-    const recommendedWithUrls = formatProductsWithImageUrls(recommendedProducts);
+    const recommendedWithUrls =
+      formatProductsWithImageUrls(recommendedProducts);
 
     res.status(200).json({
       success: true,

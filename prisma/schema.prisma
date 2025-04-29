@@ -36,7 +36,7 @@ model Product {
   price           Float?
   availability    Boolean?
   offer           Float?
-  size            String?
+  size            Json?
   feetFirstFit    String?
   footLength      String?
   technicalData   String?
