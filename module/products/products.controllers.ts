@@ -637,7 +637,8 @@ export const queryProducts = async (req: Request, res: Response) => {
       page = "1",
       question,
     } = req.query;
-
+    
+     console.log('question', question)
 
 
 
