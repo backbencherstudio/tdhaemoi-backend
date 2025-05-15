@@ -277,6 +277,3 @@ http://localhost:3000/products/query?page=1&limit=10
 - Case-insensitive search is supported for text fields in product queries
 - JWT token expiration is set to 100 days
 ```
-
-
-
