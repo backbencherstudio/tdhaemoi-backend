@@ -22,9 +22,14 @@ export const verifyUser = (...allowedRoles: string[]) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
       req.user = decoded;
 
-      // If allowedRoles includes 'ANY' or the user's role is in allowedRoles, grant access
-      if (allowedRoles.length && !allowedRoles.includes('ANY') && !allowedRoles.includes(req.user?.role)) {
-        res.status(403).json({ message: "Access denied. Insufficient permission." });
+      if (
+        allowedRoles.length &&
+        !allowedRoles.includes("ANY") &&
+        !allowedRoles.includes(req.user?.role)
+      ) {
+        res
+          .status(403)
+          .json({ message: "Access denied. Insufficient permission." });
         return;
       }
 

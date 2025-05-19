@@ -78,9 +78,6 @@ const prisma = new PrismaClient();
 //   }
 // };
 
-
-
-
 export const createUser = async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
@@ -150,10 +147,13 @@ export const createUser = async (req: Request, res: Response) => {
         image: imageUrl,
       },
     });
-
   } catch (error) {
     if (req.file) {
-      const imagePath = path.join(__dirname, "../../uploads", req.file.filename);
+      const imagePath = path.join(
+        __dirname,
+        "../../uploads",
+        req.file.filename
+      );
       if (fs.existsSync(imagePath)) {
         fs.unlinkSync(imagePath);
       }
@@ -165,8 +165,6 @@ export const createUser = async (req: Request, res: Response) => {
     });
   }
 };
-
-
 
 export const loginUser = async (req: Request, res: Response) => {
   try {
@@ -335,6 +333,57 @@ export const changePassword = async (req: Request, res: Response) => {
     res.status(200).json({
       success: true,
       message: "Password changed successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error,
+    });
+  }
+};
+
+export const createPartnership = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    const missingField = ["email", "password"].find(
+      (field) => !req.body[field]
+    );
+
+    if (missingField) {
+      res.status(400).json({
+        message: `${missingField} is required!`,
+      });
+      return;
+    }
+
+    const existingPartnership = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingPartnership) {
+      res.status(400).json({
+        message: "Email already exists",
+      });
+      return;
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const partnership = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        role: "PARTNER",
+      },
+    });
+
+    console.log(partnership)
+
+    res.status(201).json({
+      success: true,
+      message: "Partnership created successfully",
+      partnership,
     });
   } catch (error) {
     res.status(500).json({
