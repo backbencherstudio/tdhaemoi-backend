@@ -36,6 +36,14 @@ const buildSearchQuery = (search: string) => {
   };
 };
 
+const normalizes = (text: string) => {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/gi, "")
+    .replace(/\s+/g, "_")
+    .trim();
+};
+
 const buildFilterQuery = (query: any) => {
   const {
     name,
@@ -44,7 +52,7 @@ const buildFilterQuery = (query: any) => {
     subCategory,
     typeOfShoes,
     offer,
-    size,
+    // size,
     colorName,
     colorCode,
     company,
@@ -56,33 +64,39 @@ const buildFilterQuery = (query: any) => {
 
   const where: any = {};
 
+  // Basic search filters
   if (name) where.name = { contains: name, mode: "insensitive" };
   if (brand) where.brand = { contains: brand, mode: "insensitive" };
   if (category) where.Category = { contains: category, mode: "insensitive" };
-  if (subCategory)
+  if (subCategory && subCategory !== "null")
     where.Sub_Category = { contains: subCategory, mode: "insensitive" };
 
-  // Handle multiple types of shoes
+  // Shoes type filter
   if (typeOfShoes) {
-    const typeArray = Array.isArray(typeOfShoes) ? typeOfShoes : [typeOfShoes];
-    where.typeOfShoes = {
-      in: typeArray,
-      mode: "insensitive",
-    };
+    const types = Array.isArray(typeOfShoes) ? typeOfShoes : [typeOfShoes];
+    where.typeOfShoes = { in: types, mode: "insensitive" };
   }
 
-  if (offer) where.offer = { contains: offer, mode: "insensitive" };
-
-  // Handle multiple sizes
-  if (size) {
-    const sizeArray = Array.isArray(size) ? size : [size];
-    where.size = {
-      in: sizeArray,
-      mode: "insensitive",
-    };
+  // Offer filter (as string)
+  if (offer) {
+    where.offer = { contains: offer, mode: "insensitive" };
   }
 
-  // Handle multiple colors
+  // Size filter inside JSON string
+  // if (size) {
+  //   try {
+  //     const sizeFilters = typeof size === "string" ? JSON.parse(size) : size;
+  //     if (Array.isArray(sizeFilters)) {
+  //       where.size = {
+  //         array_contains: sizeFilters.map((s) => ({ size: s.size })),
+  //       };
+  //     }
+  //   } catch (err) {
+  //     console.error("Invalid size JSON format in query:", err);
+  //   }
+  // }
+
+  // Color name / code filter
   if (colorName || colorCode) {
     const colorNames = Array.isArray(colorName)
       ? colorName
@@ -99,34 +113,35 @@ const buildFilterQuery = (query: any) => {
       some: {
         OR: [
           ...(colorNames.length > 0
-            ? [
-                {
-                  colorName: {
-                    in: colorNames,
-                    mode: "insensitive",
-                  },
-                },
-              ]
+            ? [{ colorName: { in: colorNames, mode: "insensitive" } }]
             : []),
           ...(colorCodes.length > 0
-            ? [
-                {
-                  colorCode: {
-                    in: colorCodes,
-                    mode: "insensitive",
-                  },
-                },
-              ]
+            ? [{ colorCode: { in: colorCodes, mode: "insensitive" } }]
             : []),
         ],
       },
     };
   }
 
-  if (company) where.Company = { contains: company, mode: "insensitive" };
-  if (gender) where.gender = normalizeGender(gender);
-  if (availability !== undefined) where.availability = availability === "true";
+  // Company
+  if (company) {
+    where.Company = { contains: company, mode: "insensitive" };
+  }
 
+  // Gender
+  if (gender) {
+    const g = gender.toUpperCase();
+    if (["MALE", "FEMALE", "UNISEX"].includes(g)) {
+      where.gender = g;
+    }
+  }
+
+  // Availability
+  if (availability !== undefined) {
+    where.availability = availability === "true";
+  }
+
+  // Price range
   if (minPrice || maxPrice) {
     where.price = {};
     if (minPrice) where.price.gte = Number(minPrice);
@@ -214,7 +229,7 @@ export const createProduct = async (req: Request, res: Response) => {
       characteristics,
     } = req.body;
 
-    console.log(question)
+    console.log(question);
 
     const files = req.files;
 
@@ -376,8 +391,8 @@ export const updateProduct = async (req: Request, res: Response) => {
       colors,
       characteristics, // Add characteristics to destructuring
     } = req.body;
- 
-    console.log("question", question)
+
+    console.log("question", question);
     const files = req.files;
 
     const existingProduct = await prisma.product.findUnique({
@@ -636,11 +651,19 @@ export const queryProducts = async (req: Request, res: Response) => {
       limit = "10",
       page = "1",
       question,
+      size,
     } = req.query;
-    
-     console.log('question', question)
 
-
+    // Only parse size if it exists and is not empty
+    let parsedSize = [];
+    if (size && size !== '') {
+      try {
+        parsedSize = JSON.parse(size as string);
+      } catch (err) {
+        console.error("Error parsing size:", err);
+        parsedSize = [];
+      }
+    }
 
     const where = search
       ? buildSearchQuery(search as string)
@@ -652,39 +675,83 @@ export const queryProducts = async (req: Request, res: Response) => {
       page as string
     );
 
-    const [products, totalCount] = await prisma.$transaction([
-      prisma.product.findMany({
-        where,
-        orderBy,
-        take: itemsPerPage,
-        skip,
-        include: {
-          colors: {
-            include: {
-              images: true,
-            },
+    let filteredProducts;
+    let totalFilteredCount;
+
+    // Get all matching products first
+    const allMatchingProducts = await prisma.product.findMany({
+      where,
+      orderBy,
+      include: {
+        colors: {
+          include: {
+            images: true,
           },
         },
-      }),
-      prisma.product.count({ where }),
-    ]);
+      },
+    });
 
-    const productsWithUrls = formatProductsWithImageUrls(products);
-    const totalPages = Math.ceil(totalCount / itemsPerPage);
+    // Apply size filtering if needed
+    let sizeFilteredProducts = allMatchingProducts;
+    if (parsedSize.length > 0) {
+      sizeFilteredProducts = allMatchingProducts.filter((product) => {
+        if (!product.size) return false;
+        try {
+          const db_size = JSON.parse(product.size.toString());
+          return parsedSize.some((sz) =>
+            db_size.some((dbEl) => dbEl["size"] == sz["size"])
+          );
+        } catch (err) {
+          console.error("Error parsing product size:", err);
+          return false;
+        }
+      });
+    }
+
+    // Apply question filtering if needed
+    if (question) {
+      const question_json = JSON.parse(question as string);
+      const inputAnswers = question_json["answers"];
+
+      filteredProducts = sizeFilteredProducts.filter((product) => {
+        try {
+          const productQuestion = JSON.parse(product.question as string);
+          const productAnswers = productQuestion["answers"];
+
+          return inputAnswers.every((inputAnswer) =>
+            productAnswers.some(
+              (productAnswer) =>
+                productAnswer["question"] === inputAnswer["question"] &&
+                productAnswer["answer"] === inputAnswer["answer"]
+            )
+          );
+        } catch (err) {
+          console.error("Error parsing product question JSON:", err);
+          return false;
+        }
+      });
+
+      totalFilteredCount = filteredProducts.length;
+      filteredProducts = filteredProducts.slice(skip, skip + itemsPerPage);
+    } else {
+      totalFilteredCount = sizeFilteredProducts.length;
+      filteredProducts = sizeFilteredProducts.slice(skip, skip + itemsPerPage);
+    }
+
+    const productsWithUrls = formatProductsWithImageUrls(filteredProducts);
+    const totalPages = Math.ceil(totalFilteredCount / itemsPerPage);
 
     res.status(200).json({
       success: true,
       products: productsWithUrls,
       pagination: {
-        total: totalCount,
+        total: totalFilteredCount,
         currentPage,
         totalPages,
         itemsPerPage,
         hasNextPage: currentPage < totalPages,
         hasPreviousPage: currentPage > 1,
-        question
       },
-     
     });
   } catch (error) {
     console.error("Query Products Error:", error);
@@ -695,14 +762,17 @@ export const queryProducts = async (req: Request, res: Response) => {
     });
   }
 };
-// -----------------------------------------
 
+// -----------------------------------------
 
 // Helper normalize function (ignore case, spaces, symbols)
 const normalize = (text: string) => {
-  return text.toLowerCase().replace(/[^\w\s]/gi, "").replace(/\s+/g, "_").trim();
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/gi, "")
+    .replace(/\s+/g, "_")
+    .trim();
 };
-
 
 export const deleteProduct = async (req: Request, res: Response) => {
   const { id } = req.params;

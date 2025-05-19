@@ -32,7 +32,7 @@ app.use(
       "http://192.168.4.30:3001",
       "https://landing-page-iota-eight-94.vercel.app",
       "file:///D:/z-bbs/tdhaemoi-backend/public/index.html",
-      ''
+      'https://landing-page-iota-eight-94.vercel.app'
     ],
   })
 );
