@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import fs from "fs";
 import path from "path";
 import { baseUrl, getImageUrl } from "../../utils/base_utl";
+import { sendPartnershipWelcomeEmail } from "../../utils/emailService.utils";
 
 const prisma = new PrismaClient();
 
@@ -378,7 +379,8 @@ export const createPartnership = async (req: Request, res: Response) => {
       },
     });
 
-    console.log(partnership)
+    // Send welcome email with credentials
+    sendPartnershipWelcomeEmail(email, password);
 
     res.status(201).json({
       success: true,
@@ -386,6 +388,7 @@ export const createPartnership = async (req: Request, res: Response) => {
       partnership,
     });
   } catch (error) {
+    console.error("Partnership creation error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
