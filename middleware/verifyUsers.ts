@@ -4,34 +4,34 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   user?: any;
 }
 
-const verifyUser = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers["authorization"];
+export const verifyUser = (...allowedRoles: string[]) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const authHeader = req.headers["authorization"];
 
-  if (!authHeader) {
-    res.status(401).json({ message: "No token provided" });
-    return; 
-  }
+    if (!authHeader) {
+      res.status(401).json({ message: "No token provided" });
+      return;
+    }
 
-  const token = authHeader;
+    try {
+      const token = authHeader;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+      req.user = decoded;
 
-  if (!token) {
-    res.status(401).json({ message: "Malformed token" });
-    return;
-  }
+      // If allowedRoles includes 'ANY' or the user's role is in allowedRoles, grant access
+      if (allowedRoles.length && !allowedRoles.includes('ANY') && !allowedRoles.includes(req.user?.role)) {
+        res.status(403).json({ message: "Access denied. Insufficient permission." });
+        return;
+      }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-    req.user = decoded;
-    // console.log(decoded)
-    console.log(decoded)
-    next();
-  } catch (error) {
-    res.status(401).json({ message: "Invalid or expired token" });
-  }
+      next();
+    } catch (error) {
+      res.status(401).json({ message: "Invalid or expired token" });
+      return;
+    }
+  };
 };
-
-export default verifyUser;
