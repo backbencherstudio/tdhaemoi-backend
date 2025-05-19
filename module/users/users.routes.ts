@@ -13,4 +13,6 @@ router.put("/:id", verifyUser, upload.single("image"), updateUser);
 router.patch("/change-password", verifyUser, changePassword);
 
 
+
+
 export default router;

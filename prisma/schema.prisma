@@ -67,6 +67,8 @@ model Image {
 enum Role {
   ADMIN
   USER
+  PARTNER
+
 }
 
 enum Gender {
