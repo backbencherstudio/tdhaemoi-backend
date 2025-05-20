@@ -25,6 +25,15 @@ model User {
   @@map("users")
 }
 
+model ucode {
+  id         String   @id @default(uuid())
+  otp        String
+  name       String
+  email      String   @unique
+  expired_at DateTime
+  createdAt  DateTime @default(now())
+}
+
 model Product {
   id              String   @id @default(uuid())
   name            String?
@@ -68,7 +77,6 @@ enum Role {
   ADMIN
   USER
   PARTNER
-
 }
 
 enum Gender {
