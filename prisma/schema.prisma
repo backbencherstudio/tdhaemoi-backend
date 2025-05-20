@@ -28,7 +28,7 @@ model User {
 model ucode {
   id         String   @id @default(uuid())
   otp        String
-  name       String
+  name       String?
   email      String   @unique
   expired_at DateTime
   createdAt  DateTime @default(now())
