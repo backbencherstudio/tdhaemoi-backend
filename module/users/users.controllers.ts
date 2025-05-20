@@ -396,3 +396,111 @@ export const createPartnership = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+export const updatePartnerProfile = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.user;
+    const { name } = req.body;
+    const newImage = req.file;
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id: String(id) },
+    });
+
+    if (!existingUser) {
+      if (newImage) {
+        const imagePath = path.join(__dirname, "../../uploads", newImage.filename);
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+      }
+      res.status(404).json({
+        message: "User not found",
+      });
+      return;
+    }
+
+    if (newImage && existingUser.image) {
+      const oldImagePath = path.join(
+        __dirname,
+        "../../uploads",
+        existingUser.image
+      );
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath);
+      }
+    }
+
+    const user = await prisma.user.update({
+      where: { id: String(id) },
+      data: {
+        name: name || existingUser.name,
+        image: newImage ? newImage.filename : existingUser.image,
+      },
+    });
+
+    const imageUrl = user.image ? getImageUrl(`/uploads/${user.image}`) : null;
+
+    res.status(200).json({
+      success: true,
+      message: "Partner profile updated successfully",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: imageUrl,
+        role: user.role
+      },
+    });
+  } catch (error) {
+    if (req.file) {
+      const imagePath = path.join(
+        __dirname,
+        "../../uploads",
+        req.file.filename
+      );
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error,
+    });
+  }
+};
+
+export const getAllPartners = async (req: Request, res: Response) => {
+  try {
+    const partners = await prisma.user.findMany({
+      where: { role: 'PARTNER' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+        role: true,
+        createdAt: true,
+      }
+    });
+
+    const partnersWithImageUrls = partners.map(partner => ({
+      ...partner,
+      image: partner.image ? getImageUrl(`/uploads/${partner.image}`) : null
+    }));
+
+    res.status(200).json({
+      success: true,
+      partners: partnersWithImageUrls
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error
+    });
+  }
+};
