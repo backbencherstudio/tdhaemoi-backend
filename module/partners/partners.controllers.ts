@@ -310,3 +310,44 @@ export const updatePartnerByAdmin = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const deletePartner = async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+  
+      const partner = await prisma.user.findUnique({
+        where: { id, role: 'PARTNER' }
+      });
+  
+      if (!partner) {
+         res.status(404).json({
+          success: false,
+          message: "Partner not found"
+        });
+        return
+      }
+  
+      // Delete partner's image if exists
+      if (partner.image) {
+        const imagePath = path.join(__dirname, "../../uploads", partner.image);
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+      }
+  
+      await prisma.user.delete({
+        where: { id }
+      });
+  
+      res.status(200).json({
+        success: true,
+        message: "Partner deleted successfully"
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Something went wrong",
+        error
+      });
+    }
+  };
