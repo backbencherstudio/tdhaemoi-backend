@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 
 import dotenv from "dotenv";
-import { emailForgotPasswordOTP } from "../constants/email_message";
+import { emailForgotPasswordOTP, newSuggestionEmail } from "../constants/email_message";
 import { partnershipWelcomeEmail } from "../constants/email_message";
 
 dotenv.config();
@@ -46,4 +46,19 @@ export const sendPartnershipWelcomeEmail = async (
 ): Promise<void> => {
   const htmlContent = partnershipWelcomeEmail(email, password);
   await sendEmail(email, "Welcome to TDHaemoi Partnership Program", htmlContent);
+};
+
+export const sendNewSuggestionEmail = async (
+  name: string,
+  email: string,
+  phone: string,
+  firma: string,
+  suggestion: string
+): Promise<void> => {
+  const htmlContent = newSuggestionEmail(name, email, phone, firma, suggestion);
+  await sendEmail(
+    "wefind.dz@gmail.com",
+    "New Suggestion Received",
+    htmlContent
+  );
 };

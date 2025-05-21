@@ -357,3 +357,189 @@ export const partnershipWelcomeEmail = (
       </html>
     `;
   };
+
+  export const newSuggestionEmail = (
+    name: string,
+    email: string,
+    phone: string,
+    firma: string,
+    suggestion: string,
+  ): string => {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ASPAPIC - New Suggestion Notification</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f9f9f9; font-family: 'Arial', 'Helvetica', sans-serif;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width: 600px; margin: auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden; margin-top: 40px; margin-bottom: 40px;">
+          <tr>
+            <td style="padding: 0;">
+              <!-- Header -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="background-color: #1e3a8a; padding: 30px 40px;">
+                    <h1 style="color: #ffffff; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 24px; font-weight: 600; margin: 0; letter-spacing: 0.3px;">ASPAPIC</h1>
+                  </td>
+                </tr>
+              </table>
+  
+              <!-- Document Title -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="padding: 40px 40px 20px;">
+                    <h2 style="color: #1e3a8a; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 20px; font-weight: 600; margin: 0; border-bottom: 1px solid #e0e0e0; padding-bottom: 15px;">NEW SUGGESTION RECEIVED</h2>
+                  </td>
+                </tr>
+              </table>
+  
+              <!-- Document Date -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="padding: 0 40px 30px;">
+                    <p style="color: #5d6975; font-size: 14px; margin: 0;">
+                      Date: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+  
+              <!-- Introduction -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="padding: 0 40px 30px;">
+                    <p style="color: #334155; font-size: 15px; line-height: 24px; margin: 0 0 15px;">
+                      A new suggestion has been submitted through the ASPAPIC feedback system. Please find the details below:
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Submitter Information -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="padding: 0 40px 30px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border: 1px solid #e0e0e0; border-collapse: collapse;">
+                      <tr>
+                        <td style="background-color: #f1f5f9; padding: 12px 20px; border-bottom: 1px solid #e0e0e0; width: 30%;">
+                          <p style="margin: 0; font-size: 14px; font-weight: 600; color: #334155;">
+                            Name:
+                          </p>
+                        </td>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #e0e0e0;">
+                          <p style="margin: 0; font-size: 14px; color: #334155;">
+                            ${name}
+                          </p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="background-color: #f1f5f9; padding: 12px 20px; border-bottom: 1px solid #e0e0e0; width: 30%;">
+                          <p style="margin: 0; font-size: 14px; font-weight: 600; color: #334155;">
+                            Email:
+                          </p>
+                        </td>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #e0e0e0;">
+                          <p style="margin: 0; font-size: 14px; color: #334155;">
+                            ${email}
+                          </p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="background-color: #f1f5f9; padding: 12px 20px; border-bottom: 1px solid #e0e0e0; width: 30%;">
+                          <p style="margin: 0; font-size: 14px; font-weight: 600; color: #334155;">
+                            Phone:
+                          </p>
+                        </td>
+                        <td style="padding: 12px 20px; border-bottom: 1px solid #e0e0e0;">
+                          <p style="margin: 0; font-size: 14px; color: #334155;">
+                            ${phone}
+                          </p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="background-color: #f1f5f9; padding: 12px 20px; width: 30%;">
+                          <p style="margin: 0; font-size: 14px; font-weight: 600; color: #334155;">
+                            Organization:
+                          </p>
+                        </td>
+                        <td style="padding: 12px 20px;">
+                          <p style="margin: 0; font-size: 14px; color: #334155;">
+                            ${firma}
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+  
+              <!-- Suggestion Content -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="padding: 0 40px 30px;">
+                    <h3 style="color: #1e3a8a; font-size: 16px; font-weight: 600; margin: 0 0 15px; text-transform: uppercase;">Suggestion Details</h3>
+                    <div style="background-color: #f1f5f9; border: 1px solid #e0e0e0; border-radius: 4px; padding: 20px;">
+                      <p style="color: #334155; font-size: 15px; line-height: 24px; margin: 0; white-space: pre-line;">
+                        ${suggestion}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+  
+              <!-- Notification -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="padding: 0 40px 30px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px;">
+                      <tr>
+                        <td style="padding: 10px 15px;">
+                          <p style="color: #1e40af; font-size: 14px; line-height: 21px; margin: 0; font-weight: 500;">
+                            <strong>NOTE:</strong> This suggestion has been recorded in our system. Thank you for your attention to this feedback.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+  
+              <!-- Closing -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="padding: 0 40px 40px;">
+                    <p style="color: #334155; font-size: 15px; line-height: 24px; margin: 0 0 15px;">
+                      If you have any questions about this suggestion, please contact our support team.
+                    </p>
+                    <p style="color: #334155; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
+                      Regards,
+                    </p>
+                    <p style="color: #334155; font-size: 15px; line-height: 24px; margin: 0;">
+                      <strong>ASPAPIC Team</strong>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+  
+              <!-- Footer -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td style="background-color: #f1f5f9; padding: 20px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+                    <p style="color: #64748b; font-size: 13px; line-height: 20px; margin: 0;">
+                      This is an automated notification from the ASPAPIC system. Please do not reply to this email.<br>
+                      © 2024 ASPAPIC. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `
+  }
+  
+  
