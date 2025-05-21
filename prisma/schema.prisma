@@ -13,14 +13,15 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String?
-  email     String   @unique
-  password  String
-  image     String?
-  role      Role     @default(ADMIN)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt
+  id          String        @id @default(uuid())
+  name        String?
+  email       String        @unique
+  password    String
+  image       String?
+  role        Role          @default(ADMIN)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt
+  suggestions suggestions[]
 
   @@map("users")
 }
@@ -88,6 +89,9 @@ model suggestions {
   phone      String
   firma      String
   suggestion String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum Role {
