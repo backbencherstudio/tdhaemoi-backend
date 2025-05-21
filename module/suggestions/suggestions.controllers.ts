@@ -116,3 +116,21 @@ export const deleteSuggestion = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const deleteAllSuggestions = async (req: Request, res: Response) => {
+  try {
+    await prisma.suggestion.deleteMany();
+
+    res.status(200).json({
+      success: true,
+      message: "All suggestions deleted successfully"
+    });
+  } catch (error) {
+    console.error("Delete all suggestions error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message
+    });
+  }
+};
