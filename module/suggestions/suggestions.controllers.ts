@@ -59,15 +59,19 @@ export const createSuggestions = async (req: Request, res: Response) => {
 export const getAllSuggestions = async (req: Request, res: Response) => {
   try {
     const suggestions = await prisma.suggestion.findMany({
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true
+        orderBy: {
+          createdAt: 'desc', // Newest first
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true
+            }
           }
         }
-      }
-    });
+      });
+      
 
     res.status(200).json({
       success: true,
