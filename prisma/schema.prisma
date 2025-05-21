@@ -22,6 +22,7 @@ model User {
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt
   suggestions Suggestion[]
+  messages    Messages[]
 
   @@map("users")
 }
@@ -94,6 +95,17 @@ model Suggestion {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+}
+
+model Messages {
+  id        String   @id @default(uuid())
+  email     String
+  subject   String
+  message   String
+  favorite  Boolean
+  createdAt DateTime @default(now())
+  userId String?
+  user   User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 enum Role {
