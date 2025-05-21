@@ -5,7 +5,11 @@ import jwt from "jsonwebtoken";
 import fs from "fs";
 import path from "path";
 import { baseUrl, getImageUrl } from "../../utils/base_utl";
-import { generateOTP, sendForgotPasswordOTP, sendPartnershipWelcomeEmail } from "../../utils/emailService.utils";
+import {
+  generateOTP,
+  sendForgotPasswordOTP,
+  sendPartnershipWelcomeEmail,
+} from "../../utils/emailService.utils";
 import validator from "validator";
 
 const prisma = new PrismaClient();
@@ -401,7 +405,10 @@ export const changePasswordSendOtp = async (req: Request, res: Response) => {
   }
 };
 
-export const forgotPasswordSendOtp = async (req: Request, res: Response): Promise<void> => {
+export const forgotPasswordSendOtp = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { email } = req.body;
 
   if (!email) {
@@ -426,7 +433,7 @@ export const forgotPasswordSendOtp = async (req: Request, res: Response): Promis
       create: { email, otp, expired_at: expiry },
     });
 
-    sendForgotPasswordOTP(email, otp)
+    sendForgotPasswordOTP(email, otp);
 
     res.status(200).json({ success: true, message: "OTP sent successfully" });
   } catch (error) {
@@ -437,7 +444,10 @@ export const forgotPasswordSendOtp = async (req: Request, res: Response): Promis
   }
 };
 
-export const forgotPasswordVerifyOtp = async (req: Request, res: Response): Promise<void> => {
+export const forgotPasswordVerifyOtp = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { email, otp } = req.body;
 
   if (!email || !otp) {
@@ -463,14 +473,19 @@ export const forgotPasswordVerifyOtp = async (req: Request, res: Response): Prom
       return;
     }
 
-    res.status(200).json({ success: true, message: "OTP verified successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "OTP verified successfully" });
   } catch (error) {
     console.error("Error in forgotPasswordVerifyOtp:", error);
     res.status(500).json({ error: "Failed to verify OTP" });
   }
 };
 
-export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+export const resetPassword = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -497,9 +512,12 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
 
     await prisma.ucode.delete({ where: { email } });
 
-    res.status(200).json({ success: true, message: "Password reset successfully", });
+    res
+      .status(200)
+      .json({ success: true, message: "Password reset successfully" });
   } catch (error) {
     console.error("Error in resetPassword:", error);
     res.status(500).json({ error: "Failed to reset password" });
   }
 };
+

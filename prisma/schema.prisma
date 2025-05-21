@@ -73,6 +73,23 @@ model Image {
   colorId String
 }
 
+model appointment {
+  id            String   @id @default(uuid())
+  customer_name String
+  time          DateTime
+  date          DateTime
+  reason        String
+}
+
+model suggestions {
+  id         String @id @default(uuid())
+  name       String
+  email      String
+  phone      String
+  firma      String
+  suggestion String
+}
+
 enum Role {
   ADMIN
   USER

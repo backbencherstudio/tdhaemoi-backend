@@ -473,6 +473,7 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
   }
 };
 
+
 export const getAllPartners = async (req: Request, res: Response) => {
   try {
     const partners = await prisma.user.findMany({
