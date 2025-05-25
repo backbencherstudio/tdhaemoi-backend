@@ -8,13 +8,14 @@ import { verifyUser } from "../../middleware/verifyUsers";
 
 const router = express.Router();
 
-router.post("/", verifyUser("ADMIN"),  upload.array("images", 1000), createProduct);
-router.put("/:id", verifyUser("ADMIN"),  upload.array("images", 1000), updateProduct);
+router.post("/", verifyUser("ADMIN"),  upload.array("images", 10000), createProduct);
+router.put("/:id", verifyUser("ADMIN"),  upload.array("images", 10000), updateProduct);
 router.get("/", getAllProducts);
 router.get("/technical-icons", characteristicsIcons); 
 router.delete("/:id/:imageName", verifyUser("ADMIN"), deleteImage); 
 router.get("/query", queryProducts);
 router.delete("/:id", deleteProduct);
-router.get("/:id", verifyUser("ADMIN"), getSingleProduct); 
+router.get("/:id", getSingleProduct); 
 
 export default router;
+
