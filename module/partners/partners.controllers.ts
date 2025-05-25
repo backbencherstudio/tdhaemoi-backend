@@ -148,17 +148,72 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
 
 export const getAllPartners = async (req: Request, res: Response) => {
   try {
-    const partners = await prisma.user.findMany({
-      where: { role: "PARTNER" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        role: true,
-        createdAt: true,
-      },
-    });
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = (req.query.search as string) || '';
+    const skip = (page - 1) * limit;
+
+    const whereCondition = {
+      role: "PARTNER",
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } }
+        ]
+      })
+    };
+
+    const [partners, totalCount] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          role: "PARTNER",
+          OR: search ? [
+            {
+              name: {
+                contains: search,
+                mode: "insensitive" as const
+              }
+            },
+            {
+              email: {
+                contains: search,
+                mode: "insensitive" as const
+              }
+            }
+          ] : undefined
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          role: true,
+          createdAt: true,
+        },
+      }),
+      prisma.user.count({
+        where: {
+          role: "PARTNER",
+          OR: search ? [
+            {
+              name: {
+                contains: search,
+                mode: "insensitive" as const
+              }
+            },
+            {
+              email: {
+                contains: search,
+                mode: "insensitive" as const
+              }
+            }
+          ] : undefined
+        }
+      }),
+    ]);
 
     const partnersWithImageUrls = partners.map((partner) => ({
       ...partner,
@@ -167,7 +222,13 @@ export const getAllPartners = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      partners: partnersWithImageUrls,
+      data: partnersWithImageUrls,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+      },
     });
   } catch (error) {
     res.status(500).json({
