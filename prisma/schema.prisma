@@ -23,12 +23,12 @@ model User {
   updatedAt   DateTime     @updatedAt
   suggestions Suggestion[]
   messages    Messages[]
-  accounta    Account[]
+  accounta    account[]
 
   @@map("users")
 }
 
-model Account {
+model account {
   id            String    @id @default(uuid())
   expires_at    DateTime?
   user_id       String

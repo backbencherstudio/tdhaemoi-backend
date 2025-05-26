@@ -468,7 +468,7 @@ export const forgotPasswordSendOtp = async (
     res.status(400).json({ error: "Email is required" });
     return;
   }
-
+ 
   try {
     const user = await prisma.user.findUnique({ where: { email } });
 

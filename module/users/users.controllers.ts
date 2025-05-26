@@ -208,18 +208,8 @@ export const loginUser = async (req: Request, res: Response) => {
       { expiresIn: "1m" }
     );
 
-    // await prisma.account.upsert({
-    //   where: {
-    //     user_id: user.id
-    //   },
-    //   update: {
-    //     token: token,
-    //   },
-    //   create: {
-    //     user_id: user.id,
-    //     token: token,
-    //   }
-    // });
+
+    // await prisma.account.upsert();
 
     res.status(200).json({
       success: true,
@@ -253,6 +243,7 @@ export const updateUser = async (req: Request, res: Response) => {
       where: { id: String(id) }, // Use `id` from the authenticated user
     });
 
+    // await prisma.account.upsert();
     // If the user doesn't exist, handle the error and delete any uploaded file
     if (!existingUser) {
       if (newImage) {
@@ -410,7 +401,6 @@ export const createPartnership = async (req: Request, res: Response) => {
   }
 };
 
-
 export const updatePartnerProfile = async (req: Request, res: Response) => {
   try {
     const { id } = req.user;
@@ -423,7 +413,11 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
 
     if (!existingUser) {
       if (newImage) {
-        const imagePath = path.join(__dirname, "../../uploads", newImage.filename);
+        const imagePath = path.join(
+          __dirname,
+          "../../uploads",
+          newImage.filename
+        );
         if (fs.existsSync(imagePath)) {
           fs.unlinkSync(imagePath);
         }
@@ -463,7 +457,7 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
         name: user.name,
         email: user.email,
         image: imageUrl,
-        role: user.role
+        role: user.role,
       },
     });
   } catch (error) {
@@ -486,11 +480,10 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getAllPartners = async (req: Request, res: Response) => {
   try {
     const partners = await prisma.user.findMany({
-      where: { role: 'PARTNER' },
+      where: { role: "PARTNER" },
       select: {
         id: true,
         name: true,
@@ -498,23 +491,23 @@ export const getAllPartners = async (req: Request, res: Response) => {
         image: true,
         role: true,
         createdAt: true,
-      }
+      },
     });
 
-    const partnersWithImageUrls = partners.map(partner => ({
+    const partnersWithImageUrls = partners.map((partner) => ({
       ...partner,
-      image: partner.image ? getImageUrl(`/uploads/${partner.image}`) : null
+      image: partner.image ? getImageUrl(`/uploads/${partner.image}`) : null,
     }));
 
     res.status(200).json({
       success: true,
-      partners: partnersWithImageUrls
+      partners: partnersWithImageUrls,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error
+      error,
     });
   }
 };
