@@ -296,34 +296,31 @@ export const updatePartnerByAdmin = async (req: Request, res: Response) => {
         if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
       }
 
-      res.status(404).json({
+       res.status(404).json({
         success: false,
         message: "Partner not found",
       });
-      return;
     }
 
     if (email && email !== user.email) {
       if (!validator.isEmail(email)) {
-        res
+         res
           .status(400)
           .json({ success: false, message: "Invalid email format" });
-        return;
       }
 
       const existingEmail = await prisma.user.findUnique({ where: { email } });
       if (existingEmail) {
-        res
+         res
           .status(400)
           .json({ success: false, message: "Email already in use" });
-        return;
       }
     }
 
     let updatedPassword = user.password;
     if (password) {
       if (password.length < 6) {
-        res.status(400).json({
+         res.status(400).json({
           success: false,
           message: "Password must be at least 6 characters",
         });
@@ -346,7 +343,7 @@ export const updatePartnerByAdmin = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(200).json({
+     res.status(200).json({
       success: true,
       message: "Partner updated successfully",
       partner: {
@@ -360,15 +357,10 @@ export const updatePartnerByAdmin = async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (newImage) {
-      const errorFilePath = path.join(
-        __dirname,
-        "../../uploads",
-        newImage.filename
-      );
-      if (fs.existsSync(errorFilePath)) fs.unlinkSync(errorFilePath);
+      const filepath = path.join(__dirname, "../../uploads", newImage.filename);
+      if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
     }
-
-    res.status(500).json({
+     res.status(500).json({
       success: false,
       message: "Something went wrong",
       error,
