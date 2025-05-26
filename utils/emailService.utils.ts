@@ -49,7 +49,7 @@ export const sendPartnershipWelcomeEmail = async (
 };
 
 export const sendNewSuggestionEmail = async (
-  name: string,
+
   email: string,
   phone: string,
   firma: string,
