@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 
 import dotenv from "dotenv";
-import { emailForgotPasswordOTP, newSuggestionEmail } from "../constants/email_message";
+import { adminLoginNotificationEmail, emailForgotPasswordOTP, newSuggestionEmail } from "../constants/email_message";
 import { partnershipWelcomeEmail } from "../constants/email_message";
 
 dotenv.config();
@@ -62,3 +62,43 @@ export const sendNewSuggestionEmail = async (
     htmlContent
   );
 };
+
+export const sendAdminLoginNotification = async (
+  adminEmail: string,
+  ipAddress: string
+): Promise<void> => {
+  const dateObj = new Date();
+
+  const loginDate = dateObj.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'Asia/Dhaka',
+  });
+
+  const loginTime = dateObj.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hour12: true,
+    timeZone: 'Asia/Dhaka',
+  });
+
+  const timezone = 'GMT+6'; // You can make this dynamic later if needed
+
+  const htmlContent = adminLoginNotificationEmail(
+    adminEmail,
+    loginDate,
+    loginTime,
+    timezone,
+    ipAddress
+  );
+
+  await sendEmail(
+    adminEmail,
+    "Admin Panel Login Alert",
+    htmlContent
+  );
+};
+

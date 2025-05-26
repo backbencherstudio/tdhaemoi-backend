@@ -5,7 +5,10 @@ import jwt from "jsonwebtoken";
 import fs from "fs";
 import path from "path";
 import { baseUrl, getImageUrl } from "../../utils/base_utl";
-import { sendPartnershipWelcomeEmail } from "../../utils/emailService.utils";
+import {
+  sendAdminLoginNotification,
+  sendPartnershipWelcomeEmail,
+} from "../../utils/emailService.utils";
 
 const prisma = new PrismaClient();
 
@@ -209,7 +212,7 @@ export const loginUser = async (req: Request, res: Response) => {
     );
 
     // const expirationDate = new Date();
-    // expirationDate.setDate(expirationDate.getDate() + 100); 
+    // expirationDate.setDate(expirationDate.getDate() + 100);
 
     // await prisma.account.deleteMany({
     //   where: { user_id: user.id }
@@ -222,8 +225,11 @@ export const loginUser = async (req: Request, res: Response) => {
     //   }
     // });
 
-
-
+    if (user.role === "ADMIN") {
+      const rawIp = req.ip || req.socket.remoteAddress || "Unknown";
+      const ipAddress = rawIp.replace("::ffff:", "");
+      sendAdminLoginNotification(user.email, ipAddress);
+    }
 
     res.status(200).json({
       success: true,
@@ -252,13 +258,11 @@ export const updateUser = async (req: Request, res: Response) => {
     const { name, email } = req.body;
     const newImage = req.file;
 
-    // Retrieve the existing user from the database
     const existingUser = await prisma.user.findUnique({
-      where: { id: String(id) }, // Use `id` from the authenticated user
+      where: { id: String(id) },
     });
 
     // await prisma.account.upsert();
-    // If the user doesn't exist, handle the error and delete any uploaded file
     if (!existingUser) {
       if (newImage) {
         fs.unlinkSync(path.join(__dirname, "../../uploads", newImage.filename));
@@ -616,10 +620,9 @@ export const checkAuthStatus = async (req: Request, res: Response) => {
       return;
     }
 
-    
-    console.log(account.token)
-    console.log(user)
-    console.log(token)
+    console.log(account.token);
+    console.log(user);
+    console.log(token);
     // Verify that the token matches the one stored in the database
     if (account.token !== token) {
       res.status(401).json({
