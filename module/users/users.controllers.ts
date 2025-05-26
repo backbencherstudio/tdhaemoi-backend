@@ -208,6 +208,19 @@ export const loginUser = async (req: Request, res: Response) => {
       { expiresIn: "1m" }
     );
 
+    // await prisma.account.upsert({
+    //   where: {
+    //     user_id: user.id
+    //   },
+    //   update: {
+    //     token: token,
+    //   },
+    //   create: {
+    //     user_id: user.id,
+    //     token: token,
+    //   }
+    // });
+
     res.status(200).json({
       success: true,
       message: "Login successful",

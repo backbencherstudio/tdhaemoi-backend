@@ -23,7 +23,7 @@ model User {
   updatedAt   DateTime     @updatedAt
   suggestions Suggestion[]
   messages    Messages[]
-  accounts    Account[]
+  accounta    Account[]
 
   @@map("users")
 }
@@ -33,7 +33,7 @@ model Account {
   expires_at    DateTime?
   user_id       String
   user          User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  token  String?
+  token         String?
 }
 
 model ucode {
