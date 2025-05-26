@@ -1,5 +1,5 @@
 import express from "express";
-import { createUser, loginUser, updateUser, changePassword, createPartnership, updatePartnerProfile, getAllPartners} from "./users.controllers";
+import { createUser, loginUser, updateUser, changePassword, createPartnership, updatePartnerProfile, getAllPartners, checkAuthStatus} from "./users.controllers";
 import { verifyUser } from "../../middleware/verifyUsers";
 import upload from "../../config/multer.config";
 
@@ -18,5 +18,6 @@ router.post("/create-partnership", verifyUser('ADMIN'), createPartnership)
 router.patch("/update-partner-profile", verifyUser('ADMIN', 'PARTNER'), upload.single("image"), updatePartnerProfile)
 
 router.get("/partners", verifyUser('ADMIN'), getAllPartners);
+router.get("/check-auth", checkAuthStatus);
 
 export default router;
