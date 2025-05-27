@@ -13,17 +13,18 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(uuid())
-  name        String?
-  email       String       @unique
-  password    String
-  image       String?
-  role        Role         @default(ADMIN)
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt
-  suggestions Suggestion[]
-  messages    Messages[]
-  accounta    account[]
+  id           String        @id @default(uuid())
+  name         String?
+  email        String        @unique
+  password     String
+  image        String?
+  role         Role          @default(ADMIN)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt
+  suggestions  Suggestion[]
+  messages     Messages[]
+  accounta     account[]
+  appointments appointment[]
 
   @@map("users")
 }
@@ -87,22 +88,32 @@ model Image {
 model appointment {
   id            String   @id @default(uuid())
   customer_name String
-  time          DateTime
+  time          String
   date          DateTime
   reason        String
+  assignedTo    String
+  details       String
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("appointment")
 }
 
 model Suggestion {
-  id         String  @id @default(uuid())
+  id         String @id @default(uuid())
   name       String
   email      String
   phone      String
   suggestion String
   firma      String
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Messages {
