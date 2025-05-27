@@ -83,6 +83,8 @@ model Image {
   url     String
   color   Color  @relation(fields: [colorId], references: [id], onDelete: Cascade)
   colorId String
+
+  createdAt DateTime @default(now())
 }
 
 model appointment {
@@ -93,8 +95,9 @@ model appointment {
   reason        String
   assignedTo    String
   details       String
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -108,23 +111,24 @@ model Suggestion {
   phone      String
   suggestion String
   firma      String
-  
-  userId     String
-  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model Messages {
-  id        String   @id @default(uuid())
-  email     String
-  subject   String
-  message   String
-  favorite  Boolean
+  id       String  @id @default(uuid())
+  email    String
+  subject  String
+  message  String
+  favorite Boolean
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 enum Role {
