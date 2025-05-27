@@ -9,6 +9,7 @@ import questions from "./module/question/question.routes";
 import partner from "./module/partners/partners.routes";
 import suggestions from "./module/suggestions/suggestions.routes"; // Import the suggestions routes
 import message from "./module/messages/messages.routes"; // Import the messages routes
+import appointment from "./module/appointment/appointment.routes"; // Import the appointment routes
 
 import path from "path";
 
@@ -52,6 +53,7 @@ app.use("/questions", questions)
 app.use("/partner", partner);
 app.use("/suggestions", suggestions);
 app.use("/message", message)
+app.use("/appointment", appointment)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
