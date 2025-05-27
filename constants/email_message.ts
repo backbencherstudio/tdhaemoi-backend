@@ -542,104 +542,101 @@ export const partnershipWelcomeEmail = (
     `
   }
 
- export const adminLoginNotificationEmail = (
-    adminEmail: string,
-    loginDate: string,
-    loginTime: string,
-    timezone: string,
-    ipAddress: string
-  ): string => {
-    return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <title>Admin Login Alert - TDHaemoi</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="margin: 0; padding: 0; background-color: #f2f4f8; font-family: 'Arial', sans-serif;">
-      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin: auto; max-width: 600px; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.05);">
-        
-        <!-- Header -->
-        <tr>
-          <td style="background-color: #1a237e; padding: 30px 40px; text-align: center;">
-            <h1 style="color: #ffffff; font-size: 24px; margin: 0;">⚠️ Admin Login Alert</h1>
-          </td>
-        </tr>
-  
-        <!-- Intro -->
-        <tr>
-          <td style="padding: 30px 40px; color: #2c3e50;">
-            <p style="margin: 0 0 10px; font-size: 16px;">
-              Hello Admin,
+
+export const adminLoginNotificationEmail = (
+  adminEmail: string,
+  adminName: string,
+  loginDate: string,
+  loginTime: string,
+  ipAddress: string,
+): string => {
+  return `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Admin Panel Access Alert - TDHaemoi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Arial', sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden;">
+      
+      <!-- Header -->
+      <tr>
+        <td style="background-color: #1a237e; padding: 24px 32px; text-align: center;">
+          <h2 style="color: #ffffff; font-size: 22px; margin: 0;">Admin Panel Access Alert</h2>
+        </td>
+      </tr>
+
+      <!-- Intro -->
+      <tr>
+        <td style="padding: 24px 32px; color: #2c3e50;">
+          <p style="font-size: 16px; margin: 0 0 12px;">Hi <strong>${adminName || 'Admin'}</strong>,</p>
+          <p style="font-size: 15px; margin: 0 0 16px;">
+            This is to confirm that your TDHaemoi admin account was accessed. Please find the login details below for your records.
+          </p>
+        </td>
+      </tr>
+
+      <!-- Login Info -->
+      <tr>
+        <td style="padding: 0 32px 24px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e0e0e0; border-radius: 6px; background-color: #f9fafb;">
+            <tr>
+              <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
+                <strong style="color: #2c3e50;">Email:</strong> ${adminEmail}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
+                <strong style="color: #2c3e50;">Name:</strong> ${adminName}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
+                <strong style="color: #2c3e50;">Login Date:</strong> ${loginDate}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
+                <strong style="color: #2c3e50;">Login Time:</strong> ${loginTime}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 20px;">
+                <strong style="color: #2c3e50;">IP Address:</strong> ${ipAddress}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Professional Note -->
+      <tr>
+        <td style="padding: 0 32px 24px;">
+          <div style="background-color: #edf2ff; border-left: 4px solid #1e40af; padding: 16px; border-radius: 4px;">
+            <p style="margin: 0; font-size: 14px; color: #1e3a8a;">
+              You're receiving this message because your credentials were used to access the admin panel.  
+              If this was expected, no further action is required.  
+              For internal auditing or multi-device reviews, you may check your admin activity log at your convenience.
             </p>
-            <p style="margin: 0 0 15px; font-size: 15px; line-height: 24px;">
-              A new login was detected in your TDHaemoi Admin Panel. Below are the details of this login attempt. If this was not you, please take action immediately.
-            </p>
-          </td>
-        </tr>
-  
-        <!-- Login Info -->
-        <tr>
-          <td style="padding: 0 40px 30px;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; background-color: #f9f9f9; border: 1px solid #dcdcdc; border-radius: 6px;">
-              <tr>
-                <td style="padding: 15px 20px; border-bottom: 1px solid #e0e0e0;">
-                  <strong style="color: #34495e;">👤 Admin Account:</strong> ${adminEmail}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 15px 20px; border-bottom: 1px solid #e0e0e0;">
-                  <strong style="color: #34495e;">📆 Date:</strong> ${loginDate}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 15px 20px; border-bottom: 1px solid #e0e0e0;">
-                  <strong style="color: #34495e;">⏰ Time:</strong> ${loginTime}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 15px 20px; border-bottom: 1px solid #e0e0e0;">
-                  <strong style="color: #34495e;">🌐 Timezone:</strong> ${timezone}
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 15px 20px;">
-                  <strong style="color: #34495e;">📍 IP Address:</strong> ${ipAddress}
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-  
-        <!-- Security Warning -->
-        <tr>
-          <td style="padding: 0 40px 30px;">
-            <table width="100%" style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 4px;">
-              <tr>
-                <td>
-                  <p style="margin: 0; font-size: 14px; color: #856404;">
-                    <strong>NOTE:</strong> If this login was not performed by you, please reset your password immediately and contact support for further investigation.
-                  </p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-  
-        <!-- Footer -->
-        <tr>
-          <td style="background-color: #f1f3f5; padding: 20px 40px; text-align: center;">
-            <p style="color: #7f8c8d; font-size: 13px; margin: 0;">
-              This is an automated security message from TDHaemoi Admin System.<br>
-              &copy; ${new Date().getFullYear()} TDHaemoi Corporation. All rights reserved.
-            </p>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>
-    `;
-  };
-  
+          </div>
+        </td>
+      </tr>
+
+      <!-- Footer -->
+      <tr>
+        <td style="background-color: #f5f6f8; padding: 20px 32px; text-align: center;">
+          <p style="font-size: 13px; color: #7f8c8d; margin: 0;">
+            TDHaemoi Admin Notification System<br>
+            &copy; ${new Date().getFullYear()} TDHaemoi Corporation. All rights reserved.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `;
+};
+
   

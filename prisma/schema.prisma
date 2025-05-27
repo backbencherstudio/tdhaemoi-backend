@@ -29,11 +29,11 @@ model User {
 }
 
 model account {
-  id            String    @id @default(uuid())
-  expires_at    DateTime?
-  user_id       String
-  user          User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  token         String?
+  id         String    @id @default(uuid())
+  expires_at DateTime?
+  user_id    String
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  token      String?
 }
 
 model ucode {
@@ -93,12 +93,12 @@ model appointment {
 }
 
 model Suggestion {
-  id         String @id @default(uuid())
+  id         String  @id @default(uuid())
   name       String
   email      String
   phone      String
   suggestion String
-
+  firma      String
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 

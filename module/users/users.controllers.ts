@@ -224,11 +224,11 @@ export const loginUser = async (req: Request, res: Response) => {
     //     expires_at: expirationDate
     //   }
     // });
-
     if (user.role === "ADMIN") {
       const rawIp = req.ip || req.socket.remoteAddress || "Unknown";
       const ipAddress = rawIp.replace("::ffff:", "");
-      sendAdminLoginNotification(user.email, ipAddress);
+
+      sendAdminLoginNotification(user.email, user.name, ipAddress);
     }
 
     res.status(200).json({

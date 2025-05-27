@@ -14,7 +14,7 @@ router.get("/", getAllProducts);
 router.get("/technical-icons", characteristicsIcons); 
 router.delete("/:id/:imageName", verifyUser("ADMIN"), deleteImage); 
 router.get("/query", queryProducts);
-router.delete("/:id", deleteProduct);
+router.delete("/:id",verifyUser("ADMIN"), deleteProduct);
 router.get("/:id", getSingleProduct); 
 
 export default router;

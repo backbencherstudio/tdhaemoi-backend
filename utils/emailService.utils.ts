@@ -63,42 +63,42 @@ export const sendNewSuggestionEmail = async (
   );
 };
 
+
+
 export const sendAdminLoginNotification = async (
   adminEmail: string,
-  ipAddress: string
+  adminName: string,
+  ipAddress: string,
 ): Promise<void> => {
-  const dateObj = new Date();
+  const now = new Date();
 
-  const loginDate = dateObj.toLocaleDateString('en-US', {
+  const loginDate = now.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-    timeZone: 'Asia/Dhaka',
   });
 
-  const loginTime = dateObj.toLocaleTimeString('en-US', {
+  const loginTime = now.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: 'numeric',
     second: 'numeric',
     hour12: true,
-    timeZone: 'Asia/Dhaka',
   });
-
-  const timezone = 'GMT+6'; // You can make this dynamic later if needed
 
   const htmlContent = adminLoginNotificationEmail(
     adminEmail,
+    adminName,
     loginDate,
     loginTime,
-    timezone,
-    ipAddress
+    ipAddress,
   );
 
   await sendEmail(
     adminEmail,
-    "Admin Panel Login Alert",
+    "New admin panel login detected",
     htmlContent
   );
 };
+
 

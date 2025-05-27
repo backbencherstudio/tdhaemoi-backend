@@ -6,7 +6,7 @@ import { verifyUser } from "../../middleware/verifyUsers";
 const router = express.Router();
 
 
-router.post("/", verifyUser("PARTNER"), createSuggestions);
+router.post("/", verifyUser("PARTNER", "ADMIN"), createSuggestions);
 
 router.get("/", verifyUser("PARTNER"), getAllSuggestions);
 router.delete("/:id", verifyUser("PARTNER"), deleteSuggestion);

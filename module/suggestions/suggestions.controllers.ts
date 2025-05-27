@@ -37,9 +37,14 @@ export const createSuggestions = async (req: Request, res: Response) => {
         phone,
         firma,
         suggestion,
-        userId: id,
+        user: {
+          connect: {
+            id: id
+          }
+        }
       },
     });
+    
     await sendNewSuggestionEmail(name, email, phone, firma, suggestion);
     res.status(201).json({
       success: true,
