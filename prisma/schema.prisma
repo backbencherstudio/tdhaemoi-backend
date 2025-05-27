@@ -93,7 +93,7 @@ model appointment {
   time          String
   date          DateTime
   reason        String
-  assignedTo    String
+  assignedTo    Boolean
   details       String
 
   userId String
