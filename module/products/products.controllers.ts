@@ -949,3 +949,162 @@ export const characteristicsIcons = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getCategorizedProducts = async (req: Request, res: Response) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+    // 1. First get unique categories and subcategories with counts
+    const categoryCounts = await prisma.product.groupBy({
+      by: ['Category'],
+      where: {
+        Category: { not: null }
+      },
+      _count: true
+    });
+
+    const subcategoryCounts = await prisma.product.groupBy({
+      by: ['Sub_Category'],
+      where: {
+        Sub_Category: { 
+          not: null,
+          notIn: ['null', '']
+        }
+      },
+      _count: true
+    });
+
+    // 2. Get products for each category with limit
+    const categoryGroups = await Promise.all(
+      categoryCounts.map(async ({ Category }) => {
+        const products = await prisma.product.findMany({
+          where: {
+            Category,
+            OR: [
+              { Sub_Category: null },
+              { Sub_Category: 'null' },
+              { Sub_Category: '' }
+            ]
+          },
+          select: {
+            id: true,
+            name: true,
+            Category: true,
+            Sub_Category: true,
+            price: true,
+            offer: true,
+            availability: true,
+            colors: {
+              select: {
+                id: true,
+                colorName: true,
+                colorCode: true,
+                images: {
+                  select: {
+                    id: true,
+                    url: true
+                  }
+                }
+              }
+            }
+          },
+          take: limit,
+          orderBy: {
+            createdAt: 'desc' // Get the most recent products
+          }
+        });
+
+        return {
+          name: Category,
+          totalProducts: categoryCounts.find(c => c.Category === Category)._count,
+          products: products.map(p => ({
+            ...p,
+            colors: p.colors.map(color => ({
+              ...color,
+              images: color.images.map(image => ({
+                ...image,
+                url: getImageUrl(`/uploads/${image.url}`)
+              }))
+            }))
+          }))
+        };
+      })
+    );
+
+    // 3. Get products for each subcategory with limit
+    const subcategoryGroups = await Promise.all(
+      subcategoryCounts
+        .filter(({ Sub_Category }) => Sub_Category && Sub_Category !== 'null')
+        .map(async ({ Sub_Category }) => {
+          const products = await prisma.product.findMany({
+            where: {
+              Sub_Category
+            },
+            select: {
+              id: true,
+              name: true,
+              Category: true,
+              Sub_Category: true,
+              price: true,
+              offer: true,
+              availability: true,
+              colors: {
+                select: {
+                  id: true,
+                  colorName: true,
+                  colorCode: true,
+                  images: {
+                    select: {
+                      id: true,
+                      url: true
+                    }
+                  }
+                }
+              }
+            },
+            take: limit,
+            orderBy: {
+              createdAt: 'desc'
+            }
+          });
+
+          return {
+            name: Sub_Category,
+            totalProducts: subcategoryCounts.find(s => s.Sub_Category === Sub_Category)._count,
+            products: products.map(p => ({
+              ...p,
+              colors: p.colors.map(color => ({
+                ...color,
+                images: color.images.map(image => ({
+                  ...image,
+                  url: getImageUrl(`/uploads/${image.url}`)
+                }))
+              }))
+            }))
+          };
+        })
+    );
+
+    // 4. Combine results
+    const result = [
+      ...categoryGroups,
+      ...subcategoryGroups
+    ];
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      meta: {
+        limit,
+        totalCategories: categoryGroups.length,
+        totalSubcategories: subcategoryGroups.length
+      }
+    });
+  } catch (error) {
+    console.error('Error in getCategorizedProducts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch categorized products'
+    });
+  }
+};

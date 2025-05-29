@@ -18,8 +18,6 @@ router.get("/", verifyUser("ADMIN"), getAllAppointments);
 
 router.get("/my", verifyUser("PARTNER", "ADMIN"), getMyAppointments);
 
-
-
 router.get("/:id", verifyUser("PARTNER", "ADMIN"), getAppointmentById);
 
 router.put("/:id", verifyUser("PARTNER", "ADMIN"), updateAppointment);

@@ -574,3 +574,68 @@ export const resetPassword = async (
   }
 };
 
+
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.user;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({
+        success: false,
+        message: "Current password and new password are required"
+      });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+      return;
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isPasswordValid) {
+      res.status(401).json({
+        success: false,
+        message: "Current password is incorrect"
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters long"
+      });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id },
+      data: { password: hashedPassword }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Password changed successfully"
+    });
+  } catch (error) {
+    console.error("Change password error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message
+    });
+  }
+};
+

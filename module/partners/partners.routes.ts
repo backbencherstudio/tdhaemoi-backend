@@ -8,7 +8,8 @@ import {
   deletePartner,
   forgotPasswordSendOtp,
   forgotPasswordVerifyOtp,
-  resetPassword
+  resetPassword,
+  changePassword
 } from "./partners.controllers";
 import { verifyUser } from "../../middleware/verifyUsers";
 import upload from "../../config/multer.config";
@@ -42,5 +43,7 @@ router.post("/forgot-password/verify-otp", forgotPasswordVerifyOtp);
 router.post("/forgot-password/reset", resetPassword);
 
 
+// Add this route before the export
+router.post("/change-password", verifyUser("PARTNER", "ADMIN"), changePassword);
 
 export default router;
