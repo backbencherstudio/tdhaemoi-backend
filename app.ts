@@ -7,9 +7,10 @@ import products from "./module/products/products.routes";
 import excel from "./module/excel/excel.routes";
 import questions from "./module/question/question.routes";
 import partner from "./module/partners/partners.routes";
-import suggestions from "./module/suggestions/suggestions.routes"; // Import the suggestions routes
-import message from "./module/messages/messages.routes"; // Import the messages routes
-import appointment from "./module/appointment/appointment.routes"; // Import the appointment routes
+import suggestions from "./module/suggestions/suggestions.routes";
+import message from "./module/messages/messages.routes";
+import appointment from "./module/appointment/appointment.routes";
+
 
 import path from "path";
 

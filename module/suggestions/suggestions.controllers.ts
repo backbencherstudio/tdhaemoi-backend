@@ -143,3 +143,142 @@ export const deleteAllSuggestions = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+export const createImprovement = async (req: Request, res: Response) => {
+  try {
+    const { name, email, phone, firma, suggestion } = req.body;
+    const { id } = req.user;
+
+    const missingField = ["name", "email", "phone", "firma", "suggestion"].find(
+      (field) => !req.body[field]
+    );
+
+    if (missingField) {
+      res.status(400).json({
+        success: false,
+        message: `${missingField} is required!`,
+      });
+      return;
+    }
+    
+    if (!validator.isEmail(email)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid email format!",
+      });
+      return;
+    }
+
+    const newImprovement = await prisma.improvementSuggestion.create({
+      data: {
+        name,
+        email,
+        phone,
+        firma,
+        suggestion,
+        user: {
+          connect: {
+            id: id
+          }
+        }
+      },
+    });
+    
+    await sendNewSuggestionEmail(name, email, phone, firma, suggestion);
+    res.status(201).json({
+      success: true,
+      message: "Improvement suggestion created successfully",
+      improvement: newImprovement,
+    });
+  } catch (error) {
+    console.error("Create improvement suggestion error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message
+    });
+  }
+};
+
+export const getAllImprovements = async (req: Request, res: Response) => {
+  try {
+    const improvements = await prisma.improvementSuggestion.findMany({
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true
+            }
+          }
+        }
+      });
+      
+    res.status(200).json({
+      success: true,
+      improvements
+    });
+  } catch (error) {
+    console.error("Get all improvement suggestions error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message
+    });
+  }
+};
+
+export const deleteImprovement = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const improvement = await prisma.improvementSuggestion.findUnique({
+      where: { id }
+    });
+
+    if (!improvement) {
+       res.status(404).json({
+        success: false,
+        message: "Improvement suggestion not found"
+      });
+      return
+    }
+
+    await prisma.improvementSuggestion.delete({
+      where: { id }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Improvement suggestion deleted successfully"
+    });
+  } catch (error) {
+    console.error("Delete improvement suggestion error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message
+    });
+  }
+};
+
+export const deleteAllImprovements = async (req: Request, res: Response) => {
+  try {
+    await prisma.improvementSuggestion.deleteMany();
+
+    res.status(200).json({
+      success: true,
+      message: "All improvement suggestions deleted successfully"
+    });
+  } catch (error) {
+    console.error("Delete all improvement suggestions error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message
+    });
+  }
+}; 
