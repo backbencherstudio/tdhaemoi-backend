@@ -13,20 +13,19 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  name         String?
-  email        String        @unique
-  password     String
-  image        String?
-  role         Role          @default(ADMIN)
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt
-  suggestions  SuggestionFeetf1rst[]
-  messages     Messages[]
-  accounta     account[]
-  appointments appointment[]
+  id                     String                  @id @default(uuid())
+  name                   String?
+  email                  String                  @unique
+  password               String
+  image                  String?
+  role                   Role                    @default(ADMIN)
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt
+  suggestions            SuggestionFeetf1rst[]
+  messages               Messages[]
+  accounta               account[]
+  appointments           appointment[]
   improvementSuggestions ImprovementSuggestion[]
-
 
   @@map("users")
 }
@@ -107,42 +106,42 @@ model appointment {
 }
 
 model SuggestionFeetf1rst {
-  id         String   @id @default(uuid())
+  id         String @id @default(uuid())
   name       String
   email      String
   phone      String
   suggestion String
   firma      String
 
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model ImprovementSuggestion {
-  id         String   @id @default(uuid())
+  id         String @id @default(uuid())
   name       String
   email      String
   phone      String
   suggestion String
   firma      String
 
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Messages {
-  id       String  @id @default(uuid())
-  email    String
-  subject  String
-  message  String
-  favorite Boolean
-
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id           String  @id @default(uuid())
+  email        String
+  subject      String
+  message      String
+  favorite     Boolean
+  recipient_id String
+  userId       String?
+  user         User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 }
