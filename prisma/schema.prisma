@@ -25,6 +25,8 @@ model User {
   messages     Messages[]
   accounta     account[]
   appointments appointment[]
+  improvementSuggestions ImprovementSuggestion[]
+
 
   @@map("users")
 }
@@ -117,6 +119,21 @@ model SuggestionFeetf1rst {
 
   createdAt  DateTime @default(now())
 }
+
+model ImprovementSuggestion {
+  id         String   @id @default(uuid())
+  name       String
+  email      String
+  phone      String
+  suggestion String
+  firma      String
+
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+}
+
 model Messages {
   id       String  @id @default(uuid())
   email    String
