@@ -10,7 +10,7 @@ export const generateOTP = (): string => {
   return Math.floor(1000 + Math.random() * 9000).toString();
 };
 
-const sendEmail = async (
+export const sendEmail = async (
   to: string,
   subject: string,
   htmlContent: string
@@ -62,8 +62,6 @@ export const sendNewSuggestionEmail = async (
     htmlContent
   );
 };
-
-
 
 export const sendAdminLoginNotification = async (
   adminEmail: string,

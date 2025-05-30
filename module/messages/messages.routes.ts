@@ -1,11 +1,9 @@
 import express from "express";
-import {  getAllSuggestions } from "./messages.controllers";
+import { createMessage } from "./messages.controllers";
 import { verifyUser } from "../../middleware/verifyUsers";
-
 
 const router = express.Router();
 
-
-router.get("/", verifyUser("PARTNER"), getAllSuggestions);
+router.post("/", verifyUser("PARTNER", "ADMIN"), createMessage);
 
 export default router;
