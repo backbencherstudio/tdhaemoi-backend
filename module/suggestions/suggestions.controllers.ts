@@ -30,7 +30,7 @@ export const createSuggestions = async (req: Request, res: Response) => {
       return;
     }
 
-    const newSuggestion = await prisma.suggestion.create({
+    const newSuggestion = await prisma.suggestionFeetf1rst.create({
       data: {
         name,
         email,
@@ -63,7 +63,7 @@ export const createSuggestions = async (req: Request, res: Response) => {
 
 export const getAllSuggestions = async (req: Request, res: Response) => {
   try {
-    const suggestions = await prisma.suggestion.findMany({
+    const suggestions = await prisma.suggestionFeetf1rst.findMany({
         orderBy: {
           createdAt: 'desc', // Newest first
         },
@@ -96,7 +96,7 @@ export const deleteSuggestion = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const suggestion = await prisma.suggestion.findUnique({
+    const suggestion = await prisma.suggestionFeetf1rst.findUnique({
       where: { id }
     });
 
@@ -108,7 +108,7 @@ export const deleteSuggestion = async (req: Request, res: Response) => {
       return
     }
 
-    await prisma.suggestion.delete({
+    await prisma.suggestionFeetf1rst.delete({
       where: { id }
     });
 
@@ -128,7 +128,7 @@ export const deleteSuggestion = async (req: Request, res: Response) => {
 
 export const deleteAllSuggestions = async (req: Request, res: Response) => {
   try {
-    await prisma.suggestion.deleteMany();
+    await prisma.suggestionFeetf1rst.deleteMany();
 
     res.status(200).json({
       success: true,
