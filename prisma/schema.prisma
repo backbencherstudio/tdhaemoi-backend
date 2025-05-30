@@ -80,11 +80,10 @@ model Color {
 }
 
 model Image {
-  id      String @id @default(uuid())
-  url     String
-  color   Color  @relation(fields: [colorId], references: [id], onDelete: Cascade)
-  colorId String
-
+  id        String   @id @default(uuid())
+  url       String
+  color     Color    @relation(fields: [colorId], references: [id], onDelete: Cascade)
+  colorId   String
   createdAt DateTime @default(now())
 }
 
@@ -99,51 +98,45 @@ model appointment {
   isClient      Boolean
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
+  createdAt     DateTime @default(now())
 
   @@map("appointment")
 }
 
 model SuggestionFeetf1rst {
-  id         String @id @default(uuid())
+  id         String   @id @default(uuid())
   name       String
   email      String
   phone      String
   suggestion String
   firma      String
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 }
 
 model ImprovementSuggestion {
-  id         String @id @default(uuid())
+  id         String   @id @default(uuid())
   name       String
   email      String
   phone      String
   suggestion String
   firma      String
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 }
 
 model Messages {
-  id           String  @id @default(uuid())
+  id           String   @id @default(uuid())
   email        String
   subject      String
   message      String
-  favorite     Boolean
-  recipient_id String
+  favorite     Boolean?
+  recipient_id String?
   userId       String?
-  user         User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
 }
 
 enum Role {
