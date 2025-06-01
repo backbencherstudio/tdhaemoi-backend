@@ -16,44 +16,51 @@ export const createAppointment = async (req: Request, res: Response) => {
       "reason",
       "assignedTo",
       "details",
-      "isClient",
     ].find((field) => !req.body[field]);
 
     if (missingField) {
-      res.status(400).json({
+       res.status(400).json({
         success: false,
         message: `${missingField} is required!`,
       });
-      return;
+      return
+    }
+
+    // 🔥 Build data object conditionally
+    const appointmentData: any = {
+      customer_name,
+      time,
+      date: new Date(date),
+      reason,
+      assignedTo,
+      details,
+      userId: id,
+    };
+
+    // ✅ Only include isClient if it was sent (not undefined)
+    if (typeof isClient !== "undefined") {
+      appointmentData.isClient = isClient;
     }
 
     const appointment = await prisma.appointment.create({
-      data: {
-        customer_name,
-        time,
-        date: new Date(date),
-        reason,
-        assignedTo,
-        details,
-        isClient,
-        userId: id,
-      },
+      data: appointmentData,
     });
 
-    res.status(201).json({
+     res.status(201).json({
       success: true,
       message: "Appointment created successfully",
       appointment,
     });
   } catch (error) {
     console.error("Create appointment error:", error);
-    res.status(500).json({
+     res.status(500).json({
       success: false,
       message: "Something went wrong",
       error: error.message,
     });
   }
 };
+
 
 // Get all appointments
 export const getAllAppointments = async (req: Request, res: Response) => {

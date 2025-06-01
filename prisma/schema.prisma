@@ -95,7 +95,7 @@ model appointment {
   reason        String
   assignedTo    String
   details       String
-  isClient      Boolean
+  isClient      Boolean?
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
