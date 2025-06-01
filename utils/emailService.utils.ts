@@ -33,11 +33,13 @@ export const sendEmail = async (
 
   await mailTransporter.sendMail(mailOptions);
 };
+console.log(sendEmail)
 
 export const sendForgotPasswordOTP = async (email: string, otp: string): Promise<void> => {
   console.log(email, otp)
   const htmlContent = emailForgotPasswordOTP(email, otp);
-  await sendEmail(email, "OTP Code for Password Reset", htmlContent);
+  
+  let data = await sendEmail(email, "OTP Code for Password Reset", htmlContent);
 };
 
 export const sendPartnershipWelcomeEmail = async (
