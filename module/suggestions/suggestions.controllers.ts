@@ -163,6 +163,16 @@ export const createImprovement = async (req: Request, res: Response) => {
       return;
     }
 
+    // Check if user exists
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      res.status(400).json({
+        success: false,
+        message: "User not found",
+      });
+      return;
+    }
+
     const newImprovement = await prisma.improvementSuggestion.create({
       data: {
         Reason,

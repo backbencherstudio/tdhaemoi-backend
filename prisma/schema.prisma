@@ -123,7 +123,7 @@ model ImprovementSuggestion {
   Message   String
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String   // You still need this field in the DB to maintain the relation!
+  userId    String
   createdAt DateTime @default(now())
 }
 
