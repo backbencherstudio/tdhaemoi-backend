@@ -146,15 +146,6 @@ export const deleteAllSuggestions = async (req: Request, res: Response) => {
   }
 };
 
-
-
-
-
-
-
-
-
-
 export const createImprovement = async (req: Request, res: Response) => {
   try {
     const { Reason, Company, Phone, Message } = req.body;
@@ -165,10 +156,11 @@ export const createImprovement = async (req: Request, res: Response) => {
     );
 
     if (missingField) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: `${missingField} is required!`,
       });
+      return;
     }
 
     const newImprovement = await prisma.improvementSuggestion.create({
@@ -195,9 +187,6 @@ export const createImprovement = async (req: Request, res: Response) => {
     });
   }
 };
-
-
-
 
 export const getAllImprovements = async (req: Request, res: Response) => {
   try {
@@ -229,8 +218,6 @@ export const getAllImprovements = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const deleteImprovement = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -240,10 +227,11 @@ export const deleteImprovement = async (req: Request, res: Response) => {
     });
 
     if (!improvement) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: "Improvement suggestion not found",
       });
+      return;
     }
 
     await prisma.improvementSuggestion.delete({
@@ -263,7 +251,6 @@ export const deleteImprovement = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 export const deleteAllImprovements = async (req: Request, res: Response) => {
   try {
