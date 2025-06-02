@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 
 import dotenv from "dotenv";
-import { adminLoginNotificationEmail, emailForgotPasswordOTP, newSuggestionEmail } from "../constants/email_message";
+import { adminLoginNotificationEmail, emailForgotPasswordOTP, newSuggestionEmail, newImprovementEmail } from "../constants/email_message";
 import { partnershipWelcomeEmail } from "../constants/email_message";
 
 dotenv.config();
@@ -67,19 +67,19 @@ export const sendNewSuggestionEmail = async (
 
 
 export const sendImprovementEmail = async (
-  name: string,
-  email: string,
+  company: string,
   phone: string,
-  firma: string,
-  suggestion: string
+  reason: string,
+  message: string
 ): Promise<void> => {
-  const htmlContent = newSuggestionEmail(name, email, phone, firma, suggestion);
+  const htmlContent = newImprovementEmail(company, phone, reason, message);
   await sendEmail(
     "anamul36.bdcalling@gmail.com",
-    "New Improvement Email Received",
+    "New Improvement Suggestion Received",
     htmlContent
   );
 };
+
 
 
 export const sendAdminLoginNotification = async (

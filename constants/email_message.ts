@@ -542,6 +542,33 @@ export const partnershipWelcomeEmail = (
     `
   }
 
+  export const newImprovementEmail = (
+  company: string,
+  phone: string,
+  reason: string,
+  message: string
+): string => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>ASPAPIC - New Improvement Suggestion</title>
+    </head>
+    <body>
+      <h1>New Improvement Suggestion Received</h1>
+      <p><strong>Company:</strong> ${company}</p>
+      <p><strong>Phone:</strong> ${phone}</p>
+      <p><strong>Reason:</strong> ${reason}</p>
+      <p><strong>Message:</strong> ${message}</p>
+      <p>Submitted on: ${new Date().toLocaleString()}</p>
+    </body>
+    </html>
+  `;
+};
+
+
+
 
 export const adminLoginNotificationEmail = (
   adminEmail: string,
