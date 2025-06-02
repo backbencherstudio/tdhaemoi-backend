@@ -229,6 +229,8 @@ export const getAllImprovements = async (req: Request, res: Response) => {
   }
 };
 
+
+
 export const deleteImprovement = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -238,11 +240,10 @@ export const deleteImprovement = async (req: Request, res: Response) => {
     });
 
     if (!improvement) {
-      res.status(404).json({
+      return res.status(404).json({
         success: false,
         message: "Improvement suggestion not found",
       });
-      return;
     }
 
     await prisma.improvementSuggestion.delete({
@@ -262,6 +263,7 @@ export const deleteImprovement = async (req: Request, res: Response) => {
     });
   }
 };
+
 
 export const deleteAllImprovements = async (req: Request, res: Response) => {
   try {
