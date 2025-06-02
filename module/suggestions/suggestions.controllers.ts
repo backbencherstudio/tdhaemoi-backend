@@ -146,47 +146,41 @@ export const deleteAllSuggestions = async (req: Request, res: Response) => {
   }
 };
 
+
+
+
+
+
+
+
+
+
 export const createImprovement = async (req: Request, res: Response) => {
   try {
-    const { name, email, phone, firma, suggestion } = req.body;
-    const { id } = req.user;
+    const { Reason, Company, Phone, Message } = req.body;
+    const { id: userId } = req.user;
 
-    const missingField = ["name", "email", "phone", "firma", "suggestion"].find(
+    const missingField = ["Reason", "Company", "Phone", "Message"].find(
       (field) => !req.body[field]
     );
 
     if (missingField) {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: `${missingField} is required!`,
       });
-      return;
-    }
-
-    if (!validator.isEmail(email)) {
-      res.status(400).json({
-        success: false,
-        message: "Invalid email format!",
-      });
-      return;
     }
 
     const newImprovement = await prisma.improvementSuggestion.create({
       data: {
-        name,
-        email,
-        phone,
-        firma,
-        suggestion,
-        user: {
-          connect: {
-            id: id,
-          },
-        },
+        Reason,
+        Company,
+        Phone,
+        Message,
+        userId,
       },
     });
 
-    sendImprovementEmail(name, email, phone, firma, suggestion);
     res.status(201).json({
       success: true,
       message: "Improvement suggestion created successfully",
@@ -201,6 +195,9 @@ export const createImprovement = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
 
 export const getAllImprovements = async (req: Request, res: Response) => {
   try {
