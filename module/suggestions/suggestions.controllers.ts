@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import validator from "validator";
-import { sendNewSuggestionEmail } from "../../utils/emailService.utils";
+import {
+  sendImprovementEmail,
+  sendNewSuggestionEmail,
+} from "../../utils/emailService.utils";
 
 const prisma = new PrismaClient();
 
@@ -21,7 +24,7 @@ export const createSuggestions = async (req: Request, res: Response) => {
       });
       return;
     }
-    
+
     if (!validator.isEmail(email)) {
       res.status(400).json({
         success: false,
@@ -39,13 +42,13 @@ export const createSuggestions = async (req: Request, res: Response) => {
         suggestion,
         user: {
           connect: {
-            id: id
-          }
-        }
+            id: id,
+          },
+        },
       },
     });
-    
-    await sendNewSuggestionEmail(name, email, phone, firma, suggestion);
+
+    sendNewSuggestionEmail(name, email, phone, firma, suggestion);
     res.status(201).json({
       success: true,
       message: "Suggestion created successfully",
@@ -56,7 +59,7 @@ export const createSuggestions = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -64,30 +67,29 @@ export const createSuggestions = async (req: Request, res: Response) => {
 export const getAllSuggestions = async (req: Request, res: Response) => {
   try {
     const suggestions = await prisma.suggestionFeetf1rst.findMany({
-        orderBy: {
-          createdAt: 'desc', // Newest first
+      orderBy: {
+        createdAt: "desc", // Newest first
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
         },
-        include: {
-          user: {
-            select: {
-              name: true,
-              email: true
-            }
-          }
-        }
-      });
-      
+      },
+    });
 
     res.status(200).json({
       success: true,
-      suggestions
+      suggestions,
     });
   } catch (error) {
     console.error("Get all suggestions error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -97,31 +99,31 @@ export const deleteSuggestion = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const suggestion = await prisma.suggestionFeetf1rst.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!suggestion) {
-       res.status(404).json({
+      res.status(404).json({
         success: false,
-        message: "Suggestion not found"
+        message: "Suggestion not found",
       });
-      return
+      return;
     }
 
     await prisma.suggestionFeetf1rst.delete({
-      where: { id }
+      where: { id },
     });
 
     res.status(200).json({
       success: true,
-      message: "Suggestion deleted successfully"
+      message: "Suggestion deleted successfully",
     });
   } catch (error) {
     console.error("Delete suggestion error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -132,18 +134,17 @@ export const deleteAllSuggestions = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: "All suggestions deleted successfully"
+      message: "All suggestions deleted successfully",
     });
   } catch (error) {
     console.error("Delete all suggestions error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
 
 export const createImprovement = async (req: Request, res: Response) => {
   try {
@@ -161,7 +162,7 @@ export const createImprovement = async (req: Request, res: Response) => {
       });
       return;
     }
-    
+
     if (!validator.isEmail(email)) {
       res.status(400).json({
         success: false,
@@ -179,13 +180,13 @@ export const createImprovement = async (req: Request, res: Response) => {
         suggestion,
         user: {
           connect: {
-            id: id
-          }
-        }
+            id: id,
+          },
+        },
       },
     });
-    
-    await sendNewSuggestionEmail(name, email, phone, firma, suggestion);
+
+    sendImprovementEmail(name, email, phone, firma, suggestion);
     res.status(201).json({
       success: true,
       message: "Improvement suggestion created successfully",
@@ -196,7 +197,7 @@ export const createImprovement = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -204,29 +205,29 @@ export const createImprovement = async (req: Request, res: Response) => {
 export const getAllImprovements = async (req: Request, res: Response) => {
   try {
     const improvements = await prisma.improvementSuggestion.findMany({
-        orderBy: {
-          createdAt: 'desc',
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
         },
-        include: {
-          user: {
-            select: {
-              name: true,
-              email: true
-            }
-          }
-        }
-      });
-      
+      },
+    });
+
     res.status(200).json({
       success: true,
-      improvements
+      improvements,
     });
   } catch (error) {
     console.error("Get all improvement suggestions error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -236,31 +237,31 @@ export const deleteImprovement = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const improvement = await prisma.improvementSuggestion.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!improvement) {
-       res.status(404).json({
+      res.status(404).json({
         success: false,
-        message: "Improvement suggestion not found"
+        message: "Improvement suggestion not found",
       });
-      return
+      return;
     }
 
     await prisma.improvementSuggestion.delete({
-      where: { id }
+      where: { id },
     });
 
     res.status(200).json({
       success: true,
-      message: "Improvement suggestion deleted successfully"
+      message: "Improvement suggestion deleted successfully",
     });
   } catch (error) {
     console.error("Delete improvement suggestion error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -271,14 +272,14 @@ export const deleteAllImprovements = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: "All improvement suggestions deleted successfully"
+      message: "All improvement suggestions deleted successfully",
     });
   } catch (error) {
     console.error("Delete all improvement suggestions error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message
+      error: error.message,
     });
   }
-}; 
+};

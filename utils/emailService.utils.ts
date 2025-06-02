@@ -59,11 +59,28 @@ export const sendNewSuggestionEmail = async (
 ): Promise<void> => {
   const htmlContent = newSuggestionEmail(name, email, phone, firma, suggestion);
   await sendEmail(
-    "wefind.dz@gmail.com",
+    "anamul36.bdcalling@gmail.com",
     "New Suggestion Received",
     htmlContent
   );
 };
+
+
+export const sendImprovementEmail = async (
+  name: string,
+  email: string,
+  phone: string,
+  firma: string,
+  suggestion: string
+): Promise<void> => {
+  const htmlContent = newSuggestionEmail(name, email, phone, firma, suggestion);
+  await sendEmail(
+    "anamul36.bdcalling@gmail.com",
+    "New Improvement Email Received",
+    htmlContent
+  );
+};
+
 
 export const sendAdminLoginNotification = async (
   adminEmail: string,
