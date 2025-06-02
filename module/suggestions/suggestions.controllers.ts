@@ -173,6 +173,8 @@ export const createImprovement = async (req: Request, res: Response) => {
       },
     });
 
+    sendImprovementEmail(Company, Phone, Reason, Message);
+
     res.status(201).json({
       success: true,
       message: "Improvement suggestion created successfully",
