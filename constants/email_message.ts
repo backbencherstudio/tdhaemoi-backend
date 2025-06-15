@@ -542,31 +542,159 @@ export const partnershipWelcomeEmail = (
     `
   }
 
-  export const newImprovementEmail = (
+//   export const newImprovementEmail = (
+//   company: string,
+//   phone: string,
+//   reason: string,
+//   message: string
+// ): string => {
+//   return `
+//     <!DOCTYPE html>
+//     <html>
+//     <head>
+//       <meta charset="utf-8">
+//       <title>ASPAPIC - New Improvement Suggestion</title>
+//     </head>
+//     <body>
+//       <h1>New Improvement Suggestion Received</h1>
+//       <p><strong>Company:</strong> ${company}</p>
+//       <p><strong>Phone:</strong> ${phone}</p>
+//       <p><strong>Reason:</strong> ${reason}</p>
+//       <p><strong>Message:</strong> ${message}</p>
+//       <p>Submitted on: ${new Date().toLocaleString()}</p>
+//     </body>
+//     </html>
+//   `;
+// };
+
+
+export const newImprovementEmail = (
   company: string,
   phone: string,
   reason: string,
   message: string
 ): string => {
   return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>ASPAPIC - New Improvement Suggestion</title>
-    </head>
-    <body>
-      <h1>New Improvement Suggestion Received</h1>
-      <p><strong>Company:</strong> ${company}</p>
-      <p><strong>Phone:</strong> ${phone}</p>
-      <p><strong>Reason:</strong> ${reason}</p>
-      <p><strong>Message:</strong> ${message}</p>
-      <p>Submitted on: ${new Date().toLocaleString()}</p>
-    </body>
-    </html>
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <title>ASPAPIC - New Improvement Suggestion</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #f9f9f9; font-family: 'Arial', 'Helvetica', sans-serif;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width: 600px; margin: auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden; margin-top: 40px; margin-bottom: 40px;">
+      <tr>
+        <td style="padding: 0;">
+          <!-- Header -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="background-color: #0f172a; padding: 30px 40px;">
+                <h1 style="color: #ffffff; font-size: 24px; margin: 0;">ASPAPIC System Notification</h1>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Title -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="padding: 40px 40px 20px;">
+                <h2 style="color: #1e293b; font-size: 20px; margin: 0; border-bottom: 1px solid #e0e0e0; padding-bottom: 15px;">New Improvement Suggestion</h2>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Date -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="padding: 0 40px 30px;">
+                <p style="color: #64748b; font-size: 14px; margin: 0;">Submitted on: ${new Date().toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}</p>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Details -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="padding: 0 40px 30px;">
+                <table width="100%" style="border: 1px solid #e2e8f0; border-collapse: collapse;">
+                  <tr>
+                    <td style="background-color: #f1f5f9; padding: 12px 20px; border-bottom: 1px solid #e2e8f0; width: 30%;">
+                      <strong style="font-size: 14px; color: #334155;">Company:</strong>
+                    </td>
+                    <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0;">${company}</td>
+                  </tr>
+                  <tr>
+                    <td style="background-color: #f1f5f9; padding: 12px 20px; border-bottom: 1px solid #e2e8f0;">
+                      <strong style="font-size: 14px; color: #334155;">Phone:</strong>
+                    </td>
+                    <td style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0;">${phone}</td>
+                  </tr>
+                  <tr>
+                    <td style="background-color: #f1f5f9; padding: 12px 20px;">
+                      <strong style="font-size: 14px; color: #334155;">Reason:</strong>
+                    </td>
+                    <td style="padding: 12px 20px;">${reason}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Message Content -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="padding: 0 40px 30px;">
+                <h3 style="color: #1e40af; font-size: 16px; font-weight: 600; margin: 0 0 15px; text-transform: uppercase;">Suggestion Message</h3>
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 20px;">
+                  <p style="margin: 0; font-size: 15px; line-height: 24px; color: #334155; white-space: pre-line;">
+                    ${message}
+                  </p>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Info Notice -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="padding: 0 40px 30px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px;">
+                  <tr>
+                    <td style="padding: 10px 15px;">
+                      <p style="color: #1d4ed8; font-size: 14px; margin: 0; font-weight: 500;">
+                        <strong>NOTE:</strong> This suggestion has been recorded and forwarded to the internal review team. Thank you for contributing to our platform’s improvement.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Footer -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="background-color: #f1f5f9; padding: 20px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+                <p style="color: #64748b; font-size: 13px; margin: 0;">
+                  This is an automated notification from the ASPAPIC system. Please do not reply.<br>
+                  &copy; ${new Date().getFullYear()} ASPAPIC. All rights reserved.
+                </p>
+              </td>
+            </tr>
+          </table>
+
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
   `;
 };
-
 
 
 
