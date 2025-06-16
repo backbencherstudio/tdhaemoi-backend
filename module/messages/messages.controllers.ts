@@ -222,39 +222,88 @@ export const getReceivedMessages = async (req: Request, res: Response) => {
   } 
 };
 
+// export const favoriteMessage = async (req: Request, res: Response) => {
+//   try {
+//     const { id: messageId } = req.params;
+//     const { id: userId } = req.user;
+//     const message = await prisma.messages.findUnique({
+//       where: { id: messageId },
+//     });
+//     if (!message) {
+//        res.status(404).json({
+//         success: false,
+//         message: "Message not found",
+//       });
+//       return
+//     }
+//     if (message.userId !== userId) {
+//        res.status(403).json({
+//         success: false,
+//         message: "You do not have permission to favorite this message",
+//       });
+//       return
+//     }
+//     const updatedMessage = await prisma.messages.update({
+//       where: { id: messageId },
+//       data: { favorite: true },
+//     });
+//     res.status(200).json({
+//       success: true,
+//       message: "Message favorited successfully",
+//       data: updatedMessage,
+//     });
+//   } catch (error) {
+//     console.error("Favorite message error:", error);
+//     res.status(500).json({  
+//       success: false,
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 export const favoriteMessage = async (req: Request, res: Response) => {
   try {
     const { id: messageId } = req.params;
     const { id: userId } = req.user;
-    const message = await prisma.messages.findUnique({
-      where: { id: messageId },
-    });
+
+    // Check if the message exists
+    const message = await prisma.messages.findUnique({ where: { id: messageId } });
+
     if (!message) {
-       res.status(404).json({
+      return res.status(404).json({
         success: false,
         message: "Message not found",
       });
-      return
     }
-    if (message.userId !== userId) {
-       res.status(403).json({
+
+    // Check if the user has permission to favorite the message
+    const visibility = await prisma.messageVisibility.findUnique({
+      where: { messageId_userId: { messageId, userId } },
+    });
+
+    if (!visibility) {
+      return res.status(403).json({
         success: false,
         message: "You do not have permission to favorite this message",
       });
-      return
     }
-    const updatedMessage = await prisma.messages.update({
-      where: { id: messageId },
-      data: { favorite: true },
+
+    // Update favorite status only for the user
+    const updatedVisibility = await prisma.messageVisibility.update({
+      where: { messageId_userId: { messageId, userId } },
+      data: { isFavorite: true },
     });
-    res.status(200).json({
+
+    return res.status(200).json({
       success: true,
       message: "Message favorited successfully",
-      data: updatedMessage,
+      data: updatedVisibility,
     });
   } catch (error) {
     console.error("Favorite message error:", error);
-    res.status(500).json({  
+    return res.status(500).json({
       success: false,
       message: "Something went wrong",
       error: error.message,

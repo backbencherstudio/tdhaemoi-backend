@@ -26,6 +26,7 @@ model User {
   accounta               account[]
   appointments           appointment[]
   improvementSuggestions ImprovementSuggestion[]
+  messageVisibility      MessageVisibility[]
 
   @@map("users")
 }
@@ -115,30 +116,43 @@ model SuggestionFeetf1rst {
   createdAt  DateTime @default(now())
 }
 
-model ImprovementSuggestion { 
-  id        String   @id @default(uuid())
-  Reason    String
-  Company   String
-  Phone     String
-  Message   String
+model ImprovementSuggestion {
+  id      String @id @default(uuid())
+  Reason  String
+  Company String
+  Phone   String
+  Message String
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   createdAt DateTime @default(now())
 }
 
-
 model Messages {
-  id           String   @id @default(uuid())
-  email        String
-  subject      String
-  message      String
-  favorite     Boolean?
-  recipient_id String?
-  userId       String?
-  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now())
+  id                String              @id @default(uuid())
+  email             String
+  subject           String
+  message           String
+  favorite          Boolean?
+  recipient_id      String?
+  userId            String?
+  user              User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt         DateTime            @default(now())
+  MessageVisibility MessageVisibility[]
 }
+
+model MessageVisibility {
+  id         String   @id @default(uuid())
+  messageId  String
+  userId     String
+  isDeleted  Boolean  @default(false)
+  isFavorite Boolean  @default(false)
+  message    Messages @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 
 enum Role {
   ADMIN
