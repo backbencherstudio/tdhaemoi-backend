@@ -22,8 +22,8 @@ model User {
   createdAt              DateTime                @default(now()) @map("created_at")
   updatedAt              DateTime                @updatedAt
   suggestions            SuggestionFeetf1rst[]
-  sentMessages           Messages[]              @relation("message_sender")
-  receivedMessages       Messages[]              @relation("message_recipient")
+  sentMessages           Message[]               @relation("sent_messages")
+  receivedMessages       Message[]               @relation("received_messages")
   accounta               account[]
   appointments           appointment[]
   improvementSuggestions ImprovementSuggestion[]
@@ -129,18 +129,24 @@ model ImprovementSuggestion {
   createdAt DateTime @default(now())
 }
 
-model Messages {
-  id                String              @id @default(uuid())
-  email             String
-  subject           String
-  message           String
-  favorite          Boolean?
-  recipient_id      String?
-  userId            String?
-  user              User?               @relation("message_sender", fields: [userId], references: [id], onDelete: SetNull)
-  recipient         User?               @relation("message_recipient", fields: [recipient_id], references: [id], onDelete: SetNull)
-  createdAt         DateTime            @default(now())
-  MessageVisibility MessageVisibility[]
+model Message {
+  id             String              @id @default(uuid())
+  subject        String
+  content        String
+  senderId       String
+  sender         User                @relation("sent_messages", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId    String?
+  recipient      User?               @relation("received_messages", fields: [recipientId], references: [id], onDelete: SetNull)
+  recipientEmail String // For non-registered recipients
+  isFavorite     Boolean             @default(false)
+  isDeleted      Boolean             @default(false)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  visibilities   MessageVisibility[]
+
+  @@index([senderId])
+  @@index([recipientId])
+  @@map("messages")
 }
 
 model MessageVisibility {
@@ -149,14 +155,14 @@ model MessageVisibility {
   userId     String
   isDeleted  Boolean  @default(false)
   isFavorite Boolean  @default(false)
-  message    Messages @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  
-    @@unique([messageId, userId])
-}
 
+  @@unique([messageId, userId])
+  @@map("message_visibilities")
+}
 
 enum Role {
   ADMIN

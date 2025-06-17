@@ -3,16 +3,72 @@ import validator from "validator";
 import { sendEmail } from "../../utils/emailService.utils";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { getImageUrl } from "../../utils/base_utl";
-import { log } from "console";
+import { getPaginationOptions, getPaginationResult } from "../../utils/pagination";
+
+// model User {
+//   id                     String                  @id @default(uuid())
+//   name                   String?
+//   email                  String                  @unique
+//   password               String
+//   image                  String?
+//   role                   Role                    @default(ADMIN)
+//   createdAt              DateTime                @default(now()) @map("created_at")
+//   updatedAt              DateTime                @updatedAt
+//   suggestions            SuggestionFeetf1rst[]
+//   sentMessages           Message[]               @relation("sent_messages")
+//   receivedMessages       Message[]               @relation("received_messages")
+//   accounta               account[]
+//   appointments           appointment[]
+//   improvementSuggestions ImprovementSuggestion[]
+//   messageVisibility      MessageVisibility[]
+
+//   @@map("users")
+// }
+
+// model Message {
+//   id             String              @id @default(uuid())
+//   subject        String
+//   content        String
+//   senderId       String
+//   sender         User                @relation("sent_messages", fields: [senderId], references: [id], onDelete: Cascade)
+//   recipientId    String?
+//   recipient      User?               @relation("received_messages", fields: [recipientId], references: [id], onDelete: SetNull)
+//   recipientEmail String // For non-registered recipients
+//   isFavorite     Boolean             @default(false)
+//   isDeleted      Boolean             @default(false)
+//   createdAt      DateTime            @default(now())
+//   updatedAt      DateTime            @updatedAt
+//   visibilities   MessageVisibility[]
+
+//   @@index([senderId])
+//   @@index([recipientId])
+//   @@map("messages")
+// }
+
+// model MessageVisibility {
+//   id         String   @id @default(uuid())
+//   messageId  String
+//   userId     String
+//   isDeleted  Boolean  @default(false)
+//   isFavorite Boolean  @default(false)
+//   message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+//   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   createdAt  DateTime @default(now())
+//   updatedAt  DateTime @updatedAt
+
+//   @@unique([messageId, userId])
+//   @@map("message_visibilities")
+// }
 
 const prisma = new PrismaClient();
 
 export const createMessage = async (req: Request, res: Response) => {
   try {
-    const { email, subject, message } = req.body;
+    const { email: recipientEmail, subject, content } = req.body;
     const { id: senderId } = req.user;
 
-    const missingField = ["email", "subject", "message"].find(
+    // Validate required fields
+    const missingField = ["email", "subject", "content"].find(
       (field) => !req.body[field]
     );
     if (missingField) {
@@ -23,7 +79,7 @@ export const createMessage = async (req: Request, res: Response) => {
       return;
     }
 
-    if (!validator.isEmail(email)) {
+    if (!validator.isEmail(recipientEmail)) {
       res.status(400).json({
         success: false,
         message: "Invalid email format!",
@@ -32,205 +88,493 @@ export const createMessage = async (req: Request, res: Response) => {
     }
 
     const recipientUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: recipientEmail },
       select: { id: true },
     });
 
-    const newMessage = await prisma.messages.create({
+    const newMessage = await prisma.message.create({
       data: {
-        email,
         subject,
-        message,
-        user: { connect: { id: senderId } },
-        ...(recipientUser?.id && {
-          recipient: { connect: { id: recipientUser.id } },
-        }),
-      },
-    });
-
-    await prisma.messageVisibility.upsert({
-      where: {
-        messageId_userId: {
-          messageId: newMessage.id,
-          userId: senderId,
+        content,
+        senderId,
+        recipientId: recipientUser?.id || null,
+        recipientEmail,
+        visibilities: {
+          create: [
+            {
+              userId: senderId,
+              isFavorite: false,
+              isDeleted: false,
+            },
+            ...(recipientUser
+              ? [
+                  {
+                    userId: recipientUser.id,
+                    isFavorite: false,
+                    isDeleted: false,
+                  },
+                ]
+              : []),
+          ],
         },
       },
-      create: {
-        userId: senderId,
-        messageId: newMessage.id,
-      },
-      update: {},
-    });
-
-    if (recipientUser) {
-      await prisma.messageVisibility.upsert({
-        where: {
-          messageId_userId: {
-            messageId: newMessage.id,
-            userId: recipientUser.id,
+      include: {
+        // sender: {
+        //   select: {
+        //     id: true,
+        //     name: true,
+        //     email: true,
+        //     image: true,
+        //   },
+        // },
+        recipient: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
           },
         },
-        create: {
-          userId: recipientUser.id,
-          messageId: newMessage.id,
-        },
-        update: {},
-      });
-    }
+      },
+    });
 
-    sendEmail(email, subject, message);
+    sendEmail(recipientEmail, subject, content);
+
+    const responseData = {
+      id: newMessage.id,
+      subject: newMessage.subject,
+      content: newMessage.content,
+      // sender: {
+      //   id: newMessage.sender.id,
+      //   name: newMessage.sender.name,
+      //   email: newMessage.sender.email,
+      //   image: newMessage.sender.image
+      //     ? getImageUrl(newMessage.sender.image)
+      //     : null,
+      // },
+      recipient: newMessage.recipient
+        ? {
+            id: newMessage.recipient.id,
+            name: newMessage.recipient.name,
+            email: newMessage.recipient.email,
+            image: newMessage.recipient.image
+              ? getImageUrl(`/uploads/${newMessage.recipient.image}`)
+              : null,
+          }
+        : null,
+      recipientEmail: newMessage.recipientEmail,
+      createdAt: newMessage.createdAt,
+      isFavorite: false,
+    };
 
     res.status(201).json({
       success: true,
       message: "Message created successfully",
-      data: newMessage,
+      data: responseData,
     });
   } catch (error) {
     console.error("Create message error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message,
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
-
- 
 
 export const getSentMessages = async (req: Request, res: Response) => {
   try {
     const { id: userId } = req.user;
+    const { page, limit } = getPaginationOptions(req);
+    const skip = (page - 1) * limit;
 
-    // Get all messages sent by the user that haven't been deleted by the sender
-    const sentMessages = await prisma.messages.findMany({
+    // Get total count
+    const total = await prisma.message.count({
       where: {
-        userId, // Messages sent by this user
-        MessageVisibility: {
+        senderId: userId,
+        visibilities: {
           some: {
             userId,
-            isDeleted: false // Only include messages not deleted by the sender
-          }
-        }
-      },
-      include: {
-        recipient: { // Include recipient details if available
-          select: {
-            id: true,
-            name: true,
-            // email: true,
-            image: true,
-            role: true
-          }
-        },
-        MessageVisibility: {
-          where: {
-            userId
+            isDeleted: false,
           },
-          select: {
-            isFavorite: true,
-            isDeleted: true
-          }
-        }
+        },
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
     });
 
-
-    const formattedMessages = sentMessages.map(message => ({
-      ...message,
-      isFavorite: message.MessageVisibility[0]?.isFavorite || false,
-      recipient: message.recipient ? {
-        ...message.recipient,
-        image: message.recipient.image ? getImageUrl(`/uploads/${message.recipient.image}`) : null
-      } : null
-    }));
-
-    res.status(200).json({
-      success: true,
-      message: "Sent messages retrieved successfully",
-      data: formattedMessages
-    });
-  } catch (error) {
-    console.error("Get sent messages error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong while fetching sent messages",
-      error: error.message
-    });
-  }
-};
-
-
-export const getReceivedMessages = async (req: Request, res: Response) => {
-  try {
-    const { id: userId, email } = req.user;
-
-    const receivedMessages = await prisma.messages.findMany({
+    const sentMessages = await prisma.message.findMany({
       where: {
-        OR: [
-          { recipient_id: userId },
-          { 
-            email,
-            NOT: { userId }
-          }
-        ],
-        MessageVisibility: {
+        senderId: userId,
+        visibilities: {
           some: {
             userId,
-            isDeleted: false
-          }
-        }
+            isDeleted: false,
+          },
+        },
       },
       include: {
-        user: {
+        recipient: {
           select: {
             id: true,
             name: true,
             email: true,
             image: true,
-            role: true
-          }
-        },
-        MessageVisibility: {
-          where: {
-            userId
+            role: true,
           },
+        },
+        visibilities: {
+          where: { userId },
           select: {
             isFavorite: true,
-            isDeleted: true
-          }
-        }
+            isDeleted: true,
+          },
+        },
       },
-      orderBy: {
-        createdAt: 'desc' 
-      }
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
     });
 
-    const formattedMessages = receivedMessages.map(message => ({
-      ...message,
-      isFavorite: message.MessageVisibility[0]?.isFavorite || false,
-      user: message.user ? {
-        ...message.user,
-        image: message.user.image ? getImageUrl(`/uploads/${message.user.image}`) : null
-      } : null
+    const formattedMessages = sentMessages.map((message) => ({
+      id: message.id,
+      subject: message.subject,
+      content: message.content,
+      createdAt: message.createdAt,
+      isFavorite: message.visibilities[0]?.isFavorite || false,
+      recipient: message.recipient
+        ? {
+            id: message.recipient.id,
+            name: message.recipient.name,
+            email: message.recipient.email,
+            image: message.recipient.image
+              ? getImageUrl(`/uploads/${message.recipient.image}`)
+              : null,
+            role: message.recipient.role,
+          }
+        : null,
+      recipientEmail: message.recipientEmail,
     }));
+
+    const result = getPaginationResult(formattedMessages, total, { page, limit });
+
+    res.status(200).json({
+      success: true,
+      message: "Sent messages found successfully",
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    console.error("Get sent messages error:", error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : "something went wrong!",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const getReceivedMessages = async (req: Request, res: Response) => {
+  try {
+    const { id: userId, email } = req.user;
+    const { page, limit } = getPaginationOptions(req);
+    const skip = (page - 1) * limit;
+
+    const total = await prisma.message.count({
+      where: {
+        OR: [
+          { recipientId: userId },
+          {
+            recipientEmail: email,
+            NOT: { senderId: userId },
+          },
+        ],
+        visibilities: {
+          some: {
+            userId,
+            isDeleted: false,
+          },
+        },
+      },
+    });
+
+    const receivedMessages = await prisma.message.findMany({
+      where: {
+        OR: [
+          { recipientId: userId },
+          {
+            recipientEmail: email,
+            NOT: { senderId: userId },
+          },
+        ],
+        visibilities: {
+          some: {
+            userId,
+            isDeleted: false,
+          },
+        },
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+        visibilities: {
+          where: { userId },
+          select: {
+            isFavorite: true,
+            isDeleted: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    });
+
+    const formattedMessages = receivedMessages.map((message) => ({
+      id: message.id,
+      subject: message.subject,
+      content: message.content,
+      createdAt: message.createdAt,
+      isFavorite: message.visibilities[0]?.isFavorite || false,
+      sender: message.sender
+        ? {
+            id: message.sender.id,
+            name: message.sender.name,
+            email: message.sender.email,
+            image: message.sender.image
+              ? getImageUrl(`/uploads/${message.sender.image}`)
+              : null,
+            role: message.sender.role,
+          }
+        : null,
+      recipientEmail: message.recipientEmail,
+    }));
+
+    const result = getPaginationResult(formattedMessages, total, { page, limit });
 
     res.status(200).json({
       success: true,
       message: "Received messages retrieved successfully",
-      data: formattedMessages
+      data: result.data,
+      pagination: result.pagination,
     });
   } catch (error) {
     console.error("Get received messages error:", error);
     res.status(500).json({
       success: false,
-      message: "Something went wrong while fetching received messages",
-      error: error.message
+      message: "Frontend error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const setToFavorite = async (req: Request, res: Response) => {
+  try {
+    const { id: userId } = req.user;
+    const { id: messageId } = req.params;
+
+    // First verify the message exists and is visible to the user
+    const visibility = await prisma.messageVisibility.findUnique({
+      where: {
+        messageId_userId: {
+          messageId,
+          userId,
+        },
+      },
+    });
+
+    if (!visibility) {
+       res.status(404).json({
+        success: false,
+        message: "Message not found or you don't have permission to access it",
+      });
+      return
+    }
+
+    const updatedVisibility = await prisma.messageVisibility.update({
+      where: {
+        messageId_userId: {
+          messageId,
+          userId,
+        },
+      },
+      data: {
+        isFavorite: !visibility.isFavorite,
+      },
+    });
+
+    // Get the full message details with sender info
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      include: {
+        // sender: {
+        //   select: {
+        //     id: true,
+        //     name: true,
+        //     email: true,
+        //     image: true,
+        //     role: true,
+        //   },
+        // },
+        recipient: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!message) {
+       res.status(404).json({
+        success: false,
+        message: "Message not found",
+      });
+      return
+    }
+
+    // Format the response
+    const responseData = {
+      id: message.id,
+      subject: message.subject,
+      content: message.content,
+      createdAt: message.createdAt,
+      isFavorite: updatedVisibility.isFavorite,
+      // sender: message.sender ? {
+      //   id: message.sender.id,
+      //   name: message.sender.name,
+      //   email: message.sender.email,
+      //   image: message.sender.image ? getImageUrl(message.sender.image) : null,
+      //   role: message.sender.role,
+      // } : null,
+      recipient: message.recipient ? {
+        id: message.recipient.id,
+        name: message.recipient.name,
+        email: message.recipient.email,
+        image: message.recipient.image ? getImageUrl(`/uploads/${message.recipient.image}`) : null,
+        role: message.recipient.role,
+      } : null,
+      recipientEmail: message.recipientEmail,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: `Message ${updatedVisibility.isFavorite ? "added to" : "removed from"} favorites`,
+      data: responseData,
+    });
+
+  } catch (error) {
+    console.error("Toggle favorite error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Frontend error",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
 
 
-export const favoriteMessage = async (req: Request, res: Response) => {};
+
+
+export const getFavoriteMessages = async (req: Request, res: Response) => {
+  try {
+    const { id: userId } = req.user;
+    const { page, limit } = getPaginationOptions(req);
+    const skip = (page - 1) * limit;
+
+    const total = await prisma.messageVisibility.count({
+      where: {
+        userId,
+        isFavorite: true,
+        isDeleted: false,
+      },
+    });
+
+    const favoriteMessages = await prisma.messageVisibility.findMany({
+      where: {
+        userId,
+        isFavorite: true,
+        isDeleted: false,
+      },
+      include: {
+        message: {
+          include: {
+            sender: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+                role: true,
+              },
+            },
+            recipient: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+                role: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { message: { createdAt: "desc" } },
+      skip,
+      take: limit,
+    });
+
+
+    const formattedMessages = favoriteMessages.map((visibility) => ({
+      id: visibility.message.id,
+      subject: visibility.message.subject,
+      content: visibility.message.content,
+      createdAt: visibility.message.createdAt,
+      isFavorite: visibility.isFavorite,
+      sender: visibility.message.sender ? {
+        id: visibility.message.sender.id,
+        name: visibility.message.sender.name,
+        email: visibility.message.sender.email,
+        image: visibility.message.sender.image
+          ? getImageUrl(`/uploads/${visibility.message.sender.image}`)
+          : null,
+        role: visibility.message.sender.role,
+      } : null,
+      recipient: visibility.message.recipient ? {
+        id: visibility.message.recipient.id,
+        name: visibility.message.recipient.name,
+        email: visibility.message.recipient.email,
+        image: visibility.message.recipient.image
+          ? getImageUrl(`/uploads/${visibility.message.recipient.image}`)
+          : null,
+        role: visibility.message.recipient.role,
+      } : null,
+      recipientEmail: visibility.message.recipientEmail,
+    }));
+
+    const result = getPaginationResult(formattedMessages, total, { page, limit });
+
+    res.status(200).json({
+      success: true,
+      message: "Favorite messages retrieved successfully",
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    console.error("Get favorite messages error:", error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message :  "Frontend error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
