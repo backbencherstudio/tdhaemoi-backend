@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import validator from "validator";
 import { sendEmail } from "../../utils/emailService.utils";
 import { PrismaClient, Prisma } from "@prisma/client";
+import { getImageUrl } from "../../utils/base_utl";
+import { log } from "console";
 
 const prisma = new PrismaClient();
 
@@ -13,7 +15,6 @@ export const createMessage = async (req: Request, res: Response) => {
     const missingField = ["email", "subject", "message"].find(
       (field) => !req.body[field]
     );
-
     if (missingField) {
       res.status(400).json({
         success: false,
@@ -32,26 +33,50 @@ export const createMessage = async (req: Request, res: Response) => {
 
     const recipientUser = await prisma.user.findUnique({
       where: { email },
-      select: {
-        id: true,
-      },
+      select: { id: true },
     });
-    console.log(recipientUser);
 
     const newMessage = await prisma.messages.create({
       data: {
         email,
         subject,
         message,
-        favorite: false,
-        user: {
-          connect: {
-            id: senderId,
-          },
-        },
-        recipient_id: recipientUser?.id || null,
+        user: { connect: { id: senderId } },
+        ...(recipientUser?.id && {
+          recipient: { connect: { id: recipientUser.id } },
+        }),
       },
     });
+
+    await prisma.messageVisibility.upsert({
+      where: {
+        messageId_userId: {
+          messageId: newMessage.id,
+          userId: senderId,
+        },
+      },
+      create: {
+        userId: senderId,
+        messageId: newMessage.id,
+      },
+      update: {},
+    });
+
+    if (recipientUser) {
+      await prisma.messageVisibility.upsert({
+        where: {
+          messageId_userId: {
+            messageId: newMessage.id,
+            userId: recipientUser.id,
+          },
+        },
+        create: {
+          userId: recipientUser.id,
+          messageId: newMessage.id,
+        },
+        update: {},
+      });
+    }
 
     sendEmail(email, subject, message);
 
@@ -70,336 +95,142 @@ export const createMessage = async (req: Request, res: Response) => {
   }
 };
 
-// http://192.168.0.0:3001/message/me?page=1&limit=5&search=wefind
+ 
+
 export const getSentMessages = async (req: Request, res: Response) => {
   try {
-    const { id: senderId } = req.user;
+    const { id: userId } = req.user;
 
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = (req.query.search as string)?.trim() || "";
-
-    const skip = (page - 1) * limit;
-
-    const baseWhere: Prisma.MessagesWhereInput = {
-      userId: senderId,
-      ...(search && {
-        OR: [
-          {
-            email: {
-              contains: search,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-          {
-            subject: {
-              contains: search,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-          {
-            message: {
-              contains: search,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-        ],
-      }),
-    };
-
-    const [messages, total] = await prisma.$transaction([
-      prisma.messages.findMany({
-        where: baseWhere,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-        select: {
-          id: true,
-          email: true,
-          subject: true,
-          message: true,
-          createdAt: true,
+    // Get all messages sent by the user that haven't been deleted by the sender
+    const sentMessages = await prisma.messages.findMany({
+      where: {
+        userId, // Messages sent by this user
+        MessageVisibility: {
+          some: {
+            userId,
+            isDeleted: false // Only include messages not deleted by the sender
+          }
+        }
+      },
+      include: {
+        recipient: { // Include recipient details if available
+          select: {
+            id: true,
+            name: true,
+            // email: true,
+            image: true,
+            role: true
+          }
         },
-      }),
-      prisma.messages.count({
-        where: baseWhere,
-      }),
-    ]);
+        MessageVisibility: {
+          where: {
+            userId
+          },
+          select: {
+            isFavorite: true,
+            isDeleted: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
 
-    const totalPages = Math.ceil(total / limit);
+
+    const formattedMessages = sentMessages.map(message => ({
+      ...message,
+      isFavorite: message.MessageVisibility[0]?.isFavorite || false,
+      recipient: message.recipient ? {
+        ...message.recipient,
+        image: message.recipient.image ? getImageUrl(`/uploads/${message.recipient.image}`) : null
+      } : null
+    }));
 
     res.status(200).json({
       success: true,
-      message: "Sent messages fetched successfully",
-      data: messages,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages,
-      },
+      message: "Sent messages retrieved successfully",
+      data: formattedMessages
     });
   } catch (error) {
-    console.error("Fetch sent messages error:", error);
+    console.error("Get sent messages error:", error);
     res.status(500).json({
       success: false,
-      message: "Something went wrong",
-      error: error.message,
+      message: "Something went wrong while fetching sent messages",
+      error: error.message
     });
   }
 };
+
 
 export const getReceivedMessages = async (req: Request, res: Response) => {
   try {
-    const { id: recipientId } = req.user;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = (req.query.search as string)?.trim() || "";
-    const skip = (page - 1) * limit;
-    const baseWhere: Prisma.MessagesWhereInput = {
-      recipient_id: recipientId,
-      ...(search && {
+    const { id: userId, email } = req.user;
+
+    const receivedMessages = await prisma.messages.findMany({
+      where: {
         OR: [
-          {
-            email: {
-              contains: search,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-          {
-            subject: {
-              contains: search,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-          {
-            message: {
-              contains: search,
-              mode: Prisma.QueryMode.insensitive,
-            },  
-          },
+          { recipient_id: userId },
+          { 
+            email,
+            NOT: { userId }
+          }
         ],
-      }),
-    };
-    const [messages, total] = await prisma.$transaction([
-      prisma.messages.findMany({
-        where: baseWhere,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-        select: {
-          id: true,
-          email: true,
-          subject: true,
-          message: true,
-          createdAt: true,
-          favorite: true,
+        MessageVisibility: {
+          some: {
+            userId,
+            isDeleted: false
+          }
+        }
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true
+          }
         },
-      }), 
-      prisma.messages.count({
-        where: baseWhere,
-      }),
-    ]);
-    const totalPages = Math.ceil(total / limit);
+        MessageVisibility: {
+          where: {
+            userId
+          },
+          select: {
+            isFavorite: true,
+            isDeleted: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc' 
+      }
+    });
+
+    const formattedMessages = receivedMessages.map(message => ({
+      ...message,
+      isFavorite: message.MessageVisibility[0]?.isFavorite || false,
+      user: message.user ? {
+        ...message.user,
+        image: message.user.image ? getImageUrl(`/uploads/${message.user.image}`) : null
+      } : null
+    }));
+
     res.status(200).json({
       success: true,
-      message: "Received messages fetched successfully",
-      data: messages,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages,
-      },
+      message: "Received messages retrieved successfully",
+      data: formattedMessages
     });
   } catch (error) {
-    console.error("Fetch received messages error:", error);
-    res.status(500).json({  
-      success: false,
-      message: "Something went wrong",
-      error: error.message,
-    });
-  } 
-};
-
-// export const favoriteMessage = async (req: Request, res: Response) => {
-//   try {
-//     const { id: messageId } = req.params;
-//     const { id: userId } = req.user;
-//     const message = await prisma.messages.findUnique({
-//       where: { id: messageId },
-//     });
-//     if (!message) {
-//        res.status(404).json({
-//         success: false,
-//         message: "Message not found",
-//       });
-//       return
-//     }
-//     if (message.userId !== userId) {
-//        res.status(403).json({
-//         success: false,
-//         message: "You do not have permission to favorite this message",
-//       });
-//       return
-//     }
-//     const updatedMessage = await prisma.messages.update({
-//       where: { id: messageId },
-//       data: { favorite: true },
-//     });
-//     res.status(200).json({
-//       success: true,
-//       message: "Message favorited successfully",
-//       data: updatedMessage,
-//     });
-//   } catch (error) {
-//     console.error("Favorite message error:", error);
-//     res.status(500).json({  
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
-
-
-export const favoriteMessage = async (req: Request, res: Response) => {
-  try {
-    const { id: messageId } = req.params;
-    const { id: userId } = req.user;
-
-    // Check if the message exists
-    const message = await prisma.messages.findUnique({ where: { id: messageId } });
-
-    if (!message) {
-      return res.status(404).json({
-        success: false,
-        message: "Message not found",
-      });
-    }
-
-    // Check if the user has permission to favorite the message
-    const visibility = await prisma.messageVisibility.findUnique({
-      where: { messageId_userId: { messageId, userId } },
-    });
-
-    if (!visibility) {
-      return res.status(403).json({
-        success: false,
-        message: "You do not have permission to favorite this message",
-      });
-    }
-
-    // Update favorite status only for the user
-    const updatedVisibility = await prisma.messageVisibility.update({
-      where: { messageId_userId: { messageId, userId } },
-      data: { isFavorite: true },
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Message favorited successfully",
-      data: updatedVisibility,
-    });
-  } catch (error) {
-    console.error("Favorite message error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-      error: error.message,
-    });
-  }
-};
-
-
-export const deleteMessage = async (req: Request, res: Response) => {
-  try {
-    const { id: messageId } = req.params;
-    const { id: userId } = req.user;  
-    const message = await prisma.messages.findUnique({
-      where: { id: messageId },
-    }); 
-    if (!message) {
-      return res.status(404).json({
-        success: false,
-        message: "Message not found",
-      });
-    }
-    if (message.userId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "You do not have permission to delete this message",
-      });
-    } 
-    await prisma.messages.delete({
-      where: { id: messageId },
-    });
-    res.status(200).json({  
-      success: true,
-      message: "Message deleted successfully",
-    });
-  } catch (error) {
-    console.error("Delete message error:", error);
+    console.error("Get received messages error:", error);
     res.status(500).json({
       success: false,
-      message: "Something went wrong",
-      error: error.message,
+      message: "Something went wrong while fetching received messages",
+      error: error.message
     });
   }
 };
 
-// export const getMessageById = async (req: Request, res: Response) => {
-//   try {
-//     const { id: messageId } = req.params;
-//     const { id: userId } = req.user;
-//     const message = await prisma.messages.findUnique({
-//       where: { id: messageId },
-//       select: {
-//         id: true, 
-//         email: true,
-//         subject: true,
-//         message: true,
-//         createdAt: true,
-//         favorite: true,
-//         user: {
-//           select: {
-//             id: true,
-//             name: true,
-//             email: true,
-//           },
-//         },
-//         recipient: {
-//           select: {
-//             id: true,
-//             name: true,
-//             email: true,
-//           },
-//         },
-//       },
-//     });
-//     if (!message) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Message not found",
-//       });
-//     }
-//     if (message.userId !== userId && message.recipient_id !== userId) {
-//       return res.status(403).json({
-//         success: false,
-//         message: "You do not have permission to view this message",
-//       });
-//     }
-//     res.status(200).json({
-//       success: true,
-//       message: "Message fetched successfully",
-//       data: message,
-//     });
-//   } catch (error) {
-//     console.error("Fetch message by ID error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
+
+export const favoriteMessage = async (req: Request, res: Response) => {};

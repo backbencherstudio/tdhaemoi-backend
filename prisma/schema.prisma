@@ -22,7 +22,8 @@ model User {
   createdAt              DateTime                @default(now()) @map("created_at")
   updatedAt              DateTime                @updatedAt
   suggestions            SuggestionFeetf1rst[]
-  messages               Messages[]
+  sentMessages           Messages[]              @relation("message_sender")
+  receivedMessages       Messages[]              @relation("message_recipient")
   accounta               account[]
   appointments           appointment[]
   improvementSuggestions ImprovementSuggestion[]
@@ -136,7 +137,8 @@ model Messages {
   favorite          Boolean?
   recipient_id      String?
   userId            String?
-  user              User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user              User?               @relation("message_sender", fields: [userId], references: [id], onDelete: SetNull)
+  recipient         User?               @relation("message_recipient", fields: [recipient_id], references: [id], onDelete: SetNull)
   createdAt         DateTime            @default(now())
   MessageVisibility MessageVisibility[]
 }
@@ -151,6 +153,8 @@ model MessageVisibility {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  
+    @@unique([messageId, userId])
 }
 
 
