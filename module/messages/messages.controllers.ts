@@ -723,7 +723,6 @@ export const getMessageById = async (req: Request, res: Response) => {
     const { id: userId } = req.user;
     const { id: messageId } = req.params;
 
-    // First check if the user has visibility to this message
     const visibility = await prisma.messageVisibility.findUnique({
       where: {
         messageId_userId: {
@@ -741,7 +740,6 @@ export const getMessageById = async (req: Request, res: Response) => {
       return
     }
 
-    // Get the message details
     const message = await prisma.message.findUnique({
       where: { id: messageId },
       include: {
@@ -774,7 +772,6 @@ export const getMessageById = async (req: Request, res: Response) => {
       return
     }
 
-    // Format the response
     const responseData = {
       id: message.id,
       subject: message.subject,
@@ -817,3 +814,57 @@ export const getMessageById = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+export const permanentDeleteMessages = async (req: Request, res: Response) => {
+  try {
+    const { id: userId } = req.user;
+    const { messageIds } = req.body;
+
+    if (!Array.isArray(messageIds) || messageIds.length === 0) {
+       res.status(400).json({
+        success: false,
+        message: "messageIds must be a non-empty array of message IDs",
+      });
+      return
+    }
+
+    await prisma.$transaction(async (prisma) => {
+      await prisma.messageVisibility.deleteMany({
+        where: {
+          userId,
+          messageId: { in: messageIds },
+        },
+      });
+
+      const orphanedMessages = await prisma.message.findMany({
+        where: {
+          id: { in: messageIds },
+          visibilities: { none: {} },
+        },
+        select: { id: true },
+      });
+
+      const orphanedIds = orphanedMessages.map(m => m.id);
+
+      if (orphanedIds.length > 0) {
+        await prisma.message.deleteMany({
+          where: { id: { in: orphanedIds } },
+        });
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Selected messages permanently deleted",
+    });
+  } catch (error) {
+    console.error("Bulk permanent delete error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete messages",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+

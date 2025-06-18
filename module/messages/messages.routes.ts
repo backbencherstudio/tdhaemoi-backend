@@ -1,5 +1,13 @@
 import express from "express";
-import { createMessage, getSentMessages, getReceivedMessages, setToFavorite, getFavoriteMessages, getMessageById } from "./messages.controllers";
+import {
+  createMessage,
+  getSentMessages,
+  getReceivedMessages,
+  setToFavorite,
+  getFavoriteMessages,
+  getMessageById,
+  permanentDeleteMessages
+} from "./messages.controllers";
 import { verifyUser } from "../../middleware/verifyUsers";
 
 const router = express.Router();
@@ -10,7 +18,13 @@ router.get("/inbox", verifyUser("PARTNER", "ADMIN"), getReceivedMessages);
 //select as favourite
 router.put("/:id/favorite", verifyUser("PARTNER", "ADMIN"), setToFavorite);
 
-router.get('/favorites', verifyUser("PARTNER", "ADMIN"), getFavoriteMessages);
-router.get('/:id', verifyUser("PARTNER", "ADMIN"), getMessageById);  
+router.get("/favorites", verifyUser("PARTNER", "ADMIN"), getFavoriteMessages);
+router.get("/:id", verifyUser("PARTNER", "ADMIN"), getMessageById);
+// Add this to your existing routes
+router.delete(
+  "/permanent",
+  verifyUser("PARTNER", "ADMIN"),
+  permanentDeleteMessages
+);
 
 export default router;
