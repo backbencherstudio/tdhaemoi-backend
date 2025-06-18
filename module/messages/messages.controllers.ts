@@ -346,7 +346,7 @@ export const getReceivedMessages = async (req: Request, res: Response) => {
             id: message.sender.id,
             name: message.sender.name,
             email: message.sender.email,
-            image: message.sender.image
+            image: message.sender.image 
               ? getImageUrl(`/uploads/${message.sender.image}`)
               : null,
             role: message.sender.role,

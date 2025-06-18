@@ -146,12 +146,26 @@ export const deleteAllSuggestions = async (req: Request, res: Response) => {
   }
 };
 
+
+// model ImprovementSuggestion {
+//   id         String   @id @default(uuid())
+//   name       String
+//   email      String
+//   firma      String
+//   phone      String
+//   suggestion String
+
+//   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   userId     String
+//   createdAt  DateTime @default(now())
+// }
+
 export const createImprovement = async (req: Request, res: Response) => {
   try {
-    const { Reason, Company, Phone, Message } = req.body;
+    const { name, email, firma, phone, suggestion } = req.body;
     const { id: userId } = req.user;
 
-    const missingField = ["Reason", "Company", "Phone", "Message"].find(
+    const missingField = ["name", "email", "firma", "phone", "suggestion"].find(
       (field) => !req.body[field]
     );
 
@@ -173,17 +187,25 @@ export const createImprovement = async (req: Request, res: Response) => {
       return;
     }
 
+    // Map request fields to model fields
+
+
     const newImprovement = await prisma.improvementSuggestion.create({
       data: {
-        Reason,
-        Company,
-        Phone,
-        Message,
-        userId,
+        name,
+        email,
+        firma,
+        phone,
+        suggestion,
+        user: {
+          connect: {
+            id: userId,
+          },
+        },
       },
     });
 
-    sendImprovementEmail(Company, Phone, Reason, Message);
+    sendImprovementEmail(name, email, firma, suggestion);
 
     res.status(201).json({
       success: true,
