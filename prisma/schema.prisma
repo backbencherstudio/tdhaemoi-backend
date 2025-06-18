@@ -106,12 +106,12 @@ model appointment {
 }
 
 model SuggestionFeetf1rst {
-  id         String   @id @default(uuid())
-  name       String? // optional first
-  email      String?
-  phone      String?
-  firma      String?
-  suggestion String?
+  id String @id @default(uuid())
+
+  reason     String
+  name       String
+  phone      String
+  suggestion String
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
@@ -119,16 +119,16 @@ model SuggestionFeetf1rst {
 
 // name, email, firma, phone, suggestion
 model ImprovementSuggestion {
-  id         String   @id @default(uuid())
+  id         String @id @default(uuid())
   name       String
   email      String
   firma      String
   phone      String
   suggestion String
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId     String
-  createdAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
 }
 
 model Message {

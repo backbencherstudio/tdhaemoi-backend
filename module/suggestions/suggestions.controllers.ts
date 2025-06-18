@@ -8,61 +8,90 @@ import {
 
 const prisma = new PrismaClient();
 
+
+
+// model SuggestionFeetf1rst {
+//   id String @id @default(uuid())
+
+//   reason     String
+//   name       String
+//   phone      String
+//   suggestion String
+//   userId     String
+//   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   createdAt  DateTime @default(now())
+// }
+
+
 export const createSuggestions = async (req: Request, res: Response) => {
   try {
-    const { name, email, phone, firma, suggestion } = req.body;
+    const { reason, name, phone, suggestion } = req.body;
     const { id } = req.user;
 
-    const missingField = ["name", "email", "phone", "firma", "suggestion"].find(
+    const missingField = ["reason", "name", "phone", "suggestion"].find(
       (field) => !req.body[field]
     );
 
     if (missingField) {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: `${missingField} is required!`,
       });
-      return;
     }
 
-    if (!validator.isEmail(email)) {
-      res.status(400).json({
+
+    if (!validator.isMobilePhone(phone)) {
+      return res.status(400).json({
         success: false,
-        message: "Invalid email format!",
+        message: "Invalid phone number format!",
       });
-      return;
     }
 
     const newSuggestion = await prisma.suggestionFeetf1rst.create({
       data: {
+        reason,
         name,
-        email,
         phone,
-        firma,
         suggestion,
-        user: {
-          connect: {
-            id: id,
-          },
-        },
+        userId: id
       },
     });
 
-    sendNewSuggestionEmail(name, email, phone, firma, suggestion);
-    res.status(201).json({
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { email: true }
+    });
+
+     
+      sendNewSuggestionEmail(name, "email", phone, "firma", suggestion);
+    
+ 
+    return res.status(201).json({
       success: true,
       message: "Suggestion created successfully",
       suggestion: newSuggestion,
     });
   } catch (error) {
     console.error("Create suggestion error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message,
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
+
+
+
+
+
+
+
+
+
+
+
 
 export const getAllSuggestions = async (req: Request, res: Response) => {
   try {
