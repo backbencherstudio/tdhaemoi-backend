@@ -383,46 +383,160 @@ export const getSentMessages = async (req: Request, res: Response) => {
 
 
 
+// export const getReceivedMessages = async (req: Request, res: Response) => {
+//   try {
+//     const { id: userId, email } = req.user;
+//     const { page, limit } = getPaginationOptions(req);
+//     const skip = (page - 1) * limit;
+
+//     const total = await prisma.message.count({
+//       where: {
+//         OR: [
+//           { recipientId: userId },
+//           {
+//             recipientEmail: email,
+//             NOT: { senderId: userId },
+//           },
+//         ],
+//         visibilities: {
+//           some: {
+//             userId,
+//             isDeleted: false,
+//           },
+//         },
+//       },
+//     });
+
+//     const receivedMessages = await prisma.message.findMany({
+//       where: {
+//         OR: [
+//           { recipientId: userId },
+//           {
+//             recipientEmail: email,
+//             NOT: { senderId: userId },
+//           },
+//         ],
+//         visibilities: {
+//           some: {
+//             userId,
+//             isDeleted: false,
+//           },
+//         },
+//       },
+//       include: {
+//         sender: {
+//           select: {
+//             id: true,
+//             name: true,
+//             email: true,
+//             image: true,
+//             role: true,
+//           },
+//         },
+//         visibilities: {
+//           where: { userId },
+//           select: {
+//             isFavorite: true,
+//             isDeleted: true,
+//           },
+//         },
+//       },
+//       orderBy: { createdAt: "desc" },
+//       skip,
+//       take: limit,
+//     });
+
+//     const formattedMessages = receivedMessages.map((message) => ({
+//       id: message.id,
+//       subject: message.subject,
+//       content: message.content,
+//       createdAt: message.createdAt,
+//       isFavorite: message.visibilities[0]?.isFavorite || false,
+//       sender: message.sender
+//         ? {
+//             id: message.sender.id,
+//             name: message.sender.name,
+//             email: message.sender.email,
+//             image: message.sender.image 
+//               ? getImageUrl(`/uploads/${message.sender.image}`)
+//               : null,
+//             role: message.sender.role,
+//           }
+//         : null,
+//       recipientEmail: message.recipientEmail,
+//     }));
+
+//     const result = getPaginationResult(formattedMessages, total, { page, limit });
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Received messages retrieved successfully",
+//       data: result.data,
+//       pagination: result.pagination,
+//     });
+//   } catch (error) {
+//     console.error("Get received messages error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Frontend error",
+//       error: error instanceof Error ? error.message : "Unknown error",
+//     });
+//   }
+// };
+
 export const getReceivedMessages = async (req: Request, res: Response) => {
   try {
     const { id: userId, email } = req.user;
     const { page, limit } = getPaginationOptions(req);
+    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
     const skip = (page - 1) * limit;
 
-    const total = await prisma.message.count({
-      where: {
-        OR: [
-          { recipientId: userId },
-          {
-            recipientEmail: email,
-            NOT: { senderId: userId },
-          },
-        ],
-        visibilities: {
-          some: {
-            userId,
-            isDeleted: false,
-          },
+    // Base where clause for received messages
+    const baseWhere: Prisma.MessageWhereInput = {
+      OR: [
+        { recipientId: userId },
+        {
+          recipientEmail: email,
+          NOT: { senderId: userId },
+        },
+      ],
+      visibilities: {
+        some: {
+          userId,
+          isDeleted: false,
         },
       },
+    };
+
+    // Add search conditions if search term is provided
+    let where: Prisma.MessageWhereInput = baseWhere;
+
+    if (search) {
+      where = {
+        ...baseWhere,
+        OR: [
+          // Original conditions for received messages
+          ...(baseWhere.OR as Prisma.MessageWhereInput[]),
+          // Search conditions
+          { subject: { contains: search, mode: 'insensitive' } },
+          {
+            sender: {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+              ],
+            },
+          },
+        ],
+      };
+    }
+
+    const total = await prisma.message.count({
+      where,
     });
 
     const receivedMessages = await prisma.message.findMany({
-      where: {
-        OR: [
-          { recipientId: userId },
-          {
-            recipientEmail: email,
-            NOT: { senderId: userId },
-          },
-        ],
-        visibilities: {
-          some: {
-            userId,
-            isDeleted: false,
-          },
-        },
-      },
+      where,
       include: {
         sender: {
           select: {
@@ -483,6 +597,7 @@ export const getReceivedMessages = async (req: Request, res: Response) => {
     });
   }
 };
+
 
 export const setToFavorite = async (req: Request, res: Response) => {
   try {
