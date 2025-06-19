@@ -282,7 +282,6 @@ export const getSentMessages = async (req: Request, res: Response) => {
     const search = typeof req.query.search === 'string' ? req.query.search : undefined;
     const skip = (page - 1) * limit;
 
-    // Base where clause for sent messages
     const baseWhere: Prisma.MessageWhereInput = {
       senderId: userId,
       visibilities: {
@@ -293,7 +292,7 @@ export const getSentMessages = async (req: Request, res: Response) => {
       },
     };
 
-    // Add search conditions if search term is provided
+ 
     let where: Prisma.MessageWhereInput = baseWhere;
 
     if (search) {
@@ -314,7 +313,7 @@ export const getSentMessages = async (req: Request, res: Response) => {
       };
     }
 
-    // Get total count
+
     const total = await prisma.message.count({
       where,
     });
