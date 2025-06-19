@@ -8,8 +8,6 @@ import {
 
 const prisma = new PrismaClient();
 
-
-
 // model SuggestionFeetf1rst {
 //   id String @id @default(uuid())
 
@@ -22,7 +20,6 @@ const prisma = new PrismaClient();
 //   createdAt  DateTime @default(now())
 // }
 
-
 export const createSuggestions = async (req: Request, res: Response) => {
   try {
     const { reason, name, phone, suggestion } = req.body;
@@ -33,18 +30,19 @@ export const createSuggestions = async (req: Request, res: Response) => {
     );
 
     if (missingField) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: `${missingField} is required!`,
       });
+      return;
     }
 
-
     if (!validator.isMobilePhone(phone)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: "Invalid phone number format!",
       });
+      return;
     }
 
     const newSuggestion = await prisma.suggestionFeetf1rst.create({
@@ -53,45 +51,31 @@ export const createSuggestions = async (req: Request, res: Response) => {
         name,
         phone,
         suggestion,
-        userId: id
+        userId: id,
       },
     });
 
-
     const user = await prisma.user.findUnique({
       where: { id },
-      select: { email: true }
+      select: { email: true },
     });
 
-     
-      sendNewSuggestionEmail(name, "email", phone, "firma", suggestion);
-    
- 
-    return res.status(201).json({
+    sendNewSuggestionEmail(name, "email", phone, "firma", suggestion);
+
+    res.status(201).json({
       success: true,
       message: "Suggestion created successfully",
       suggestion: newSuggestion,
     });
   } catch (error) {
     console.error("Create suggestion error:", error);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "Something went wrong",
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
 
 export const getAllSuggestions = async (req: Request, res: Response) => {
   try {
@@ -175,7 +159,6 @@ export const deleteAllSuggestions = async (req: Request, res: Response) => {
   }
 };
 
-
 // model ImprovementSuggestion {
 //   id         String   @id @default(uuid())
 //   name       String
@@ -217,7 +200,6 @@ export const createImprovement = async (req: Request, res: Response) => {
     }
 
     // Map request fields to model fields
-
 
     const newImprovement = await prisma.improvementSuggestion.create({
       data: {

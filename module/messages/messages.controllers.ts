@@ -991,3 +991,62 @@ export const permanentDeleteMessages = async (req: Request, res: Response) => {
   }
 };
 
+
+
+export const deleteSingleMessage = async (req: Request, res: Response) => {
+  console.log(req.user)
+  try {
+    const { id: userId } = req.user;
+    const { id: messageId } = req.params;
+
+    const visibility = await prisma.messageVisibility.findUnique({
+      where: {
+        messageId_userId: {
+          messageId,
+          userId,
+        },
+      },
+    });
+
+    if (!visibility) {
+       res.status(404).json({
+        success: false,
+        message: "Message not found or you don't have permission to access it",
+      });
+      return
+    }
+
+    await prisma.messageVisibility.update({
+      where: {
+        messageId_userId: {
+          messageId,
+          userId,
+        },
+      },
+      data: {
+        isDeleted: true,
+        isFavorite: false,
+      },
+    });
+
+    const remainingVisibilities = await prisma.messageVisibility.count({
+      where: {
+        messageId,
+        isDeleted: false,
+      },
+    });
+
+
+    res.status(200).json({
+      success: true,
+      message: "Message moved to trash",
+    });
+  } catch (error) {
+    console.error("Delete single message error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete message",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};

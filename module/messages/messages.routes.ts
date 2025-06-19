@@ -6,7 +6,8 @@ import {
   setToFavorite,
   getFavoriteMessages,
   getMessageById,
-  permanentDeleteMessages
+  permanentDeleteMessages,
+  deleteSingleMessage
 } from "./messages.controllers";
 import { verifyUser } from "../../middleware/verifyUsers";
 
@@ -26,5 +27,12 @@ router.delete(
   verifyUser("PARTNER", "ADMIN"),
   permanentDeleteMessages
 );
+
+router.delete(
+  "/delete/:id",
+  verifyUser("PARTNER", "ADMIN"),
+  deleteSingleMessage
+);
+
 
 export default router;
