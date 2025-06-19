@@ -491,7 +491,6 @@ export const getReceivedMessages = async (req: Request, res: Response) => {
     const search = typeof req.query.search === 'string' ? req.query.search : undefined;
     const skip = (page - 1) * limit;
 
-    // Base where clause for received messages
     const baseWhere: Prisma.MessageWhereInput = {
       OR: [
         { recipientId: userId },
@@ -508,16 +507,13 @@ export const getReceivedMessages = async (req: Request, res: Response) => {
       },
     };
 
-    // Add search conditions if search term is provided
     let where: Prisma.MessageWhereInput = baseWhere;
 
     if (search) {
       where = {
         ...baseWhere,
         OR: [
-          // Original conditions for received messages
           ...(baseWhere.OR as Prisma.MessageWhereInput[]),
-          // Search conditions
           { subject: { contains: search, mode: 'insensitive' } },
           {
             sender: {
@@ -706,105 +702,6 @@ export const setToFavorite = async (req: Request, res: Response) => {
     });
   }
 };
-
-
-
-
-// export const getFavoriteMessages = async (req: Request, res: Response) => {
-//   try {
-//     const { id: userId } = req.user;
-//     const { page, limit } = getPaginationOptions(req);
-//     const skip = (page - 1) * limit;
-
-//     const total = await prisma.messageVisibility.count({
-//       where: {
-//         userId,
-//         isFavorite: true,
-//         isDeleted: false,
-//       },
-//     });
-
-//     const favoriteMessages = await prisma.messageVisibility.findMany({
-//       where: {
-//         userId,
-//         isFavorite: true,
-//         isDeleted: false,
-//       },
-//       include: {
-//         message: {
-//           include: {
-//             sender: {
-//               select: {
-//                 id: true,
-//                 name: true,
-//                 email: true,
-//                 image: true,
-//                 role: true,
-//               },
-//             },
-//             recipient: {
-//               select: {
-//                 id: true,
-//                 name: true,
-//                 email: true,
-//                 image: true,
-//                 role: true,
-//               },
-//             },
-//           },
-//         },
-//       },
-//       orderBy: { message: { createdAt: "desc" } },
-//       skip,
-//       take: limit,
-//     });
-
-
-//     const formattedMessages = favoriteMessages.map((visibility) => ({
-//       id: visibility.message.id,
-//       subject: visibility.message.subject,
-//       content: visibility.message.content,
-//       createdAt: visibility.message.createdAt,
-//       isFavorite: visibility.isFavorite,
-//       sender: visibility.message.sender ? {
-//         id: visibility.message.sender.id,
-//         name: visibility.message.sender.name,
-//         email: visibility.message.sender.email,
-//         image: visibility.message.sender.image
-//           ? getImageUrl(`/uploads/${visibility.message.sender.image}`)
-//           : null,
-//         role: visibility.message.sender.role,
-//       } : null,
-//       recipient: visibility.message.recipient ? {
-//         id: visibility.message.recipient.id,
-//         name: visibility.message.recipient.name,
-//         email: visibility.message.recipient.email,
-//         image: visibility.message.recipient.image
-//           ? getImageUrl(`/uploads/${visibility.message.recipient.image}`)
-//           : null,
-//         role: visibility.message.recipient.role,
-//       } : null,
-//       recipientEmail: visibility.message.recipientEmail,
-//     }));
-
-//     const result = getPaginationResult(formattedMessages, total, { page, limit });
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Favorite messages retrieved successfully",
-//       data: result.data,
-//       pagination: result.pagination,
-//     });
-//   } catch (error) {
-//     console.error("Get favorite messages error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: error instanceof Error ? error.message :  "Frontend error",
-//       error: error instanceof Error ? error.message : "Unknown error",
-//     });
-//   }
-// };
-
 
 
 export const getFavoriteMessages = async (req: Request, res: Response) => {
