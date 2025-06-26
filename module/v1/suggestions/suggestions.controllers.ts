@@ -4,7 +4,7 @@ import validator from "validator";
 import {
   sendImprovementEmail,
   sendNewSuggestionEmail,
-} from "../../utils/emailService.utils";
+} from "../../../utils/emailService.utils";
 
 const prisma = new PrismaClient();
 

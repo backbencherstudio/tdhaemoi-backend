@@ -2,9 +2,9 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
-import { data } from "../../assets/data";
-import { getImageUrl } from "../../utils/base_utl";
-import { data as characteristicIcons } from "../../assets/data";
+import { data } from "../../../assets/v1/data";
+import { getImageUrl } from "../../../utils/base_utl";
+import { data as characteristicIcons } from "../../../assets/v1/data";
 import { Multer } from "multer";
 const prisma = new PrismaClient();
 
@@ -200,7 +200,7 @@ const mapCharacteristicsToDetails = (ids: number[]) => {
     .map((item) => ({
       id: item.id,
       text: item.text,
-      image: getImageUrl(`/assets/KeinTitel/${item.image}`),
+      image: getImageUrl(`/assets/v1/KeinTitel/${item.image}`),
     }));
 };
 
@@ -617,7 +617,7 @@ export const deleteImage = async (req: Request, res: Response) => {
       return;
     }
 
-    const filePath = path.join(__dirname, "../../uploads", imageName);
+    const filePath = path.join(__dirname, "../../../uploads", imageName);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
@@ -799,7 +799,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
 
     for (const color of product.colors) {
       for (const image of color.images) {
-        const filePath = path.join(__dirname, "../../uploads", image.url);
+        const filePath = path.join(__dirname, "../../../uploads", image.url);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
@@ -895,7 +895,7 @@ export const getSingleProduct = async (req: Request, res: Response) => {
               return item
                 ? {
                     ...item,
-                    image: getImageUrl(`/assets/KeinTitel/${item.image}`),
+                    image: getImageUrl(`/assets/v1/KeinTitel/${item.image}`),
                   }
                 : null;
             })
@@ -933,7 +933,7 @@ export const characteristicsIcons = async (req: Request, res: Response) => {
   try {
     const iconsWithUrls = data.map((icon) => ({
       ...icon,
-      image: getImageUrl(`/assets/KeinTitel/${icon.image}`),
+      image: getImageUrl(`/assets/v1/KeinTitel/${icon.image}`),
     }));
 
     res.status(200).json({

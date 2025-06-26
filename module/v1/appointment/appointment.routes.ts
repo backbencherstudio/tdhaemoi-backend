@@ -8,7 +8,7 @@ import {
   getMyAppointments,
 } from "./appointment.controllers";
 
-import { verifyUser } from "../../middleware/verifyUsers";
+import { verifyUser } from "../../../middleware/verifyUsers";
 
 const router = express.Router();
 

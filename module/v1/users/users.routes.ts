@@ -1,7 +1,7 @@
 import express from "express";
 import { createUser, loginUser, updateUser, changePassword, createPartnership, updatePartnerProfile, getAllPartners, checkAuthStatus} from "./users.controllers";
-import { verifyUser } from "../../middleware/verifyUsers";
-import upload from "../../config/multer.config";
+import { verifyUser } from "../../../middleware/verifyUsers";
+import upload from "../../../config/multer.config";
 
 
 const router = express.Router();

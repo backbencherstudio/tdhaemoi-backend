@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import validator from "validator";
-import { sendEmail } from "../../utils/emailService.utils";
+import { sendEmail } from "../../../utils/emailService.utils";
 import { PrismaClient, Prisma } from "@prisma/client";
-import { getImageUrl } from "../../utils/base_utl";
-import { getPaginationOptions, getPaginationResult } from "../../utils/pagination";
+import { getImageUrl } from "../../../utils/base_utl";
+import { getPaginationOptions, getPaginationResult } from "../../../utils/pagination";
 
 // model User {
 //   id                     String                  @id @default(uuid())

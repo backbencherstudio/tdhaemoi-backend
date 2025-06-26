@@ -11,8 +11,8 @@ import {
   resetPassword,
   changePassword
 } from "./partners.controllers";
-import { verifyUser } from "../../middleware/verifyUsers";
-import upload from "../../config/multer.config";
+import { verifyUser } from "../../../middleware/verifyUsers";
+import upload from "../../../config/multer.config";
 
 const router = express.Router();
 

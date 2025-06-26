@@ -9,7 +9,7 @@ import {
   permanentDeleteMessages,
   deleteSingleMessage
 } from "./messages.controllers";
-import { verifyUser } from "../../middleware/verifyUsers";
+import { verifyUser } from "../../../middleware/verifyUsers";
 
 const router = express.Router();
 

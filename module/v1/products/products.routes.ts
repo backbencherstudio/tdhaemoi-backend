@@ -1,9 +1,9 @@
 import express from "express";
 import { createProduct, updateProduct, getAllProducts, deleteImage, queryProducts, deleteProduct, getSingleProduct, characteristicsIcons, getCategorizedProducts } from "./products.controllers";
 
-import upload from "../../config/multer.config";
+import upload from "../../../config/multer.config";
  
-import { verifyUser } from "../../middleware/verifyUsers";
+import { verifyUser } from "../../../middleware/verifyUsers";
  
 
 const router = express.Router();

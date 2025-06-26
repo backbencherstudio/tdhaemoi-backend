@@ -4,11 +4,11 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import fs from "fs";
 import path from "path";
-import { baseUrl, getImageUrl } from "../../utils/base_utl";
+import { baseUrl, getImageUrl } from "../../../utils/base_utl";
 import {
   sendAdminLoginNotification,
   sendPartnershipWelcomeEmail,
-} from "../../utils/emailService.utils";
+} from "../../../utils/emailService.utils";
 
 const prisma = new PrismaClient();
 

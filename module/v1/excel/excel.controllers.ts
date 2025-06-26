@@ -5,7 +5,7 @@ import path from 'path';
 export const getExcelData = async (req: Request, res: Response) => {
     try {
         // Read the Excel file from assets folder
-        const excelPath = path.join(__dirname, '../../assets/FeetFirstData.xlsx');
+        const excelPath = path.join(__dirname, '../../../assets/FeetFirstData.xlsx');
         const workbook = XLSX.readFile(excelPath);
         
         // Get the first sheet
