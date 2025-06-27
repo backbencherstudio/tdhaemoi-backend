@@ -1,3 +1,5 @@
+import { baseUrl } from "../../../utils/base_utl";
+
 const exercises = {
   "Mobilität & Flexibilität": [
     {
@@ -5,6 +7,7 @@ const exercises = {
       sub_title:
         "Fördert die Durchblutung und löst Verspannungen in der Plantarfaszie",
       duration: "1-2 Minuten",
+      image: baseUrl + "/assets/v2/exercise/21.png",
       instructions: [
         "Nimm einen kleinen Ball (z. B. Tennisball, Faszienball oder Golfball).",
         "Setze dich auf einen Stuhl oder stelle dich aufrecht hin.",
@@ -17,6 +20,7 @@ const exercises = {
       sub_title:
         "Verbessert die Beweglichkeit im Sprunggelenk und reduziert die Spannung im Fersenbereich",
       duration: "1-2 Minuten",
+      image: baseUrl + "/assets/v2/exercise/22.png",
       instructions: [
         "Stelle dich mit beiden Händen an eine Wand.",
         "Mach mit einem Bein einen großen Schritt nach hinten und strecke dieses durch.",
@@ -27,6 +31,7 @@ const exercises = {
     {
       title: "Großzehen-Stretch an der Wand",
       duration: "1-2 Minuten",
+      image: baseUrl + "/assets/v2/exercise/23.png",
       sub_title:
         "Erhöht die Flexibilität der Großzehe und unterstützt eine gesunde Abrollbewegung.",
       instructions: [
@@ -42,6 +47,7 @@ const exercises = {
       sub_title:
         "Dehnt die Plantarfaszie und wirkt unterstützend bei Fersenschmerzen.",
       duration: "1-2 Minuten",
+      image: baseUrl + "/assets/v2/exercise/24.png",
       instructions: [
         "Knie dich auf den Boden und stelle deine Zehen auf.",
         "Setze dich langsam auf deine Fersen, sodass die Fußsohlen gedehnt werden können.",
@@ -54,6 +60,7 @@ const exercises = {
       sub_title:
         "Verbessert die Beweglichkeit und Koordination der Zehenmuskulatur.",
       duration: "1-2 Minuten",
+      image: baseUrl + "/assets/v2/exercise/25.png",
       instructions: [
         "Setze dich bequem hin oder stehe aufrecht.",
         "Spitze aktiv alle Zehen so weit wie möglich ab.",
