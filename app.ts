@@ -12,7 +12,7 @@ import morgan from "morgan";
 // import appointment from "./module/v1/appointment/appointment.routes";
 
 import v1 from "./module/v1/index";
-
+import v2 from "./module/v2/index";
 import path from "path";
 
 const app = express();
@@ -57,6 +57,8 @@ app.use(morgan("dev"));
 // app.use("/appointment", appointment)
 
 app.use("/", v1);
+app.use("/v2", v2);
+
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/assets", express.static(path.join(__dirname, "assets")));
