@@ -148,6 +148,7 @@ const exercises = {
       sub_title:
         "Kräftigt gezielt die Wadenmuskulatur und stabilisiert das Sprunggelenk",
       duration: "1-2 Minuten, ca. 10-15 Wiederholungen",
+      image: baseUrl + "/assets/v2/exercise/41.png",
       instructions: [
         "Stelle dich mit den Fußballen auf eine kleine Stufe, Fersen hängen frei.",
         "Hebe dich langsam auf die Zehenspitzen.",
@@ -162,6 +163,7 @@ const exercises = {
       sub_title:
         "Aktiviert die äußere und innere Fußmuskulatur und verbessert die Fußkontrolle",
       duration: "1–2 Minuten pro Richtung",
+      image: baseUrl + "/assets/v2/exercise/42.png",
       instructions: [
         "Setze dich auf den Boden mit gestrecktem Bein.",
         "Lege ein Theraband um den Vorfuß und ziehe es mit der Hand oder am fixierten Punkt.",
@@ -174,6 +176,7 @@ const exercises = {
       sub_title:
         "Trainiert gezielt die Zehenmuskulatur und verbessert die Greiffunktion",
       duration: "1–2 Minuten",
+      image: baseUrl + "/assets/v2/exercise/43.png",
       instructions: [
         "Lege ein Handtuch flach auf den Boden.",
         "Stelle den Fuß mit den Zehen auf das Tuch.",
@@ -186,6 +189,7 @@ const exercises = {
       sub_title:
         "Fördert die Koordination und die bewusste Steuerung der Zehen",
       duration: "1–2 Minuten",
+      image: baseUrl + "/assets/v2/exercise/44.png",
       instructions: [
         "Setze dich oder stelle dich bequem hin.",
         "Spreize aktiv alle Zehen weit auseinander.",
@@ -199,6 +203,7 @@ const exercises = {
       sub_title:
         "Stärkt gezielt die Muskulatur zur Kontrolle von Supination und Pronation",
       duration: "1–2 Minuten pro Seite",
+      image: baseUrl + "/assets/v2/exercise/45.png",
       instructions: [
         "Stelle dich hüftbreit hin. Verlage das Gewicht kontrolliert auf die Außenkante (Supination), dann auf die Innenkante (Pronation) des Fußes.",
         "Achte auf eine gleichmäßige Bewegung, ohne die Balance zu verlieren.",
