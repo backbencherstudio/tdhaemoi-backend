@@ -264,7 +264,7 @@ const data = [
     category: "Mobilität & Flexibilität",
   },
   {
-     id: 24,
+    id: 24,
     title: "Fersensitz zur Fußsohlendehnung",
     sub_title:
       "Dehnt die Plantarfaszie und wirkt unterstützend bei Fersenschmerzen.",
@@ -279,7 +279,7 @@ const data = [
     category: "Mobilität & Flexibilität",
   },
   {
-     id: 25,
+    id: 25,
     title: "Zehen-Fächerübung",
     sub_title:
       "Verbessert die Beweglichkeit und Koordination der Zehenmuskulatur.",
@@ -294,8 +294,8 @@ const data = [
     category: "Mobilität & Flexibilität",
   },
 
-  
   {
+    id: 31,
     title: "Kurze Fuß-Übung (Short Foot Exercise)",
     sub_title:
       "Aktiviert die Fußmuskulatur und verbessert die Gewölbestabilität. Einbeinige Balance-Übung",
@@ -310,6 +310,7 @@ const data = [
     category: "Stabilität & Balance",
   },
   {
+    id: 32,
     title: "Einbeinig Balance Übung",
     duration: "30-60 Sekunden pro Seite",
     sub_title:
@@ -324,6 +325,7 @@ const data = [
     category: "Stabilität & Balance",
   },
   {
+    id: 33,
     title: "Tandem-Stand (Fersen-Spitzen-Stand)",
     duration: "Dauer: 30–60 Sekunden",
     sub_title:
@@ -338,6 +340,7 @@ const data = [
     category: "Stabilität & Balance",
   },
   {
+    id: 34,
     title: "Dynamischer Einbeinstand (Beinpendeln)",
     duration: "1-2 Minuten pro Bein",
     sub_title:
@@ -353,6 +356,7 @@ const data = [
   },
 
   {
+    id: 35,
     title: "Zehenspitzenstand-Halten",
     duration: "30 Sekunden – 1 Minute",
     sub_title:
@@ -367,7 +371,9 @@ const data = [
     ],
     category: "Stabilität & Balance",
   },
+
   {
+    id: 41,
     title: "Wadenheben mit kontrolliertem Absenken",
     sub_title:
       "Kräftigt gezielt die Wadenmuskulatur und stabilisiert das Sprunggelenk",
@@ -382,6 +388,7 @@ const data = [
     category: "Muskelkräftigung & Kontrolle",
   },
   {
+    id: 42,
     title:
       "Theraband-Übung für Fußmuskulatur (Außen- & Innenmuskeln aktivieren)",
     sub_title:
@@ -397,6 +404,7 @@ const data = [
     category: "Muskelkräftigung & Kontrolle",
   },
   {
+    id: 43,
     title: "Tuchgreif-Übung (Kräftigung der Zehenmuskulatur)",
     sub_title:
       "Trainiert gezielt die Zehenmuskulatur und verbessert die Greiffunktion",
@@ -411,6 +419,7 @@ const data = [
     category: "Muskelkräftigung & Kontrolle",
   },
   {
+    id: 44,
     title: "Zehen-Yoga (Koordination & Fußkontrolle verbessern)",
     sub_title: "Fördert die Koordination und die bewusste Steuerung der Zehen",
     duration: "1–2 Minuten",
@@ -425,6 +434,7 @@ const data = [
     category: "Muskelkräftigung & Kontrolle",
   },
   {
+    id: 45,
     title: "Fußkanten-Krafttraining (Supination & Pronation stärken)",
     sub_title:
       "Stärkt gezielt die Muskulatur zur Kontrolle von Supination und Pronation",
