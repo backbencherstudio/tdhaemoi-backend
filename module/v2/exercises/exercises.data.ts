@@ -78,6 +78,7 @@ const exercises = {
       sub_title:
         "Aktiviert die Fußmuskulatur und verbessert die Gewölbestabilität. Einbeinige Balance-Übung",
       duration: "1-2 Minuten je Fuß",
+      image: baseUrl + "/assets/v2/exercise/31.png",
       instructions: [
         "Stelle deinen Fuß flach auf den Boden.",
         "Ziehe den Vorfuß leicht Richtung Ferse, ohne die Zehen zu krallen.",
@@ -91,6 +92,7 @@ const exercises = {
       duration: "30-60 Sekunden pro Seite",
       sub_title:
         "Stärkt die Stabilität im Sprunggelenk und trainiert das Gleichgewicht",
+      image: baseUrl + "/assets/v2/exercise/32.png",
       instructions: [
         "Stelle dich auf ein Bein, das andere bleibt leicht angehoben.",
         "Halte den Blick geradeaus und spanne deine Körpermitte an.",
@@ -103,6 +105,7 @@ const exercises = {
       duration: "Dauer: 30–60 Sekunden",
       sub_title:
         "Fördert die statische Balance und die Kontrolle über die Körperhaltung",
+      image: baseUrl + "/assets/v2/exercise/33.png",
       instructions: [
         "Stelle einen Fuß direkt vor den anderen, sodass die Ferse den Zehen des anderen Fußes berührt.",
         "Halte die Arme locker neben dem Körper oder leicht zur Seite gestreckt.",
@@ -115,6 +118,7 @@ const exercises = {
       duration: "1-2 Minuten pro Bein",
       sub_title:
         "Verbessert die Reaktionsfähigkeit und das Gleichgewicht im Alltag und Sport",
+      image: baseUrl + "/assets/v2/exercise/34.png",
       instructions: [
         "Stelle dich auf ein Bein, das andere schwingt frei nach vorne und hinten.",
         "Halte den Oberkörper aufrecht und die Arme zur Seite zur Stabilisation.",
@@ -127,6 +131,7 @@ const exercises = {
       duration: "30 Sekunden – 1 Minute",
       sub_title:
         "Trainiert die Wadenmuskulatur und die Kontrolle über den Vorfuß",
+      image: baseUrl + "/assets/v2/exercise/35.png",
       instructions: [
         "Stelle dich aufrecht hin und gehe langsam auf die Zehenspitzen.",
         "Halte die Fersen so weit wie möglich vom Boden entfernt.",
