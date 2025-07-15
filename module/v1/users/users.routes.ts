@@ -20,4 +20,6 @@ router.patch("/update-partner-profile", verifyUser('ADMIN', 'PARTNER'), upload.s
 router.get("/partners", verifyUser('ADMIN'), getAllPartners);
 router.get("/check-auth", checkAuthStatus);
 
+
+
 export default router;

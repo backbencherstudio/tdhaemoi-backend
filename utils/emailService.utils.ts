@@ -35,6 +35,7 @@ export const sendEmail = async (
 };
 console.log(sendEmail)
 
+
 export const sendForgotPasswordOTP = async (email: string, otp: string): Promise<void> => {
   console.log(email, otp)
   const htmlContent = emailForgotPasswordOTP(email, otp);

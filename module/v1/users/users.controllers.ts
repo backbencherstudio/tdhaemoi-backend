@@ -86,10 +86,12 @@ export const createUser = async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
     const image = req.file;
-
+    
     const missingField = ["name", "email", "password"].find(
       (field) => !req.body[field]
     );
+    
+    
 
     if (missingField) {
       if (image) {
@@ -171,6 +173,7 @@ export const createUser = async (req: Request, res: Response) => {
 };
 
 export const loginUser = async (req: Request, res: Response) => {
+  console.log(req.body)
   try {
     const { email, password } = req.body;
 
