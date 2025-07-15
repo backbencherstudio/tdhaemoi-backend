@@ -933,13 +933,14 @@ export const characteristicsIcons = async (req: Request, res: Response) => {
   try {
     const iconsWithUrls = data.map((icon) => ({
       ...icon,
-      image: getImageUrl(`/assets/v1/KeinTitel/${icon.image}`),
+      image: getImageUrl(`/assets/v1/kein_titel/${icon.image}`),
     }));
 
     res.status(200).json({
       success: true,
       data: iconsWithUrls,
     });
+    
   } catch (error) {
     console.error("Get Technical Icons Error:", error);
     res.status(500).json({
