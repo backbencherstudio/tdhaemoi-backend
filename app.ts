@@ -63,7 +63,7 @@ app.use("/", v1);
 app.use("/v2", v2);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/assets", express.static(path.join(__dirname, "assets")));
+app.use("/assets", express.static(path.join(__dirname, "assets/v1/kein_titel")));
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.status(404).json({
