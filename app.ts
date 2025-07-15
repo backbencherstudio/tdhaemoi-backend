@@ -39,6 +39,8 @@ app.use(
       "https://landing-page-iota-eight-94.vercel.app",
       "http://localhost:3002",
       "https://tdhaemoi-partner-dashbaord.vercel.app",
+      "https://feetf1rst.tech",
+      "https://partner.feetf1rst.tech"
       
     ],
   })
