@@ -933,7 +933,7 @@ export const characteristicsIcons = async (req: Request, res: Response) => {
   try {
     const iconsWithUrls = data.map((icon) => ({
       ...icon,
-      image: getImageUrl(`/uploads/${icon.image}`),
+      image: getImageUrl(`/assets/${icon.image}`),
     }));
 
     res.status(200).json({

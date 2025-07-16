@@ -133,10 +133,10 @@ export const emailForgotPasswordOTP = (email: string, OTP: string): string => {
 };
 
 export const partnershipWelcomeEmail = (
-    email: string,
-    password: string
-  ): string => {
-    return `
+  email: string,
+  password: string
+): string => {
+  return `
       <!DOCTYPE html>
       <html>
       <head>
@@ -171,7 +171,11 @@ export const partnershipWelcomeEmail = (
                 <tr>
                   <td style="padding: 0 40px 30px;">
                     <p style="color: #5d6975; font-size: 14px; margin: 0;">
-                      Date: ${new Date().toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'})}
+                      Date: ${new Date().toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
                     </p>
                   </td>
                 </tr>
@@ -254,7 +258,11 @@ export const partnershipWelcomeEmail = (
                       To access your partnership account, please follow these steps:
                     </p>
                     <ol style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 15px; padding-left: 20px;">
-                      <li style="margin-bottom: 10px;">Navigate to our secure partner portal at <a href="${process.env.FRONTEND_URL}/login" style="color: #2980b9; text-decoration: none; font-weight: 500;">${process.env.FRONTEND_URL}/login</a></li>
+                      <li style="margin-bottom: 10px;">Navigate to our secure partner portal at <a href="${
+                        process.env.FRONTEND_URL
+                      }/login" style="color: #2980b9; text-decoration: none; font-weight: 500;">${
+    process.env.FRONTEND_URL
+  }/login</a></li>
                       <li style="margin-bottom: 10px;">Enter your email address and temporary password as provided above</li>
                       <li>Upon first login, you will be prompted to change your password</li>
                     </ol>
@@ -356,16 +364,16 @@ export const partnershipWelcomeEmail = (
       </body>
       </html>
     `;
-  };
+};
 
-  export const newSuggestionEmail = (
-    name: string,
-    email: string,
-    phone: string,
-    firma: string,
-    suggestion: string,
-  ): string => {
-    return `
+export const newSuggestionEmail = (
+  name: string,
+  email: string,
+  phone: string,
+  firma: string,
+  suggestion: string
+): string => {
+  return `
       <!DOCTYPE html>
       <html>
       <head>
@@ -400,7 +408,11 @@ export const partnershipWelcomeEmail = (
                 <tr>
                   <td style="padding: 0 40px 30px;">
                     <p style="color: #5d6975; font-size: 14px; margin: 0;">
-                      Date: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                      Date: ${new Date().toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
                     </p>
                   </td>
                 </tr>
@@ -539,34 +551,8 @@ export const partnershipWelcomeEmail = (
         </table>
       </body>
       </html>
-    `
-  }
-
-//   export const newImprovementEmail = (
-//   company: string,
-//   phone: string,
-//   reason: string,
-//   message: string
-// ): string => {
-//   return `
-//     <!DOCTYPE html>
-//     <html>
-//     <head>
-//       <meta charset="utf-8">
-//       <title>ASPAPIC - New Improvement Suggestion</title>
-//     </head>
-//     <body>
-//       <h1>New Improvement Suggestion Received</h1>
-//       <p><strong>Company:</strong> ${company}</p>
-//       <p><strong>Phone:</strong> ${phone}</p>
-//       <p><strong>Reason:</strong> ${reason}</p>
-//       <p><strong>Message:</strong> ${message}</p>
-//       <p>Submitted on: ${new Date().toLocaleString()}</p>
-//     </body>
-//     </html>
-//   `;
-// };
-
+    `;
+};
 
 export const newImprovementEmail = (
   company: string,
@@ -608,11 +594,14 @@ export const newImprovementEmail = (
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
             <tr>
               <td style="padding: 0 40px 30px;">
-                <p style="color: #64748b; font-size: 14px; margin: 0;">Submitted on: ${new Date().toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}</p>
+                <p style="color: #64748b; font-size: 14px; margin: 0;">Submitted on: ${new Date().toLocaleDateString(
+                  "en-US",
+                  {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  }
+                )}</p>
               </td>
             </tr>
           </table>
@@ -696,14 +685,12 @@ export const newImprovementEmail = (
   `;
 };
 
-
-
 export const adminLoginNotificationEmail = (
   adminEmail: string,
   adminName: string,
   loginDate: string,
   loginTime: string,
-  ipAddress: string,
+  ipAddress: string
 ): string => {
   return `
   <!DOCTYPE html>
@@ -726,7 +713,9 @@ export const adminLoginNotificationEmail = (
       <!-- Intro -->
       <tr>
         <td style="padding: 24px 32px; color: #2c3e50;">
-          <p style="font-size: 16px; margin: 0 0 12px;">Hi <strong>${adminName || 'Admin'}</strong>,</p>
+          <p style="font-size: 16px; margin: 0 0 12px;">Hi <strong>${
+            adminName || "Admin"
+          }</strong>,</p>
           <p style="font-size: 15px; margin: 0 0 16px;">
             This is to confirm that your TDHaemoi admin account was accessed. Please find the login details below for your records.
           </p>
@@ -794,4 +783,13 @@ export const adminLoginNotificationEmail = (
   `;
 };
 
-  
+export const sendPdfToEmailTamplate = (pdf: any): any => `
+  <!DOCTYPE html>
+  <html>
+  <body>
+    <h2>Your Exercise Program</h2>
+    <p>Please download the attached PDF document to view your exercise program.</p>
+    <p>If you can't see the attachment, <a href="#">download it here</a>.</p>
+  </body>
+  </html>
+`;

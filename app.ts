@@ -23,6 +23,7 @@ app.use(
       "http://192.168.30.102:3000",
       "http://192.168.30.102:*",
       "http://localhost:3000",
+      "http://localhost:3003",
       "http://localhost:3001",
       "http://localhost:*",
       "http://192.168.30.102:3000",
@@ -34,14 +35,14 @@ app.use(
       "http://192.168.40.10:4000",
       "http://localhost:3001",
       "http://192.168.4.30:3001",
+      "http://192.168.4.30:3003",
       "https://landing-page-iota-eight-94.vercel.app",
       "file:///D:/z-bbs/tdhaemoi-backend/public/index.html",
       "https://landing-page-iota-eight-94.vercel.app",
       "http://localhost:3002",
       "https://tdhaemoi-partner-dashbaord.vercel.app",
       "https://feetf1rst.tech",
-      "https://partner.feetf1rst.tech"
-      
+      "https://partner.feetf1rst.tech",
     ],
   })
 );
@@ -59,11 +60,12 @@ app.use(morgan("dev"));
 // app.use("/message", message)
 // app.use("/appointment", appointment)
 
-app.use("/", v1);
-app.use("/v2", v2);
+app.use("/assets", express.static(path.join(__dirname, "assets")));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/assets", express.static(path.join(__dirname, "assets")));
+
+app.use("/", v1);
+app.use("/v2", v2);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.status(404).json({
