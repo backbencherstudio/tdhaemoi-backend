@@ -51,18 +51,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(morgan("dev"));
 
-// app.use("/users", users);
-// app.use("/products", products); // Add this line
-// app.use("/excel", excel)
-// app.use("/questions", questions)
-// app.use("/partner", partner);
-// app.use("/suggestions", suggestions);
-// app.use("/message", message)
-// app.use("/appointment", appointment)
+ 
 
-app.use("/assets", express.static(path.join(__dirname, "assets")));
-
+app.use("/assets", express.static(path.join(__dirname, "../assets")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 
 app.use("/", v1);
 app.use("/v2", v2);

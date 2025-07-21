@@ -1,7 +1,7 @@
 export const data = [
     {
       id: 1,
-      image: "a.png",
+      image: "1.png",
       text: "Für Überpronierer geeignet",
     },
     {
