@@ -6,14 +6,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const morgan_1 = __importDefault(require("morgan"));
-const users_routes_1 = __importDefault(require("./module/users/users.routes"));
-const products_routes_1 = __importDefault(require("./module/products/products.routes"));
-const excel_routes_1 = __importDefault(require("./module/excel/excel.routes"));
-const question_routes_1 = __importDefault(require("./module/question/question.routes"));
-const partners_routes_1 = __importDefault(require("./module/partners/partners.routes"));
-const suggestions_routes_1 = __importDefault(require("./module/suggestions/suggestions.routes"));
-const messages_routes_1 = __importDefault(require("./module/messages/messages.routes"));
-const appointment_routes_1 = __importDefault(require("./module/appointment/appointment.routes"));
+// import users from "./module/v1/users/users.routes";
+// import products from "./module/v1/products/products.routes";
+// import excel from "./module/v1/excel/excel.routes";
+// import questions from "./module/v1/question/question.routes";
+// import partner from "./module/v1/partners/partners.routes";
+// import suggestions from "./module/v1/suggestions/suggestions.routes";
+// import message from "./module/v1/messages/messages.routes";
+// import appointment from "./module/v1/appointment/appointment.routes";
+const index_1 = __importDefault(require("./module/v1/index"));
+const index_2 = __importDefault(require("./module/v2/index"));
 const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
@@ -21,9 +23,10 @@ app.use((0, cors_1.default)({
         "http://192.168.30.102:3000",
         "http://192.168.30.102:*",
         "http://localhost:3000",
+        "http://localhost:3003",
         "http://localhost:3001",
         "http://localhost:*",
-        'http://192.168.30.102:3000',
+        "http://192.168.30.102:3000",
         "http://192.168.30.102:3001",
         "http://192.168.30.102:3003",
         "http://192.168.40.47:3004",
@@ -32,25 +35,23 @@ app.use((0, cors_1.default)({
         "http://192.168.40.10:4000",
         "http://localhost:3001",
         "http://192.168.4.30:3001",
+        "http://192.168.4.30:3003",
         "https://landing-page-iota-eight-94.vercel.app",
         "file:///D:/z-bbs/tdhaemoi-backend/public/index.html",
-        'https://landing-page-iota-eight-94.vercel.app',
-        'http://localhost:3002'
+        "https://landing-page-iota-eight-94.vercel.app",
+        "http://localhost:3002",
+        "https://tdhaemoi-partner-dashbaord.vercel.app",
+        "https://feetf1rst.tech",
+        "https://partner.feetf1rst.tech",
     ],
 }));
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use(express_1.default.json());
 app.use((0, morgan_1.default)("dev"));
-app.use("/users", users_routes_1.default);
-app.use("/products", products_routes_1.default); // Add this line
-app.use("/excel", excel_routes_1.default);
-app.use("/questions", question_routes_1.default);
-app.use("/partner", partners_routes_1.default);
-app.use("/suggestions", suggestions_routes_1.default);
-app.use("/message", messages_routes_1.default);
-app.use("/appointment", appointment_routes_1.default);
+app.use("/assets", express_1.default.static(path_1.default.join(__dirname, "../assets")));
 app.use("/uploads", express_1.default.static(path_1.default.join(__dirname, "uploads")));
-app.use('/assets', express_1.default.static(path_1.default.join(__dirname, 'assets')));
+app.use("/", index_1.default);
+app.use("/v2", index_2.default);
 app.use((req, res, next) => {
     res.status(404).json({
         message: `404 route not found`,

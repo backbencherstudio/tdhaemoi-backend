@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.adminLoginNotificationEmail = exports.newImprovementEmail = exports.newSuggestionEmail = exports.partnershipWelcomeEmail = exports.emailForgotPasswordOTP = void 0;
+exports.sendPdfToEmailTamplate = exports.adminLoginNotificationEmail = exports.newImprovementEmail = exports.newSuggestionEmail = exports.partnershipWelcomeEmail = exports.emailForgotPasswordOTP = void 0;
 const emailForgotPasswordOTP = (email, OTP) => {
     return `
     <!DOCTYPE html>
@@ -171,7 +171,11 @@ const partnershipWelcomeEmail = (email, password) => {
                 <tr>
                   <td style="padding: 0 40px 30px;">
                     <p style="color: #5d6975; font-size: 14px; margin: 0;">
-                      Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      Date: ${new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    })}
                     </p>
                   </td>
                 </tr>
@@ -394,7 +398,11 @@ const newSuggestionEmail = (name, email, phone, firma, suggestion) => {
                 <tr>
                   <td style="padding: 0 40px 30px;">
                     <p style="color: #5d6975; font-size: 14px; margin: 0;">
-                      Date: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                      Date: ${new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    })}
                     </p>
                   </td>
                 </tr>
@@ -536,30 +544,6 @@ const newSuggestionEmail = (name, email, phone, firma, suggestion) => {
     `;
 };
 exports.newSuggestionEmail = newSuggestionEmail;
-//   export const newImprovementEmail = (
-//   company: string,
-//   phone: string,
-//   reason: string,
-//   message: string
-// ): string => {
-//   return `
-//     <!DOCTYPE html>
-//     <html>
-//     <head>
-//       <meta charset="utf-8">
-//       <title>ASPAPIC - New Improvement Suggestion</title>
-//     </head>
-//     <body>
-//       <h1>New Improvement Suggestion Received</h1>
-//       <p><strong>Company:</strong> ${company}</p>
-//       <p><strong>Phone:</strong> ${phone}</p>
-//       <p><strong>Reason:</strong> ${reason}</p>
-//       <p><strong>Message:</strong> ${message}</p>
-//       <p>Submitted on: ${new Date().toLocaleString()}</p>
-//     </body>
-//     </html>
-//   `;
-// };
 const newImprovementEmail = (company, phone, reason, message) => {
     return `
   <!DOCTYPE html>
@@ -705,7 +689,7 @@ const adminLoginNotificationEmail = (adminEmail, adminName, loginDate, loginTime
       <!-- Intro -->
       <tr>
         <td style="padding: 24px 32px; color: #2c3e50;">
-          <p style="font-size: 16px; margin: 0 0 12px;">Hi <strong>${adminName || 'Admin'}</strong>,</p>
+          <p style="font-size: 16px; margin: 0 0 12px;">Hi <strong>${adminName || "Admin"}</strong>,</p>
           <p style="font-size: 15px; margin: 0 0 16px;">
             This is to confirm that your TDHaemoi admin account was accessed. Please find the login details below for your records.
           </p>
@@ -773,4 +757,15 @@ const adminLoginNotificationEmail = (adminEmail, adminName, loginDate, loginTime
   `;
 };
 exports.adminLoginNotificationEmail = adminLoginNotificationEmail;
+const sendPdfToEmailTamplate = (pdf) => `
+  <!DOCTYPE html>
+  <html>
+  <body>
+    <h2>Your Exercise Program</h2>
+    <p>Please download the attached PDF document to view your exercise program.</p>
+    <p>If you can't see the attachment, <a href="#">download it here</a>.</p>
+  </body>
+  </html>
+`;
+exports.sendPdfToEmailTamplate = sendPdfToEmailTamplate;
 //# sourceMappingURL=email_message.js.map
