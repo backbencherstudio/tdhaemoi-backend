@@ -62,7 +62,8 @@ app.use(morgan("dev"));
 
 app.use("/assets", express.static(path.join(__dirname, "assets")));
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(__dirname,"..", "uploads")));
+
 
 app.use("/", v1);
 app.use("/v2", v2);
