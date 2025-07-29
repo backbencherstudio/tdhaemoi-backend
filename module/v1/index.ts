@@ -1,6 +1,6 @@
 import express from 'express';
 
-import users from './users/users.routes';
+import users from './auth/users.routes';
 import products from './products/products.routes';
 import excel from './excel/excel.routes';
 import questions from './question/question.routes';

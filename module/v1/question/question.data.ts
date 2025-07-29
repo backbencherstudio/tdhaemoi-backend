@@ -192,7 +192,7 @@ export const questionnaireData = [
                                             ]
                                         },
                                         {
-                                            "id": 2,
+                                            "id": 2, 
                                             "question": "Wie lang sollten Ihre Ski sein?",
                                             "options": [
                                                 {
