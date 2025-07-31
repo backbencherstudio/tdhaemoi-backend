@@ -43,7 +43,7 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       createdBy: req.user.id,
     };
 
-    const newVersorgungen = await prisma.mersorgungen.create({
+    const newVersorgungen = await prisma.versorgungen.create({
       data: versorgungenData,
     });
 

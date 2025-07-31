@@ -180,7 +180,7 @@ enum Gender {
 
 //-------------------------------------------------
 
-model Mersorgungen {
+model Versorgungen {
   id                String @id @default(uuid())
   name              String
   rohlingHersteller String
@@ -189,16 +189,16 @@ model Mersorgungen {
   material          String
   langenempfehlung  Json
 
-  status mersorgungenStatus
+  status versorgungenStatus
 
   createdBy String
-  
+  updatedBy String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-enum mersorgungenStatus {
+enum versorgungenStatus {
   Alltagseinlagen
   Sporteinlagen
   Businesseinlagen
