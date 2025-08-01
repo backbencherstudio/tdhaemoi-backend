@@ -180,6 +180,21 @@ enum Gender {
 
 //-------------------------------------------------
 
+model Employees {
+  id              String  @id @default(uuid())
+  accountName     String
+  employeeName    String
+  email           String  @unique
+  password        String
+  financialAccess Boolean @default(false)
+
+  createdBy String
+  updatedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Versorgungen {
   id                String @id @default(uuid())
   name              String
@@ -202,4 +217,42 @@ enum versorgungenStatus {
   Alltagseinlagen
   Sporteinlagen
   Businesseinlagen
+}
+
+model customers {
+  id            String  @id @default(uuid())
+  vorname       String
+  nachname      String
+  email         String  @unique
+  telefonnummer String?
+  wohnort       String?
+
+  picture_10        String? //Fersenneigung left
+  picture_23        String? //Plantaransicht left
+  threed_model_left String? //3D-Model left
+  picture_17        String? //Sohlen Index left
+
+  picture_11         String? //Fersenneigung right
+  picture_24         String? //Plantaransich right
+  threed_model_right String? //3D-Model right
+  picture_16         String? //Sohlen Index right
+
+  fusslange1   String? //B58
+  fusslange2   String? //C58
+  fussbreite1  String? //B73
+  fussbreite2  String? //C73
+  kugelumfang1 String? //B102
+  kugelumfang2 String? //C102
+  rist1        String? //B105
+  rist2        String? //C105
+  zehentyp1    String? //B136
+  zehentyp2    String? //C136
+  archIndex1   String? //B120
+  archIndex2   String? //C120
+
+  createdBy String
+  updatedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

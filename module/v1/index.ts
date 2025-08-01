@@ -9,6 +9,7 @@ import suggestions from './suggestions/suggestions.routes';
 import message from './messages/messages.routes';
 import appointment from './appointment/appointment.routes';
 import versorgungen from './versorgungen/versorgungen.routes';
+import employees from './employees/employees.routes';
 const router = express.Router();
 
 const moduleRoutes = [
@@ -20,7 +21,8 @@ const moduleRoutes = [
   { path: '/suggestions', route: suggestions },
   { path: '/message', route: message },
   { path: '/appointment', route: appointment },
-  { path: '/versorgungen', route: versorgungen },  
+  { path: '/versorgungen', route: versorgungen },
+  { path: '/employees', route: employees},
 ];
 
 moduleRoutes.forEach(({ path, route }) => {

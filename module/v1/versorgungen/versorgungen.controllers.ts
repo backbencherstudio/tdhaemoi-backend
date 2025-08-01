@@ -155,6 +155,9 @@ export const patchVersorgungen = async (req: Request, res: Response) => {
       Object.entries(req.body).filter(([key, value]) => value !== undefined)
     );
 
+ 
+    updatedVersorgungenData.updatedBy = req.user.id;
+
     const updatedVersorgungen = await prisma.versorgungen.update({
       where: { id },
       data: updatedVersorgungenData,
