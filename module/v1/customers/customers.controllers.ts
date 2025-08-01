@@ -3,6 +3,8 @@ import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import iconv from "iconv-lite";
 import csvParser from "csv-parser";
+import { getImageUrl } from "../../../utils/base_utl";
+import path from "path";
 
 const prisma = new PrismaClient();
 
@@ -47,9 +49,7 @@ async function parseCSV(csvPath: string): Promise<any> {
   });
 }
 
-
 export const createCustomers = async (req: Request, res: Response) => {
-
   try {
     const missingField = ["vorname", "nachname", "email"].find(
       (field) => !req.body[field]
@@ -153,6 +153,249 @@ export const createCustomers = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Create Customer Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: err.message,
+    });
+  }
+};
+
+export const getAllCustomers = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = (req.query.search as string) || "";
+    const skip = (page - 1) * limit;
+
+    // Filter condition
+    const whereCondition: any = {};
+    if (search) {
+      whereCondition.OR = [
+        { vorname: { contains: search, mode: "insensitive" } },
+        { nachname: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    //  Fetch data and total count
+    const [customers, totalCount] = await Promise.all([
+      prisma.customers.findMany({
+        where: whereCondition,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.customers.count({ where: whereCondition }),
+    ]);
+
+    // Add image URLs
+    const customersWithImages = customers.map((c) => ({
+      ...c,
+      picture_10: c.picture_10 ? getImageUrl(`/uploads/${c.picture_10}`) : null,
+      picture_23: c.picture_23 ? getImageUrl(`/uploads/${c.picture_23}`) : null,
+      picture_11: c.picture_11 ? getImageUrl(`/uploads/${c.picture_11}`) : null,
+      picture_24: c.picture_24 ? getImageUrl(`/uploads/${c.picture_24}`) : null,
+      threed_model_left: c.threed_model_left
+        ? getImageUrl(`/uploads/${c.threed_model_left}`)
+        : null,
+      threed_model_right: c.threed_model_right
+        ? getImageUrl(`/uploads/${c.threed_model_right}`)
+        : null,
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "Customers fetched successfully",
+      data: customersWithImages,
+      pagination: {
+        totalItems: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+        currentPage: page,
+        itemsPerPage: limit,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get All Customers error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteCustomer = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const customer = await prisma.customers.findUnique({
+      where: { id },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const fileFields = [
+      customer.picture_10,
+      customer.picture_23,
+      customer.picture_17,
+      customer.picture_11,
+      customer.picture_24,
+      customer.picture_16,
+      customer.threed_model_left,
+      customer.threed_model_right,
+    ];
+
+    fileFields.forEach((file) => {
+      if (file) {
+        const filePath = `uploads/${file}`;
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    });
+
+    await prisma.customers.delete({
+      where: { id },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Customer deleted successfully",
+    });
+  } catch (error: any) {
+    console.error("Delete Customer Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const updateCustomer = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const existing = await prisma.customers.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const files = req.files as any;
+    const {
+      vorname,
+      nachname,
+      email,
+      telefonnummer,
+      wohnort,
+      fusslange1,
+      fusslange2,
+      fussbreite1,
+      fussbreite2,
+      kugelumfang1,
+      kugelumfang2,
+      rist1,
+      rist2,
+      zehentyp1,
+      zehentyp2,
+      archIndex1,
+      archIndex2,
+    } = req.body;
+
+    const deleteOldIfNew = (newFile: any, oldFileName: string | null) => {
+      if (newFile && oldFileName) {
+        const oldPath = path.join(process.cwd(), "uploads", oldFileName);
+        if (fs.existsSync(oldPath)) {
+          try {
+            fs.unlinkSync(oldPath);
+            console.log(`Deleted old file: ${oldPath}`);
+          } catch (err) {
+            console.error(`Failed to delete old file: ${oldPath}`, err);
+          }
+        }
+      }
+    };
+
+    deleteOldIfNew(files.picture_10?.[0], existing.picture_10);
+    deleteOldIfNew(files.picture_23?.[0], existing.picture_23);
+    deleteOldIfNew(files.threed_model_left?.[0], existing.threed_model_left);
+    deleteOldIfNew(files.picture_17?.[0], existing.picture_17);
+    deleteOldIfNew(files.picture_11?.[0], existing.picture_11);
+    deleteOldIfNew(files.picture_24?.[0], existing.picture_24);
+    deleteOldIfNew(files.threed_model_right?.[0], existing.threed_model_right);
+    deleteOldIfNew(files.picture_16?.[0], existing.picture_16);
+
+    const picture_10 = files.picture_10?.[0]?.filename || existing.picture_10;
+    const picture_23 = files.picture_23?.[0]?.filename || existing.picture_23;
+    const threed_model_left =
+      files.threed_model_left?.[0]?.filename || existing.threed_model_left;
+    const picture_17 = files.picture_17?.[0]?.filename || existing.picture_17;
+    const picture_11 = files.picture_11?.[0]?.filename || existing.picture_11;
+    const picture_24 = files.picture_24?.[0]?.filename || existing.picture_24;
+    const threed_model_right =
+      files.threed_model_right?.[0]?.filename || existing.threed_model_right;
+    const picture_16 = files.picture_16?.[0]?.filename || existing.picture_16;
+
+    let csvData: any = {};
+    if (files.csvFile && files.csvFile[0]) {
+      const csvPath = files.csvFile[0].path;
+      csvData = await parseCSV(csvPath);
+      fs.unlinkSync(csvPath);
+    }
+
+    const updateData = {
+      vorname: vorname || existing.vorname,
+      nachname: nachname || existing.nachname,
+      email: email || existing.email,
+      telefonnummer: telefonnummer || existing.telefonnummer,
+      wohnort: wohnort || existing.wohnort,
+
+      picture_10,
+      picture_23,
+      threed_model_left,
+      picture_17,
+      picture_11,
+      picture_24,
+      threed_model_right,
+      picture_16,
+
+      fusslange1: csvData.B58 || fusslange1 || existing.fusslange1,
+      fusslange2: csvData.C58 || fusslange2 || existing.fusslange2,
+      fussbreite1: csvData.B73 || fussbreite1 || existing.fussbreite1,
+      fussbreite2: csvData.C73 || fussbreite2 || existing.fussbreite2,
+      kugelumfang1: csvData.B102 || kugelumfang1 || existing.kugelumfang1,
+      kugelumfang2: csvData.C102 || kugelumfang2 || existing.kugelumfang2,
+      rist1: csvData.B105 || rist1 || existing.rist1,
+      rist2: csvData.C105 || rist2 || existing.rist2,
+      archIndex1: csvData.B120 || archIndex1 || existing.archIndex1,
+      archIndex2: csvData.C120 || archIndex2 || existing.archIndex2,
+      zehentyp1: csvData.B136 || zehentyp1 || existing.zehentyp1,
+      zehentyp2: csvData.C136 || zehentyp2 || existing.zehentyp2,
+
+      updatedBy: req.user.id,
+    };
+
+    const updated = await prisma.customers.update({
+      where: { id },
+      data: updateData,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Customer updated successfully",
+      data: updated,
+    });
+  } catch (err: any) {
+    console.error("Update Customer Error:", err);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
