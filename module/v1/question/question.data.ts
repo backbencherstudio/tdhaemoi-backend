@@ -1289,7 +1289,7 @@ export const questionnaireData = [
         "questions": [
             {
                 "id": 1,
-                "question": "Auf welchem Untergrund werden Sie den Schuh hauptsächlich nutzen? ",
+                "question": "Auf welchem Untergrund werden Sie den Schuh hauptsächlich nutzen?",
                 "options": [
                     {
                         "id": 1,

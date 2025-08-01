@@ -1,30 +1,17 @@
-import { Multer } from 'multer';
-
-declare global {
-  namespace Express {
-    export interface Request {
-      file?: Multer.File;
-    }
-  }
-}
-
-
-import { Request } from 'express';
+import { Multer } from "multer";
 
 declare global {
   namespace Express {
     interface Request {
-      user?: any; 
-    }
-  }
-}
+      user?: any;
 
-
-declare global {
-  namespace Express {
-    export interface Request {
       file?: Multer.File;
-      files?: Multer.File[];
+
+      files?:
+        | {
+            [fieldname: string]: Multer.File[];
+          }
+        | Multer.File[];
     }
   }
 }

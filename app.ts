@@ -2,14 +2,6 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import morgan from "morgan";
 
-// import users from "./module/v1/users/users.routes";
-// import products from "./module/v1/products/products.routes";
-// import excel from "./module/v1/excel/excel.routes";
-// import questions from "./module/v1/question/question.routes";
-// import partner from "./module/v1/partners/partners.routes";
-// import suggestions from "./module/v1/suggestions/suggestions.routes";
-// import message from "./module/v1/messages/messages.routes";
-// import appointment from "./module/v1/appointment/appointment.routes";
 
 import v1 from "./module/v1/index";
 import v2 from "./module/v2/index";
