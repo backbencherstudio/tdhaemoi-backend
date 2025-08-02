@@ -70,6 +70,8 @@ model Product {
   question        Json?
   colors          Color[]
   createdAt       DateTime @default(now())
+
+  @@index([id, name])
 }
 
 model Color {
@@ -211,12 +213,15 @@ model Versorgungen {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([id, name])
 }
 
 enum versorgungenStatus {
   Alltagseinlagen
   Sporteinlagen
   Businesseinlagen
+  Knickfuss
 }
 
 model customers {
@@ -254,6 +259,32 @@ model customers {
   createdBy String
   updatedBy String?
 
+  versorgungen customer_versorgungen[] @relation("customerVersorgungen")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([id, nachname, vorname, email])
 }
+
+model customer_versorgungen {
+  id                String             @id @default(uuid())
+  name              String
+  rohlingHersteller String
+  artikelHersteller String
+  versorgung        String
+  material          String
+  langenempfehlung  Json
+  status            versorgungenStatus
+
+  customerId String
+  customer   customers @relation("customerVersorgungen", fields: [customerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([customerId, status])
+  @@index([id, name])
+}
+
+// https://chatgpt.com/share/688ca13d-c468-800c-8159-f0c30dccecbf8

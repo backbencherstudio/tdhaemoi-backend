@@ -1,6 +1,6 @@
 import express from "express";
 import { verifyUser } from "../../../middleware/verifyUsers";
-import { createCustomers, deleteCustomer, getAllCustomers, updateCustomer } from "./customers.controllers";
+import { assignVersorgungToCustomer, createCustomers, deleteCustomer, getAllCustomers, updateCustomer } from "./customers.controllers";
 import upload from "../../../config/multer.config";
 
 const router = express.Router();
@@ -17,7 +17,7 @@ router.post(
     { name: "picture_24", maxCount: 1 },
     { name: "threed_model_right", maxCount: 1 },
     { name: "picture_16", maxCount: 1 },
-    { name: "csvFile", maxCount: 1 }, // CSV upload
+    { name: "csvFile", maxCount: 1 },
   ]),
   createCustomers
 );
@@ -41,6 +41,14 @@ router.patch(
     { name: "csvFile", maxCount: 1 },
   ]),
   updateCustomer
+);
+
+router.get("/:id", verifyUser("PARTNER", "ADMIN"), getAllCustomers);
+
+router.post(
+  "/assign-versorgungen/:customerId/:versorgungenId",
+  verifyUser("ADMIN", "PARTNER"),
+  assignVersorgungToCustomer
 );
 
 

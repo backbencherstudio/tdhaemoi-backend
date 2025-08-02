@@ -185,6 +185,7 @@ export const getAllCustomers = async (req: Request, res: Response) => {
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
+        include: { versorgungen: true },
       }),
       prisma.customers.count({ where: whereCondition }),
     ]);
@@ -400,6 +401,234 @@ export const updateCustomer = async (req: Request, res: Response) => {
       success: false,
       message: "Something went wrong",
       error: err.message,
+    });
+  }
+};
+
+export const getCustomerById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const customer = await prisma.customers.findUnique({
+      where: { id },
+      include: { versorgungen: true },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+    const customerWithImages = {
+      ...customer,
+      picture_10: customer.picture_10
+        ? getImageUrl(`/uploads/${customer.picture_10}`)
+        : null,
+      picture_23: customer.picture_23
+        ? getImageUrl(`/uploads/${customer.picture_23}`)
+        : null,
+      picture_11: customer.picture_11
+        ? getImageUrl(`/uploads/${customer.picture_11}`)
+        : null,
+      picture_24: customer.picture_24
+        ? getImageUrl(`/uploads/${customer.picture_24}`)
+        : null,
+      threed_model_left: customer.threed_model_left
+        ? getImageUrl(`/uploads/${customer.threed_model_left}`)
+        : null,
+      threed_model_right: customer.threed_model_right
+        ? getImageUrl(`/uploads/${customer.threed_model_right}`)
+        : null,
+    };
+    res.status(200).json({
+      success: true,
+      message: "Customer fetched successfully",
+      data: customerWithImages,
+    });
+  } catch (error: any) {
+    console.error("Get Customer By ID Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+// export const assignVersorgungToCustomer = async (
+//   req: Request,
+//   res: Response
+// ) => {
+//   try {
+//     const { customerId, versorgungenId } = req.params;
+
+//     // 1. Check if customer exists
+//     const customer = await prisma.customers.findUnique({
+//       where: { id: customerId },
+//       include: { versorgungen: true },
+//     });
+//     if (!customer) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Customer not found" });
+//     }
+
+//     // 2. Get Versorgungen data
+//     const versorgung = await prisma.versorgungen.findUnique({
+//       where: { id: versorgungenId },
+//     });
+//     if (!versorgung) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Versorgung not found" });
+//     }
+
+//     // 3. Check if this customer already has a versorgung with the same status
+//     const existing = await prisma.customer_versorgungen.findFirst({
+//       where: { customerId: customerId, status: versorgung.status },
+//     });
+
+//     let result;
+
+//     if (existing) {
+//       // 4. Replace existing record with new versorgung data
+//       result = await prisma.customer_versorgungen.update({
+//         where: { id: existing.id },
+//         data: {
+//           name: versorgung.name,
+//           rohlingHersteller: versorgung.rohlingHersteller,
+//           artikelHersteller: versorgung.artikelHersteller,
+//           versorgung: versorgung.versorgung,
+//           material: versorgung.material,
+//           langenempfehlung: versorgung.langenempfehlung,
+//           status: versorgung.status,
+//         },
+//       });
+//     } else {
+//       // 5. Create new if not exists for this status
+//       result = await prisma.customer_versorgungen.create({
+//         data: {
+//           name: versorgung.name,
+//           rohlingHersteller: versorgung.rohlingHersteller,
+//           artikelHersteller: versorgung.artikelHersteller,
+//           versorgung: versorgung.versorgung,
+//           material: versorgung.material,
+//           langenempfehlung: versorgung.langenempfehlung,
+//           status: versorgung.status,
+//           customerId: customer.id,
+//         },
+//       });
+//     }
+
+//     res.status(201).json({
+//       success: true,
+//       message: existing
+//         ? "Versorgung replaced successfully for this status"
+//         : "Versorgung assigned to customer successfully",
+//       data: result,
+//     });
+//   } catch (error: any) {
+//     console.error("Assign Versorgung Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
+
+export const assignVersorgungToCustomer = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { customerId, versorgungenId } = req.params;
+
+    const [customer, versorgung] = await Promise.all([
+      prisma.customers.findUnique({ where: { id: customerId } }),
+      prisma.versorgungen.findUnique({ where: { id: versorgungenId } }),
+    ]);
+
+    if (!customer)
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer not found" });
+    if (!versorgung)
+      return res
+        .status(404)
+        .json({ success: false, message: "Versorgung not found" });
+
+    await prisma.customer_versorgungen.upsert({
+      where: {
+        id:
+          (
+            await prisma.customer_versorgungen.findFirst({
+              where: { customerId, status: versorgung.status },
+              select: { id: true },
+            })
+          )?.id || "00000000-0000-0000-0000-000000000000",
+      },
+      create: {
+        name: versorgung.name,
+        rohlingHersteller: versorgung.rohlingHersteller,
+        artikelHersteller: versorgung.artikelHersteller,
+        versorgung: versorgung.versorgung,
+        material: versorgung.material,
+        langenempfehlung: versorgung.langenempfehlung,
+        status: versorgung.status,
+        customerId,
+      },
+      update: {
+        name: versorgung.name,
+        rohlingHersteller: versorgung.rohlingHersteller,
+        artikelHersteller: versorgung.artikelHersteller,
+        versorgung: versorgung.versorgung,
+        material: versorgung.material,
+        langenempfehlung: versorgung.langenempfehlung,
+        status: versorgung.status,
+      },
+    });
+
+    // Fetch customer with relations in one query
+    const updatedCustomer = await prisma.customers.findUnique({
+      where: { id: customerId },
+      include: { versorgungen: true },
+    });
+
+    // Format image URLs once
+    const formattedCustomer = {
+      ...updatedCustomer,
+      picture_10: updatedCustomer?.picture_10
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_10}`)
+        : null,
+      picture_23: updatedCustomer?.picture_23
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_23}`)
+        : null,
+      picture_11: updatedCustomer?.picture_11
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_11}`)
+        : null,
+      picture_24: updatedCustomer?.picture_24
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_24}`)
+        : null,
+      threed_model_left: updatedCustomer?.threed_model_left
+        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_left}`)
+        : null,
+      threed_model_right: updatedCustomer?.threed_model_right
+        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_right}`)
+        : null,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Versorgung assigned/replaced successfully",
+      data: formattedCustomer,
+    });
+  } catch (error: any) {
+    console.error("Assign Versorgung Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
     });
   }
 };
