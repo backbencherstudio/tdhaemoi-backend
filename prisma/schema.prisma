@@ -261,10 +261,14 @@ model customers {
 
   versorgungen customer_versorgungen[] @relation("customerVersorgungen")
 
+  ausfuhrliche_diagnose String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([id, nachname, vorname, email])
+  @@index([vorname])
+  @@index([nachname])
+  @@index([email])
 }
 
 model customer_versorgungen {

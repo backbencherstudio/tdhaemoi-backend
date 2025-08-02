@@ -1,6 +1,6 @@
 import express from "express";
 import { verifyUser } from "../../../middleware/verifyUsers";
-import { assignVersorgungToCustomer, createCustomers, deleteCustomer, getAllCustomers, updateCustomer } from "./customers.controllers";
+import { assignVersorgungToCustomer, createCustomers, deleteCustomer, getAllCustomers, undoAssignVersorgungToCustomer, updateCustomer } from "./customers.controllers";
 import upload from "../../../config/multer.config";
 
 const router = express.Router();
@@ -51,5 +51,10 @@ router.post(
   assignVersorgungToCustomer
 );
 
+router.delete(
+  "/undo-versorgungen/:customerId/:versorgungenId",
+  verifyUser("ADMIN", "PARTNER"),
+  undoAssignVersorgungToCustomer
+);
 
 export default router;

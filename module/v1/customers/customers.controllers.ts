@@ -310,6 +310,7 @@ export const updateCustomer = async (req: Request, res: Response) => {
       zehentyp2,
       archIndex1,
       archIndex2,
+      ausfuhrliche_diagnose,
     } = req.body;
 
     const deleteOldIfNew = (newFile: any, oldFileName: string | null) => {
@@ -360,6 +361,9 @@ export const updateCustomer = async (req: Request, res: Response) => {
       telefonnummer: telefonnummer || existing.telefonnummer,
       wohnort: wohnort || existing.wohnort,
 
+      ausfuhrliche_diagnose:
+        ausfuhrliche_diagnose || existing.ausfuhrliche_diagnose,
+
       picture_10,
       picture_23,
       threed_model_left,
@@ -385,15 +389,38 @@ export const updateCustomer = async (req: Request, res: Response) => {
       updatedBy: req.user.id,
     };
 
-    const updated = await prisma.customers.update({
+    const updatedCustomer = await prisma.customers.update({
       where: { id },
       data: updateData,
+      include: { versorgungen: true },
     });
+
+    const customerWithImages = {
+      ...updatedCustomer,
+      picture_10: updatedCustomer?.picture_10
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_10}`)
+        : null,
+      picture_23: updatedCustomer?.picture_23
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_23}`)
+        : null,
+      picture_11: updatedCustomer?.picture_11
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_11}`)
+        : null,
+      picture_24: updatedCustomer?.picture_24
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_24}`)
+        : null,
+      threed_model_left: updatedCustomer?.threed_model_left
+        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_left}`)
+        : null,
+      threed_model_right: updatedCustomer?.threed_model_right
+        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_right}`)
+        : null,
+    };
 
     res.status(200).json({
       success: true,
       message: "Customer updated successfully",
-      data: updated,
+      data: customerWithImages,
     });
   } catch (err: any) {
     console.error("Update Customer Error:", err);
@@ -625,6 +652,80 @@ export const assignVersorgungToCustomer = async (
     });
   } catch (error: any) {
     console.error("Assign Versorgung Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const undoAssignVersorgungToCustomer = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { customerId, versorgungenId } = req.params;
+
+    // ✅ Find assignment in customer_versorgungen
+    const existing = await prisma.customer_versorgungen.findFirst({
+      where: {
+        customerId,
+        // Match original versorgungen data
+        name:
+          (
+            await prisma.versorgungen.findUnique({
+              where: { id: versorgungenId },
+            })
+          )?.name || "",
+      },
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: "Assigned Versorgung not found for this customer",
+      });
+    }
+
+    // ✅ Delete assignment
+    await prisma.customer_versorgungen.delete({ where: { id: existing.id } });
+
+    // ✅ Fetch updated customer with all assigned versorgungen
+    const updatedCustomer = await prisma.customers.findUnique({
+      where: { id: customerId },
+      include: { versorgungen: true },
+    });
+
+    const customerWithImages = {
+      ...updatedCustomer,
+      picture_10: updatedCustomer?.picture_10
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_10}`)
+        : null,
+      picture_23: updatedCustomer?.picture_23
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_23}`)
+        : null,
+      picture_11: updatedCustomer?.picture_11
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_11}`)
+        : null,
+      picture_24: updatedCustomer?.picture_24
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_24}`)
+        : null,
+      threed_model_left: updatedCustomer?.threed_model_left
+        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_left}`)
+        : null,
+      threed_model_right: updatedCustomer?.threed_model_right
+        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_right}`)
+        : null,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Versorgung assignment undone successfully",
+      data: customerWithImages,
+    });
+  } catch (error: any) {
+    console.error("Undo Assign Versorgung Error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
