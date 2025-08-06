@@ -1,0 +1,221 @@
+[
+  {
+    "id": 1,
+    "category": ["ALLTAGSEINLAGE"],
+    "questions": [
+      {
+        "question": "Für Welchen Einsatz?",
+        "options": [
+          "Sneaker",
+          "Halbschuhe",
+          "Hausschuhe",
+          "Stiefeletten",
+          "Bergschuhe",
+          "Arbeitsschuhe"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "category": ["SPORTEINLAGE"],
+    "questions": [
+      {
+        "question": "Für Welchen Sportschuh Verwenden Sie Die Einlage?",
+        "options": [
+          "Sportschuhe",
+          "Laufschuhe",
+          "Skischuhe",
+          "Tennisschuhe",
+          "Fußballschuhe",
+          "Basketballschuhe",
+          "Andere"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "category": ["BUSINESSEINLAGE", "ALLTAGSEINLAGE", "SPORTEINLAGE"],
+    "questions": [
+      {
+        "question": "Welches Aktivitätslevel Trifft Am Besten Auf Sie Zu?",
+        "options": [
+          "Sportlich aktiv (regelmäßiges Training oder sportliche Aktivitäten)",
+          "Mäßig aktiv (leichte körperliche Aktivität oder Gehen)",
+          "Wenig aktiv (hauptsächlich sitzende Tätigkeit)",
+          "Sehr wenig aktiv"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "category": ["BUSINESSEINLAGE", "ALLTAGSEINLAGE", "SPORTEINLAGE"],
+    "questions": [
+      {
+        "question": "Haben Sie Gesundheitliche Probleme Wie Diabetes Oder Andere Erkrankungen, Die Ihre Fußgesundheit Beeinträchtigen Könnten?",
+        "options": ["Ja, bitte eingeben", "Nein"]
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "category": ["BUSINESSEINLAGE", "ALLTAGSEINLAGE", "SPORTEINLAGE"],
+    "questions": [
+      {
+        "question": "Wie Viel Wiegen Sie Ca.?",
+        "options": [
+          "Unter 50kg",
+          "61-70kg",
+          "81-90kg",
+          "101-110kg",
+          "Ja, 51-60kg",
+          "71-80kg",
+          "91-100kg",
+          "Über 110kg"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "category": ["BUSINESSEINLAGE", "ALLTAGSEINLAGE", "SPORTEINLAGE"],
+    "questions": [
+      {
+        "question": "Haben sie schmerzen? Wenn ja, bitte markieren sie  die betroffenen bereiche auf dem 3D-Modell.",
+        "options": [
+          {
+            "id": 1,
+            "question": "Wann haben die Schmerzen begonnen?",
+            "options": [
+              "Vor weniger als einer Woche",
+              "Seit mehreren Wochen ",
+              "Seit mehreren Monaten",
+              "Seit über einem Jahr",
+              "Ich kann es nicht genau sagen",
+              "Die Schmerzen treten immer wieder auf",
+              "seit längerer Zeit",
+              "Erst seit einer bestimmten Belastung (z. B. Sport, langes Gehen)",
+              "Nach einer Verletzung / Operation",
+              "Seit ich neue Schuhe trage",
+              "Seit meiner Schwangerschaft / Geburt",
+              "Seit einer beruflichen Veränderung (z. B. mehr Stehen)"
+            ]
+          },
+          {
+            "id": 2,
+            "question": "Wie beeinflussen die Schmerzen deinen Alltag?",
+            "options": [
+              "Ich kann keine längeren Strecken mehr gehen",
+              "Ich muss häufiger Pausen machen",
+              "Ich kann meinen Sport nicht mehr ausüben",
+              "Ich stehe ungern längere Zeit",
+              "Ich vermeide bestimmte Bewegungen",
+              "Ich habe Angst vor Verschlechterung",
+              "Ich schlafe schlechter",
+              "Es beeinträchtigt meine Arbeit",
+              "Es belastet mich psychisch",
+              "Kaum",
+              "ich komme noch gut damit zurecht",
+              "Es ist situativ unangenehm, aber erträglich",
+              "Stark",
+              "ich bin im Alltag deutlich eingeschränkt"
+            ]
+          },
+          {
+            "id": 3,
+            "question": "Wie fühlen sich die Schmerzen an?",
+            "options": [
+              "Stechend",
+              "Ziehend",
+              "Dumpf",
+              "Brennend",
+              "Elektrisierend",
+              "Druckartig",
+              "Krampfartig",
+              "Wechselt / schwer zu beschreiben"
+            ]
+          },
+          {
+            "id": 4,
+            "question": "Wann verstärken sich die Schmerzen?",
+            "options": [
+              "Beim Barfußgehen",
+              "Beim Tragen von Schuhen mit harter Sohle",
+              "Nach längerem Stehen",
+              "Beim Laufen / Joggen",
+              "Beim Gehen bergauf / bergab",
+              "Bei schneller Bewegung / Sprint",
+              "Bei bestimmten Bewegungen (z. B. Abrollen)",
+              "Nach dem Aufstehen",
+              "Nach Belastung",
+              "Ohne erkennbaren Auslöser"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "category": ["BUSINESSEINLAGE", "ALLTAGSEINLAGE", "SPORTEINLAGE"],
+    "questions": [
+      {
+        "question": "Haben sie sonst noch relevante Schmerzen oder beschwerden?",
+        "options": [
+          "Nein",
+          "Ja, Rückenschmerzen",
+          "Ja, Hüftprobleme",
+          "Andere, bitte angeben",
+          "Ja, Wadenprobleme",
+          "Ja, Wadenprobleme",
+          "Ja, Achilessehnenprobleme",
+          "Ja, Gelenkschmerzen"
+        ]
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "category": ["BUSINESSEINLAGE", "ALLTAGSEINLAGE", "SPORTEINLAGE"],
+    "questions": [
+      {
+        "question": "Haben sie Probleme mit ihrem Gleichgewicht, Gang oder der beweglichkeit?",
+        "options": ["Ja, bitte angeben", "Nein"]
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "category": ["BUSINESSEINLAGE", "ALLTAGSEINLAGE", "SPORTEINLAGE"],
+    "questions": [
+      {
+        "question": "Welche Erwartungen oder ziele haben sie mit den einlagen?",
+        "options": [
+          "Besserer Komfort",
+          "Unterstützung bei Fußproblemen",
+          "Andere, bitte eingeben",
+          "Bessere Performance beim Sport",
+          "Vorbeugen von Fußschmerzen"
+        ]
+      }
+    ]
+  },
+    {
+    "id": 9,
+    "category": ["BUSINESSEINLAGE", "ALLTAGSEINLAGE", "SPORTEINLAGE"],
+    "questions": [
+      {
+        "question": "Haben sie eine bevorzugte farbe für den überzug ihrer Einlagen?",
+        "options": [
+          "Schwarz",
+          "Grau",
+          "Blau",
+          "Weiß",
+          "Beige"
+        ]
+      }
+    ]
+  }
+]

@@ -146,10 +146,23 @@ export const createCustomers = async (req: Request, res: Response) => {
       },
     });
 
+
+     const customerWithImages = {
+      ...customer,
+      picture_10: customer.picture_10 ? getImageUrl(`/uploads/${customer.picture_10}`) : null,
+      picture_23: customer.picture_23 ? getImageUrl(`/uploads/${customer.picture_23}`) : null,
+      picture_11: customer.picture_11 ? getImageUrl(`/uploads/${customer.picture_11}`) : null,
+      picture_24: customer.picture_24 ? getImageUrl(`/uploads/${customer.picture_24}`) : null,
+      threed_model_left: customer.threed_model_left ? getImageUrl(`/uploads/${customer.threed_model_left}`) : null,
+      threed_model_right: customer.threed_model_right ? getImageUrl(`/uploads/${customer.threed_model_right}`) : null,
+      picture_17: customer.picture_17 ? getImageUrl(`/uploads/${customer.picture_17}`) : null,
+      picture_16: customer.picture_16 ? getImageUrl(`/uploads/${customer.picture_16}`) : null,
+    };
+
     res.status(201).json({
       success: true,
       message: "Customer created successfully",
-      data: customer,
+      data: customerWithImages,
     });
   } catch (err: any) {
     console.error("Create Customer Error:", err);
