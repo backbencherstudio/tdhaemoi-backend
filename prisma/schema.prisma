@@ -261,6 +261,9 @@ model customers {
 
   versorgungen customer_versorgungen[] @relation("customerVersorgungen")
 
+  // Relation to UserAnswer
+  einlagenAnswers einlagenAnswers[]
+
   ausfuhrliche_diagnose String?
 
   createdAt DateTime @default(now())
@@ -289,6 +292,45 @@ model customer_versorgungen {
 
   @@unique([customerId, status])
   @@index([id, name])
+}
+
+model einlagenAnswers {
+  id         String           @id @default(uuid())
+  customerId String
+  customer   customers        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  category   QuestionCategory
+  questionId String
+  answer     Json
+
+  @@unique([customerId, questionId])
+  @@index([customerId])
+  @@index([category])
+  @@index([questionId])
+}
+
+// {
+//   category: "BUSINESSEINLAGE",
+//   userId: "123",
+// answers: [
+//   { questionId: 1, selected: "Sneaker" },
+//   { questionId: 3, selected: "Wenig aktiv" },
+//   { questionId: 4, selected: "Nein" },
+//   { questionId: 6, selected: [
+//     { questionId: 1, selected: "Seit mehreren Wochen" },
+//     { questionId: 2, selected: "Ich kann keine längeren Strecken mehr gehen" },
+//     { questionId: 3, selected: "Ziehend" },
+//     { questionId: 4, selected: "Beim Barfußgehen" },
+//   ]},
+//  { questionId: 7, selected: "Ja, Rückenschmerzen" },
+//  { questionId: 8, selected: "Ja, bitte angeben" }, 
+//  { questionId: 9, selected: "Schwarz" }, 
+// ]
+// }
+
+enum QuestionCategory {
+  BUSINESSEINLAGE
+  ALLTAGSEINLAGE
+  SPORTEINLAGE
 }
 
 // https://chatgpt.com/share/688ca13d-c468-800c-8159-f0c30dccecbf8

@@ -193,6 +193,7 @@ export const loginUser = async (req: Request, res: Response) => {
         email,
       },
     });
+    console.log(user)
 
     if (!user) {
       res.status(404).json({

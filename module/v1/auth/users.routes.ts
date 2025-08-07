@@ -6,9 +6,9 @@ import upload from "../../../config/multer.config";
 
 const router = express.Router();
 
-
-router.post("/register", upload.single("image"), createUser);
 router.post("/login",  loginUser);
+router.post("/register", upload.single("image"), createUser);
+
 
 router.put("/", verifyUser('ANY'), upload.single("image"), updateUser);
 router.patch("/change-password", verifyUser('ANY'), changePassword);

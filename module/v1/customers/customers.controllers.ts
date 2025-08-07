@@ -146,17 +146,32 @@ export const createCustomers = async (req: Request, res: Response) => {
       },
     });
 
-
-     const customerWithImages = {
+    const customerWithImages = {
       ...customer,
-      picture_10: customer.picture_10 ? getImageUrl(`/uploads/${customer.picture_10}`) : null,
-      picture_23: customer.picture_23 ? getImageUrl(`/uploads/${customer.picture_23}`) : null,
-      picture_11: customer.picture_11 ? getImageUrl(`/uploads/${customer.picture_11}`) : null,
-      picture_24: customer.picture_24 ? getImageUrl(`/uploads/${customer.picture_24}`) : null,
-      threed_model_left: customer.threed_model_left ? getImageUrl(`/uploads/${customer.threed_model_left}`) : null,
-      threed_model_right: customer.threed_model_right ? getImageUrl(`/uploads/${customer.threed_model_right}`) : null,
-      picture_17: customer.picture_17 ? getImageUrl(`/uploads/${customer.picture_17}`) : null,
-      picture_16: customer.picture_16 ? getImageUrl(`/uploads/${customer.picture_16}`) : null,
+      picture_10: customer.picture_10
+        ? getImageUrl(`/uploads/${customer.picture_10}`)
+        : null,
+      picture_23: customer.picture_23
+        ? getImageUrl(`/uploads/${customer.picture_23}`)
+        : null,
+      picture_11: customer.picture_11
+        ? getImageUrl(`/uploads/${customer.picture_11}`)
+        : null,
+      picture_24: customer.picture_24
+        ? getImageUrl(`/uploads/${customer.picture_24}`)
+        : null,
+      threed_model_left: customer.threed_model_left
+        ? getImageUrl(`/uploads/${customer.threed_model_left}`)
+        : null,
+      threed_model_right: customer.threed_model_right
+        ? getImageUrl(`/uploads/${customer.threed_model_right}`)
+        : null,
+      picture_17: customer.picture_17
+        ? getImageUrl(`/uploads/${customer.picture_17}`)
+        : null,
+      picture_16: customer.picture_16
+        ? getImageUrl(`/uploads/${customer.picture_16}`)
+        : null,
     };
 
     res.status(201).json({
@@ -210,12 +225,16 @@ export const getAllCustomers = async (req: Request, res: Response) => {
       picture_23: c.picture_23 ? getImageUrl(`/uploads/${c.picture_23}`) : null,
       picture_11: c.picture_11 ? getImageUrl(`/uploads/${c.picture_11}`) : null,
       picture_24: c.picture_24 ? getImageUrl(`/uploads/${c.picture_24}`) : null,
+
       threed_model_left: c.threed_model_left
         ? getImageUrl(`/uploads/${c.threed_model_left}`)
         : null,
       threed_model_right: c.threed_model_right
         ? getImageUrl(`/uploads/${c.threed_model_right}`)
         : null,
+
+      picture_17: c.picture_17 ? getImageUrl(`/uploads/${c.picture_17}`) : null,
+      picture_16: c.picture_16 ? getImageUrl(`/uploads/${c.picture_16}`) : null,
     }));
 
     res.status(200).json({
@@ -449,9 +468,19 @@ export const getCustomerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const customer = await prisma.customers.findUnique({
-      where: { id },
-      include: { versorgungen: true },
+      where: { id: id },
+      include: {
+        versorgungen: true,
+        einlagenAnswers: {
+ 
+          orderBy: [
+            { category: 'asc' },
+            { questionId: 'asc' },
+          ],
+        },
+      },
     });
+    
 
     if (!customer) {
       return res.status(404).json({
@@ -459,6 +488,26 @@ export const getCustomerById = async (req: Request, res: Response) => {
         message: "Customer not found",
       });
     }
+
+    // Format einlagenAnswers by category with question structure
+    const einlagenAnswersByCategory = customer.einlagenAnswers.reduce((acc, answer) => {
+      if (!acc[answer.category]) {
+        acc[answer.category] = {
+          category: answer.category,
+          answers: []
+        };
+      }
+      
+      // Format answer to match frontend MCQ structure
+      const formattedAnswer = {
+        questionId: parseInt(answer.questionId),
+        selected: answer.answer
+      };
+      
+      acc[answer.category].answers.push(formattedAnswer);
+      return acc;
+    }, {} as Record<string, any>);
+
     const customerWithImages = {
       ...customer,
       picture_10: customer.picture_10
@@ -479,6 +528,14 @@ export const getCustomerById = async (req: Request, res: Response) => {
       threed_model_right: customer.threed_model_right
         ? getImageUrl(`/uploads/${customer.threed_model_right}`)
         : null,
+      picture_17: customer.picture_17
+        ? getImageUrl(`/uploads/${customer.picture_17}`)
+        : null,
+      picture_16: customer.picture_16
+        ? getImageUrl(`/uploads/${customer.picture_16}`)
+        : null,
+      // Replace einlagenAnswers with formatted version
+      einlagenAnswers: Object.values(einlagenAnswersByCategory)
     };
     res.status(200).json({
       success: true,
@@ -656,6 +713,13 @@ export const assignVersorgungToCustomer = async (
       threed_model_right: updatedCustomer?.threed_model_right
         ? getImageUrl(`/uploads/${updatedCustomer.threed_model_right}`)
         : null,
+
+      picture_17: updatedCustomer.picture_17
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_17}`)
+        : null,
+      picture_16: updatedCustomer.picture_16
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_16}`)
+        : null,
     };
 
     res.status(200).json({
@@ -729,6 +793,13 @@ export const undoAssignVersorgungToCustomer = async (
         : null,
       threed_model_right: updatedCustomer?.threed_model_right
         ? getImageUrl(`/uploads/${updatedCustomer.threed_model_right}`)
+        : null,
+
+      picture_17: updatedCustomer.picture_17
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_17}`)
+        : null,
+      picture_16: updatedCustomer.picture_16
+        ? getImageUrl(`/uploads/${updatedCustomer.picture_16}`)
         : null,
     };
 

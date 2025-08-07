@@ -11,6 +11,7 @@ import appointment from "./appointment/appointment.routes";
 import versorgungen from "./versorgungen/versorgungen.routes";
 import employees from "./employees/employees.routes";
 import customers from "./customers/customers.routes";
+import einlagenFinder from "./einlagenFinder/einlagenFinder.routes";
 const router = express.Router();
 
 const moduleRoutes = [
@@ -25,6 +26,7 @@ const moduleRoutes = [
   { path: "/versorgungen", route: versorgungen },
   { path: "/employees", route: employees },
   { path: "/customers", route: customers },
+  { path: "/einlagen-finder", route: einlagenFinder },
 ];
 
 moduleRoutes.forEach(({ path, route }) => {

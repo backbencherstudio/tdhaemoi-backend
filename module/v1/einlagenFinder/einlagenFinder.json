@@ -174,7 +174,7 @@
           "Ja, Gelenkschmerzen"
         ]
       }
-    ]
+    ] 
   },
   {
     "id": 7,
@@ -202,19 +202,13 @@
       }
     ]
   },
-    {
+  {
     "id": 9,
     "category": ["BUSINESSEINLAGE", "ALLTAGSEINLAGE", "SPORTEINLAGE"],
     "questions": [
       {
         "question": "Haben sie eine bevorzugte farbe für den überzug ihrer Einlagen?",
-        "options": [
-          "Schwarz",
-          "Grau",
-          "Blau",
-          "Weiß",
-          "Beige"
-        ]
+        "options": ["Schwarz", "Grau", "Blau", "Weiß", "Beige"]
       }
     ]
   }
