@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 /**
  * EinlagenFinder API
- * 
+ *
  * POST /api/v1/einlagen-finder
  * Expected request body:
  * {
@@ -28,20 +28,22 @@ const prisma = new PrismaClient();
  *     { "questionId": 9, "selected": "Schwarz" }
  *   ]
  * }
- * 
+ *
  * GET /api/v1/einlagen-finder/:customerId?category=BUSINESSEINLAGE
  */
 
 export const setEinlagenFinder = async (req: Request, res: Response) => {
   try {
-    const {  customerId, category, answers } = req.body;
-
+    const { customerId, category, answers } = req.body;
+    console.log(answers);
+    console.log(customerId);
+    console.log(category);
+    console.log(req.body);
 
     const missingField = ["category", "answers"].find(
       (field) => !req.body[field]
     );
 
- 
     if (missingField) {
       return res.status(400).json({
         success: false,
@@ -49,15 +51,18 @@ export const setEinlagenFinder = async (req: Request, res: Response) => {
       });
     }
 
-
-    const validCategories = ["BUSINESSEINLAGE", "ALLTAGSEINLAGE", "SPORTEINLAGE"];
+    const validCategories = [
+      "BUSINESSEINLAGE",
+      "ALLTAGSEINLAGE",
+      "SPORTEINLAGE",
+    ];
     if (!validCategories.includes(category)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid category. Must be one of: " + validCategories.join(", "),
+        message:
+          "Invalid category. Must be one of: " + validCategories.join(", "),
       });
     }
-
 
     if (!Array.isArray(answers) || answers.length === 0) {
       return res.status(400).json({
@@ -67,7 +72,7 @@ export const setEinlagenFinder = async (req: Request, res: Response) => {
     }
 
     const customerExists = await prisma.customers.findUnique({
-      where: { id: customerId }
+      where: { id: customerId },
     });
 
     if (!customerExists) {
@@ -78,17 +83,17 @@ export const setEinlagenFinder = async (req: Request, res: Response) => {
     }
 
     const savedAnswers = [];
-    
+
     for (const answer of answers) {
       const { questionId, selected } = answer;
-      
+
       if (!questionId || selected === undefined) {
         continue;
       }
 
       try {
         let answerData = selected;
-        
+
         if (Array.isArray(selected)) {
           answerData = selected;
         }
@@ -98,7 +103,7 @@ export const setEinlagenFinder = async (req: Request, res: Response) => {
             customerId_questionId: {
               customerId: customerId,
               questionId: questionId.toString(),
-            }
+            },
           },
           update: {
             answer: answerData,
@@ -109,28 +114,31 @@ export const setEinlagenFinder = async (req: Request, res: Response) => {
             category: category,
             questionId: questionId.toString(),
             answer: answerData,
-          }
+          },
         });
-        
+
         savedAnswers.push(savedAnswer);
       } catch (answerError) {
-        console.error(`Error saving answer for question ${questionId}:`, answerError);
+        console.error(
+          `Error saving answer for question ${questionId}:`,
+          answerError
+        );
       }
     }
 
+    console.log(savedAnswers);
     return res.status(201).json({
       success: true,
       message: "Answers stored successfully!",
       data: {
         customerId,
         category,
-        savedAnswers: savedAnswers.map(answer => ({
+        savedAnswers: savedAnswers.map((answer) => ({
           questionId: answer.questionId,
           answer: answer.answer,
-        }))
+        })),
       },
     });
-
   } catch (error) {
     console.error("Error in setEinlagenFinder:", error);
     res.status(500).json({
@@ -155,7 +163,7 @@ export const getEinlagenFinderAnswers = async (req: Request, res: Response) => {
 
     // Check if customer exists
     const customerExists = await prisma.customers.findUnique({
-      where: { id: customerId }
+      where: { id: customerId },
     });
 
     if (!customerExists) {
@@ -167,15 +175,20 @@ export const getEinlagenFinderAnswers = async (req: Request, res: Response) => {
 
     // Build where clause
     const whereClause: any = {
-      customerId: customerId
+      customerId: customerId,
     };
 
     if (category) {
-      const validCategories = ["BUSINESSEINLAGE", "ALLTAGSEINLAGE", "SPORTEINLAGE"];
+      const validCategories = [
+        "BUSINESSEINLAGE",
+        "ALLTAGSEINLAGE",
+        "SPORTEINLAGE",
+      ];
       if (!validCategories.includes(category as string)) {
         return res.status(400).json({
           success: false,
-          message: "Invalid category. Must be one of: " + validCategories.join(", "),
+          message:
+            "Invalid category. Must be one of: " + validCategories.join(", "),
         });
       }
       whereClause.category = category;
@@ -184,10 +197,7 @@ export const getEinlagenFinderAnswers = async (req: Request, res: Response) => {
     // Fetch answers
     const answers = await prisma.einlagenAnswers.findMany({
       where: whereClause,
-      orderBy: [
-        { category: 'asc' },
-        { questionId: 'asc' }
-      ]
+      orderBy: [{ category: "asc" }, { questionId: "asc" }],
     });
 
     // Group answers by category
@@ -212,19 +222,18 @@ export const getEinlagenFinderAnswers = async (req: Request, res: Response) => {
           id: customerExists.id,
           vorname: customerExists.vorname,
           nachname: customerExists.nachname,
-          email: customerExists.email
+          email: customerExists.email,
         },
         totalAnswers: answers.length,
         answersByCategory: groupedAnswers,
-        allAnswers: answers.map(answer => ({
+        allAnswers: answers.map((answer) => ({
           id: answer.id,
           category: answer.category,
           questionId: answer.questionId,
           answer: answer.answer,
-        }))
-      }
+        })),
+      },
     });
-
   } catch (error) {
     console.error("Error in getEinlagenFinderAnswers:", error);
     res.status(500).json({
@@ -235,10 +244,13 @@ export const getEinlagenFinderAnswers = async (req: Request, res: Response) => {
   }
 };
 
-export const getEinlagenFinderQuestions = async (req: Request, res: Response) => {
+export const getEinlagenFinderQuestions = async (
+  req: Request,
+  res: Response
+) => {
   try {
-    const jsonPath = path.join(__dirname, 'einlagenFinder.json');
-    
+    const jsonPath = path.join(__dirname, "einlagenFinder.json");
+
     if (!fs.existsSync(jsonPath)) {
       return res.status(404).json({
         success: false,
@@ -246,18 +258,72 @@ export const getEinlagenFinderQuestions = async (req: Request, res: Response) =>
       });
     }
 
-    const jsonData = fs.readFileSync(jsonPath, 'utf8');
+    const jsonData = fs.readFileSync(jsonPath, "utf8");
     const questions = JSON.parse(jsonData);
 
     return res.status(200).json({
       success: true,
       message: "Questions retrieved successfully",
-      data: questions
+      data: questions,
     });
-
   } catch (error) {
     console.error("Error in getEinlagenFinderQuestions:", error);
     res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const getAnswersByUserId = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
+
+    const customer = await prisma.customers.findUnique({
+      where: { id: userId },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found for the given user ID",
+      });
+    }
+
+    const answers = await prisma.einlagenAnswers.findMany({
+      where: { customerId: customer.id },
+      orderBy: [{ category: "asc" }, { questionId: "asc" }],
+    });
+
+    const groupedAnswers = answers.reduce((acc, answer) => {
+      if (!acc[answer.category]) acc[answer.category] = [];
+      acc[answer.category].push({
+        questionId: answer.questionId,
+        answer: answer.answer,
+      });
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    return res.status(200).json({
+      success: true,
+      message: "Answers get successfully",
+      data: {
+        customerId: customer.id,
+        totalAnswers: answers.length,
+        answer: groupedAnswers,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getAnswersByUserId:", error);
+    return res.status(500).json({
       success: false,
       message: "Something went wrong",
       error: error.message,

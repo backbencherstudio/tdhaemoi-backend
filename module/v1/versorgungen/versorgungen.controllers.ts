@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export const getAllVersorgungen = async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 10, status } = req.query;
+    const { page = 1, limit = 10, status, diagnosis_status } = req.query;
 
     const pageNumber = parseInt(page as string, 10);
     const limitNumber = parseInt(limit as string, 10);
@@ -22,6 +22,14 @@ export const getAllVersorgungen = async (req: Request, res: Response) => {
  
     if (status) {
       filters.status = status;
+    }
+
+    // Handle diagnosis_status filter
+    if (diagnosis_status) {
+      filters.diagnosis_status = diagnosis_status;
+    } else {
+      // If no diagnosis_status specified, only show items with NULL diagnosis_status
+      filters.diagnosis_status = null;
     }
     
  
@@ -71,6 +79,7 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       material,
       langenempfehlung,
       status,
+      diagnosis_status,
     } = req.body;
 
     const missingField = [
@@ -105,6 +114,23 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       });
     }
 
+    // Validate diagnosis_status if provided
+    if (diagnosis_status) {
+      const validDiagnosisStatuses = [
+        "HAMMERZEHEN_KRALLENZEHEN", "MORTON_NEUROM", "FUSSARTHROSE", 
+        "STRESSFRAKTUREN_IM_FUSS", "DIABETISCHES_FUSSSYNDROM", "HOHLFUSS",
+        "KNICKFUSS", "KNICK_SENKFUSS", "HALLUX_VALGUS", "HALLUX_RIGIDUS",
+        "PLANTARFASZIITIS", "FERSENSPORN", "SPREIZFUSS", "SENKFUSS", "PLATTFUSS"
+      ];
+      
+      if (!validDiagnosisStatuses.includes(diagnosis_status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid diagnosis_status. Valid values are: ${validDiagnosisStatuses.join(", ")}`,
+        });
+      }
+    }
+
     const versorgungenData = {
       name,
       rohlingHersteller,
@@ -113,6 +139,7 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       material,
       langenempfehlung,
       status,
+      diagnosis_status: diagnosis_status || null,
       createdBy: req.user.id,
     };
 
@@ -205,6 +232,81 @@ export const deleteVersorgungen = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Delete Versorgungen error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const getVersorgungenByDiagnosis = async (req: Request, res: Response) => {
+  try {
+    const { diagnosis_status } = req.params;
+    const { page = 1, limit = 10, status } = req.query;
+
+    const pageNumber = parseInt(page as string, 10);
+    const limitNumber = parseInt(limit as string, 10);
+
+    if (isNaN(pageNumber) || isNaN(limitNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid type page or limit",
+      });
+    }
+
+    // Validate diagnosis_status
+    const validDiagnosisStatuses = [
+      "HAMMERZEHEN_KRALLENZEHEN", "MORTON_NEUROM", "FUSSARTHROSE", 
+      "STRESSFRAKTUREN_IM_FUSS", "DIABETISCHES_FUSSSYNDROM", "HOHLFUSS",
+      "KNICKFUSS", "KNICK_SENKFUSS", "HALLUX_VALGUS", "HALLUX_RIGIDUS",
+      "PLANTARFASZIITIS", "FERSENSPORN", "SPREIZFUSS", "SENKFUSS", "PLATTFUSS"
+    ];
+
+    if (!validDiagnosisStatuses.includes(diagnosis_status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid diagnosis_status. Valid values are: ${validDiagnosisStatuses.join(", ")}`,
+      });
+    }
+
+    const filters: any = {
+      diagnosis_status: diagnosis_status
+    };
+ 
+    if (status) {
+      filters.status = status;
+    }
+
+    const totalCount = await prisma.versorgungen.count({
+      where: filters,
+    });
+
+    const versorgungenList = await prisma.versorgungen.findMany({
+      where: filters,
+      skip: (pageNumber - 1) * limitNumber,
+      take: limitNumber,
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    const totalPages = Math.ceil(totalCount / limitNumber);
+
+    res.status(200).json({
+      success: true,
+      message: `Versorgungen for ${diagnosis_status} fetched successfully`,
+      data: versorgungenList,
+      pagination: {
+        totalItems: totalCount,
+        totalPages,
+        currentPage: pageNumber,
+        itemsPerPage: limitNumber,
+      },
+      diagnosis_status: diagnosis_status
+    });
+  } catch (error) {
+    console.error("Get Versorgungen by Diagnosis error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",

@@ -1,6 +1,6 @@
 import express from "express";
 import { verifyUser } from "../../../middleware/verifyUsers";
-import { assignVersorgungToCustomer, createCustomers, deleteCustomer, getAllCustomers, getCustomerById, undoAssignVersorgungToCustomer, updateCustomer } from "./customers.controllers";
+import { assignVersorgungToCustomer, createCustomers, deleteCustomer, getAllCustomers, getCustomerById, searchCustomers, undoAssignVersorgungToCustomer, updateCustomer } from "./customers.controllers";
 import upload from "../../../config/multer.config";
 
 const router = express.Router();
@@ -24,6 +24,7 @@ router.post(
 
 
 router.get("/", verifyUser("ADMIN", "PARTNER"), getAllCustomers);
+router.get("/search", verifyUser("ADMIN", "PARTNER"), searchCustomers);
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteCustomer);
 
 router.patch(

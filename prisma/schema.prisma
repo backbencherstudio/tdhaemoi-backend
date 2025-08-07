@@ -206,7 +206,8 @@ model Versorgungen {
   material          String
   langenempfehlung  Json
 
-  status versorgungenStatus
+  status           versorgungenStatus
+  diagnosis_status versorgungenDiagnosisStatus?
 
   createdBy String
   updatedBy String?
@@ -221,8 +222,26 @@ enum versorgungenStatus {
   Alltagseinlagen
   Sporteinlagen
   Businesseinlagen
-  Knickfuss
 }
+
+enum versorgungenDiagnosisStatus {
+  HAMMERZEHEN_KRALLENZEHEN
+  MORTON_NEUROM
+  FUSSARTHROSE
+  STRESSFRAKTUREN_IM_FUSS
+  DIABETISCHES_FUSSSYNDROM
+  HOHLFUSS
+  KNICKFUSS
+  KNICK_SENKFUSS
+  HALLUX_VALGUS
+  HALLUX_RIGIDUS
+  PLANTARFASZIITIS
+  FERSENSPORN
+  SPREIZFUSS
+  SENKFUSS
+  PLATTFUSS
+}
+
 
 model customers {
   id            String  @id @default(uuid())
@@ -283,6 +302,7 @@ model customer_versorgungen {
   material          String
   langenempfehlung  Json
   status            versorgungenStatus
+  diagnosis_status  versorgungenDiagnosisStatus?
 
   customerId String
   customer   customers @relation("customerVersorgungen", fields: [customerId], references: [id])
@@ -290,7 +310,7 @@ model customer_versorgungen {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([customerId, status])
+  @@unique([customerId, status, diagnosis_status])
   @@index([id, name])
 }
 

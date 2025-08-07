@@ -657,13 +657,11 @@ export const assignVersorgungToCustomer = async (
 
     await prisma.customer_versorgungen.upsert({
       where: {
-        id:
-          (
-            await prisma.customer_versorgungen.findFirst({
-              where: { customerId, status: versorgung.status },
-              select: { id: true },
-            })
-          )?.id || "00000000-0000-0000-0000-000000000000",
+        customerId_status_diagnosis_status: {
+          customerId,
+          status: versorgung.status,
+          diagnosis_status: versorgung.diagnosis_status,
+        },
       },
       create: {
         name: versorgung.name,
@@ -673,6 +671,7 @@ export const assignVersorgungToCustomer = async (
         material: versorgung.material,
         langenempfehlung: versorgung.langenempfehlung,
         status: versorgung.status,
+        diagnosis_status: versorgung.diagnosis_status,
         customerId,
       },
       update: {
@@ -683,6 +682,7 @@ export const assignVersorgungToCustomer = async (
         material: versorgung.material,
         langenempfehlung: versorgung.langenempfehlung,
         status: versorgung.status,
+        diagnosis_status: versorgung.diagnosis_status,
       },
     });
 
@@ -817,3 +817,154 @@ export const undoAssignVersorgungToCustomer = async (
     });
   }
 };
+
+
+
+
+export const searchCustomers = async (req: Request, res: Response) => {
+  try {
+    const { search, email, phone, location, id, name, limit = 10 } = req.query;
+
+    // Build dynamic where conditions
+    const whereConditions: any[] = [];
+
+    // General search across name fields (first name and last name)
+    if (name && typeof name === 'string' && name.trim()) {
+      const nameQuery = name.trim();
+      whereConditions.push({
+        OR: [
+          {
+            vorname: {
+              contains: nameQuery,
+              mode: "insensitive",
+            },
+          },
+          {
+            nachname: {
+              contains: nameQuery,
+              mode: "insensitive",
+            },
+          },
+        ],
+      });
+    }
+
+    // General search across name fields
+    if (search && typeof search === 'string' && search.trim()) {
+      const searchQuery = search.trim();
+      whereConditions.push({
+        OR: [
+          {
+            vorname: {
+              contains: searchQuery,
+              mode: "insensitive",
+            },
+          },
+          {
+            nachname: {
+              contains: searchQuery,
+              mode: "insensitive",
+            },
+          },
+        ],
+      });
+    }
+
+    // Specific email search
+    if (email && typeof email === 'string' && email.trim()) {
+      whereConditions.push({
+        email: {
+          contains: email.trim(),
+          mode: "insensitive",
+        },
+      });
+    }
+
+    // Specific phone search
+    if (phone && typeof phone === 'string' && phone.trim()) {
+      whereConditions.push({
+        telefonnummer: {
+          contains: phone.trim(),
+          mode: "insensitive",
+        },
+      });
+    }
+
+    // Specific location search
+    if (location && typeof location === 'string' && location.trim()) {
+      whereConditions.push({
+        wohnort: {
+          contains: location.trim(),
+          mode: "insensitive",
+        },
+      });
+    }
+
+    // Specific customer ID search
+    if (id && typeof id === 'string' && id.trim()) {
+      whereConditions.push({
+        id: {
+          equals: id.trim(),
+        },
+      });
+    }
+
+    // If no search criteria provided, return empty results
+    if (whereConditions.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No search criteria provided",
+        data: {
+          totalResults: 0,
+          suggestions: [],
+        },
+      });
+    }
+
+    const limitNumber = Math.min(parseInt(limit as string) || 10, 50);
+
+    const customers = await prisma.customers.findMany({
+      where: {
+        AND: whereConditions,
+      },
+      select: {
+        id: true,
+        vorname: true,
+        nachname: true,
+        email: true,
+        telefonnummer: true,
+        wohnort: true,
+        createdAt: true,
+      },
+      take: limitNumber,
+      orderBy: [
+        { vorname: "asc" },
+        { nachname: "asc" },
+      ],
+    });
+
+    const suggestions = customers.map((customer) => ({
+      id: customer.id,
+      name: `${customer.vorname} ${customer.nachname}`,
+      email: customer.email,
+      phone: customer.telefonnummer,
+      location: customer.wohnort,
+      fullName: `${customer.vorname} ${customer.nachname}`,
+      createdAt: customer.createdAt,
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "Customer search results",
+      data: suggestions,
+    });
+  } catch (error: any) {
+    console.error("Search Customers Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
