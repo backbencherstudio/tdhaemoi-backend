@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
+import fs from "fs";
+import path from "path";
 
 const prisma = new PrismaClient();
 
@@ -225,6 +227,36 @@ export const getEinlagenFinderAnswers = async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error("Error in getEinlagenFinderAnswers:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const getEinlagenFinderQuestions = async (req: Request, res: Response) => {
+  try {
+    const jsonPath = path.join(__dirname, 'einlagenFinder.json');
+    
+    if (!fs.existsSync(jsonPath)) {
+      return res.status(404).json({
+        success: false,
+        message: "Questions data not found",
+      });
+    }
+
+    const jsonData = fs.readFileSync(jsonPath, 'utf8');
+    const questions = JSON.parse(jsonData);
+
+    return res.status(200).json({
+      success: true,
+      message: "Questions retrieved successfully",
+      data: questions
+    });
+
+  } catch (error) {
+    console.error("Error in getEinlagenFinderQuestions:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
