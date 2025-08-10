@@ -472,15 +472,10 @@ export const getCustomerById = async (req: Request, res: Response) => {
       include: {
         versorgungen: true,
         einlagenAnswers: {
- 
-          orderBy: [
-            { category: 'asc' },
-            { questionId: 'asc' },
-          ],
+          orderBy: [{ category: "asc" }, { questionId: "asc" }],
         },
       },
     });
-    
 
     if (!customer) {
       return res.status(404).json({
@@ -490,23 +485,26 @@ export const getCustomerById = async (req: Request, res: Response) => {
     }
 
     // Format einlagenAnswers by category with question structure
-    const einlagenAnswersByCategory = customer.einlagenAnswers.reduce((acc, answer) => {
-      if (!acc[answer.category]) {
-        acc[answer.category] = {
-          category: answer.category,
-          answers: []
+    const einlagenAnswersByCategory = customer.einlagenAnswers.reduce(
+      (acc, answer) => {
+        if (!acc[answer.category]) {
+          acc[answer.category] = {
+            category: answer.category,
+            answers: [],
+          };
+        }
+
+        // Format answer to match frontend MCQ structure
+        const formattedAnswer = {
+          questionId: parseInt(answer.questionId),
+          selected: answer.answer,
         };
-      }
-      
-      // Format answer to match frontend MCQ structure
-      const formattedAnswer = {
-        questionId: parseInt(answer.questionId),
-        selected: answer.answer
-      };
-      
-      acc[answer.category].answers.push(formattedAnswer);
-      return acc;
-    }, {} as Record<string, any>);
+
+        acc[answer.category].answers.push(formattedAnswer);
+        return acc;
+      },
+      {} as Record<string, any>
+    );
 
     const customerWithImages = {
       ...customer,
@@ -535,7 +533,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
         ? getImageUrl(`/uploads/${customer.picture_16}`)
         : null,
       // Replace einlagenAnswers with formatted version
-      einlagenAnswers: Object.values(einlagenAnswersByCategory)
+      einlagenAnswers: Object.values(einlagenAnswersByCategory),
     };
     res.status(200).json({
       success: true,
@@ -818,153 +816,296 @@ export const undoAssignVersorgungToCustomer = async (
   }
 };
 
+// export const searchCustomers = async (req: Request, res: Response) => {
+//   try {
+//     const { search, email, phone, location, id, name, limit = 10 } = req.query;
 
+//     // Build dynamic where conditions
+//     const whereConditions: any[] = [];
 
+//     // General search across name fields (first name and last name)
+//     if (name && typeof name === 'string' && name.trim()) {
+//       const nameQuery = name.trim();
+//       whereConditions.push({
+//         OR: [
+//           {
+//             vorname: {
+//               contains: nameQuery,
+//               mode: "insensitive",
+//             },
+//           },
+//           {
+//             nachname: {
+//               contains: nameQuery,
+//               mode: "insensitive",
+//             },
+//           },
+//         ],
+//       });
+//     }
+
+//     // General search across name fields
+//     if (search && typeof search === 'string' && search.trim()) {
+//       const searchQuery = search.trim();
+//       whereConditions.push({
+//         OR: [
+//           {
+//             vorname: {
+//               contains: searchQuery,
+//               mode: "insensitive",
+//             },
+//           },
+//           {
+//             nachname: {
+//               contains: searchQuery,
+//               mode: "insensitive",
+//             },
+//           },
+//         ],
+//       });
+//     }
+
+//     // Specific email search
+//     if (email && typeof email === 'string' && email.trim()) {
+//       whereConditions.push({
+//         email: {
+//           contains: email.trim(),
+//           mode: "insensitive",
+//         },
+//       });
+//     }
+
+//     // Specific phone search
+//     if (phone && typeof phone === 'string' && phone.trim()) {
+//       whereConditions.push({
+//         telefonnummer: {
+//           contains: phone.trim(),
+//           mode: "insensitive",
+//         },
+//       });
+//     }
+
+//     // Specific location search
+//     if (location && typeof location === 'string' && location.trim()) {
+//       whereConditions.push({
+//         wohnort: {
+//           contains: location.trim(),
+//           mode: "insensitive",
+//         },
+//       });
+//     }
+
+//     // Specific customer ID search
+//     if (id && typeof id === 'string' && id.trim()) {
+//       whereConditions.push({
+//         id: {
+//           equals: id.trim(),
+//         },
+//       });
+//     }
+
+//     // If no search criteria provided, return empty results
+//     if (whereConditions.length === 0) {
+//       return res.status(200).json({
+//         success: true,
+//         message: "No search criteria provided",
+//         data: {
+//           totalResults: 0,
+//           suggestions: [],
+//         },
+//       });
+//     }
+
+//     const limitNumber = Math.min(parseInt(limit as string) || 10, 50);
+
+//     const customers = await prisma.customers.findMany({
+//       where: {
+//         AND: whereConditions,
+//       },
+//       select: {
+//         id: true,
+//         vorname: true,
+//         nachname: true,
+//         email: true,
+//         telefonnummer: true,
+//         wohnort: true,
+//         createdAt: true,
+//       },
+//       take: limitNumber,
+//       orderBy: [
+//         { vorname: "asc" },
+//         { nachname: "asc" },
+//       ],
+//     });
+
+//     const suggestions = customers.map((customer) => ({
+//       id: customer.id,
+//       name: `${customer.vorname} ${customer.nachname}`,
+//       email: customer.email,
+//       phone: customer.telefonnummer,
+//       location: customer.wohnort,
+//       fullName: `${customer.vorname} ${customer.nachname}`,
+//       createdAt: customer.createdAt,
+//     }));
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Customer search results",
+//       data: suggestions,
+//     });
+//   } catch (error: any) {
+//     console.error("Search Customers Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
 
 export const searchCustomers = async (req: Request, res: Response) => {
   try {
-    const { search, email, phone, location, id, name, limit = 10 } = req.query;
+    const {
+      search,
+      email,
+      phone,
+      location,
+      id,
+      name,
+      limit = 10,
+      page = 1,
+    } = req.query;
 
-    // Build dynamic where conditions
-    const whereConditions: any[] = [];
 
-    // General search across name fields (first name and last name)
-    if (name && typeof name === 'string' && name.trim()) {
-      const nameQuery = name.trim();
-      whereConditions.push({
-        OR: [
-          {
-            vorname: {
-              contains: nameQuery,
-              mode: "insensitive",
-            },
-          },
-          {
-            nachname: {
-              contains: nameQuery,
-              mode: "insensitive",
-            },
-          },
-        ],
-      });
-    }
+    const limitNumber = Math.min(
+      Math.max(parseInt(limit as string) || 10, 1),
+      100
+    );
+    const pageNumber = Math.max(parseInt(page as string) || 1, 1);
+    const skip = (pageNumber - 1) * limitNumber;
 
-    // General search across name fields
-    if (search && typeof search === 'string' && search.trim()) {
-      const searchQuery = search.trim();
-      whereConditions.push({
-        OR: [
-          {
-            vorname: {
-              contains: searchQuery,
-              mode: "insensitive",
-            },
-          },
-          {
-            nachname: {
-              contains: searchQuery,
-              mode: "insensitive",
-            },
-          },
-        ],
-      });
-    }
 
-    // Specific email search
-    if (email && typeof email === 'string' && email.trim()) {
-      whereConditions.push({
-        email: {
-          contains: email.trim(),
-          mode: "insensitive",
-        },
-      });
-    }
-
-    // Specific phone search
-    if (phone && typeof phone === 'string' && phone.trim()) {
-      whereConditions.push({
-        telefonnummer: {
-          contains: phone.trim(),
-          mode: "insensitive",
-        },
-      });
-    }
-
-    // Specific location search
-    if (location && typeof location === 'string' && location.trim()) {
-      whereConditions.push({
-        wohnort: {
-          contains: location.trim(),
-          mode: "insensitive",
-        },
-      });
-    }
-
-    // Specific customer ID search
-    if (id && typeof id === 'string' && id.trim()) {
-      whereConditions.push({
-        id: {
-          equals: id.trim(),
-        },
-      });
-    }
-
-    // If no search criteria provided, return empty results
-    if (whereConditions.length === 0) {
+    if (!search && !email && !phone && !location && !id && !name) {
       return res.status(200).json({
         success: true,
         message: "No search criteria provided",
         data: {
           totalResults: 0,
-          suggestions: [],
+          totalPages: 0,
+          currentPage: pageNumber,
+          customers: [],
         },
       });
     }
 
-    const limitNumber = Math.min(parseInt(limit as string) || 10, 50);
 
-    const customers = await prisma.customers.findMany({
-      where: {
-        AND: whereConditions,
-      },
-      select: {
-        id: true,
-        vorname: true,
-        nachname: true,
-        email: true,
-        telefonnummer: true,
-        wohnort: true,
-        createdAt: true,
-      },
-      take: limitNumber,
-      orderBy: [
-        { vorname: "asc" },
-        { nachname: "asc" },
-      ],
-    });
+    const whereConditions: any = {};
 
-    const suggestions = customers.map((customer) => ({
-      id: customer.id,
-      name: `${customer.vorname} ${customer.nachname}`,
-      email: customer.email,
-      phone: customer.telefonnummer,
-      location: customer.wohnort,
-      fullName: `${customer.vorname} ${customer.nachname}`,
-      createdAt: customer.createdAt,
-    }));
+    if (name && typeof name === "string") {
+      const nameQuery = name.trim();
+      if (nameQuery) {
+        const nameParts = nameQuery.split(/\s+/).filter(Boolean);
 
-    res.status(200).json({
+        if (nameParts.length > 1) {
+          whereConditions.AND = [
+            { vorname: { contains: nameParts[0], mode: "insensitive" } },
+            {
+              nachname: {
+                contains: nameParts.slice(1).join(" "),
+                mode: "insensitive",
+              },
+            },
+          ];
+        } else {
+          whereConditions.OR = [
+            { vorname: { contains: nameQuery, mode: "insensitive" } },
+            { nachname: { contains: nameQuery, mode: "insensitive" } },
+          ];
+        }
+      }
+    }
+
+
+    if (search && typeof search === "string") {
+      const searchQuery = search.trim();
+      if (searchQuery) {
+        whereConditions.OR = [
+          { vorname: { contains: searchQuery, mode: "insensitive" } },
+          { nachname: { contains: searchQuery, mode: "insensitive" } },
+          { email: { contains: searchQuery, mode: "insensitive" } },
+          { telefonnummer: { contains: searchQuery, mode: "insensitive" } },
+          { wohnort: { contains: searchQuery, mode: "insensitive" } },
+        ];
+      }
+    }
+
+    if (email && typeof email === "string" && email.trim() && !search) {
+      whereConditions.email = { contains: email.trim(), mode: "insensitive" };
+    }
+
+    if (phone && typeof phone === "string" && phone.trim() && !search) {
+      whereConditions.telefonnummer = {
+        contains: phone.trim(),
+        mode: "insensitive",
+      };
+    }
+
+    if (
+      location &&
+      typeof location === "string" &&
+      location.trim() &&
+      !search
+    ) {
+      whereConditions.wohnort = {
+        contains: location.trim(),
+        mode: "insensitive",
+      };
+    }
+
+    if (id && typeof id === "string" && id.trim()) {
+      whereConditions.id = id.trim();
+    }
+
+    const [total, customers] = await prisma.$transaction([
+      prisma.customers.count({ where: whereConditions }),
+      prisma.customers.findMany({
+        where: whereConditions,
+        select: {
+          id: true,
+          vorname: true,
+          nachname: true,
+          email: true,
+          telefonnummer: true,
+          wohnort: true,
+          createdAt: true,
+        },
+        take: limitNumber,
+        skip,
+        orderBy: [{ vorname: "asc" }, { nachname: "asc" }],
+      }),
+    ]);
+
+    // Format response
+    const response = {
       success: true,
       message: "Customer search results",
-      data: suggestions,
-    });
+      data: customers.map((customer) => ({
+        id: customer.id,
+        name: `${customer.vorname} ${customer.nachname}`,
+        email: customer.email,
+        phone: customer.telefonnummer,
+        location: customer.wohnort,
+        createdAt: customer.createdAt,
+      })),
+    };
+
+    res.status(200).json(response);
   } catch (error: any) {
     console.error("Search Customers Error:", error);
     res.status(500).json({
       success: false,
-      message: "Something went wrong",
-      error: error.message,
+      message: "Internal server error",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
-

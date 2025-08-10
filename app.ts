@@ -35,6 +35,8 @@ app.use(
       "https://tdhaemoi-partner-dashbaord.vercel.app",
       "https://feetf1rst.tech",
       "https://partner.feetf1rst.tech",
+      "https://centered-mission-bizarre-spirituality.trycloudflare.com"
+   
     ],
   })
 );

@@ -288,9 +288,13 @@ model customers {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+ 
+
   @@index([vorname])
   @@index([nachname])
   @@index([email])
+  @@index([telefonnummer])
+  @@index([wohnort])
 }
 
 model customer_versorgungen {
