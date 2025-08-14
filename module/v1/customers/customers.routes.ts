@@ -1,6 +1,6 @@
 import express from "express";
 import { verifyUser } from "../../../middleware/verifyUsers";
-import { assignVersorgungToCustomer, createCustomers, deleteCustomer, getAllCustomers, getCustomerById, searchCustomers, undoAssignVersorgungToCustomer, updateCustomer } from "./customers.controllers";
+import { assignVersorgungToCustomer, createCustomers, deleteCustomer, getAllCustomers, getCustomerById, searchCustomers, undoAssignVersorgungToCustomer, updateCustomer, updateCustomerSpecialFields } from "./customers.controllers";
 import upload from "../../../config/multer.config";
 
 const router = express.Router();
@@ -43,6 +43,12 @@ router.patch(
   ]),
   updateCustomer
 );
+router.patch(
+  "/:id/special-fields",
+  verifyUser("PARTNER", "ADMIN"),
+  updateCustomerSpecialFields
+);
+
 
 router.get("/:id", verifyUser("PARTNER", "ADMIN"), getCustomerById);
 

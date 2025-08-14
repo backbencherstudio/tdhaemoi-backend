@@ -2,7 +2,6 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import morgan from "morgan";
 
-
 import v1 from "./module/v1/index";
 import v2 from "./module/v2/index";
 import path from "path";
@@ -26,8 +25,11 @@ app.use(
       "http://localhost:3002",
       "http://192.168.40.10:4000",
       "http://localhost:3001",
+       "http://192.168.4.30:3000",
       "http://192.168.4.30:3001",
       "http://192.168.4.30:3003",
+      "http://192.168.4.30:3002",
+      "http://192.168.4.30:3004",
       "https://landing-page-iota-eight-94.vercel.app",
       "file:///D:/z-bbs/tdhaemoi-backend/public/index.html",
       "https://landing-page-iota-eight-94.vercel.app",
@@ -35,8 +37,8 @@ app.use(
       "https://tdhaemoi-partner-dashbaord.vercel.app",
       "https://feetf1rst.tech",
       "https://partner.feetf1rst.tech",
-      "https://centered-mission-bizarre-spirituality.trycloudflare.com"
-   
+      "https://gender-michigan-document-wines.trycloudflare.com",
+      "https://serving-twin-ad-brought.trycloudflare.com",
     ],
   })
 );
@@ -45,11 +47,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(morgan("dev"));
 
- 
-
 app.use("/assets", express.static(path.join(__dirname, "../assets")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
 
 app.use("/", v1);
 app.use("/v2", v2);

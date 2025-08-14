@@ -1,8 +1,3 @@
-// generator client {
-//   provider = "prisma-client-js"
-//   output   = "../generated/prisma"
-// }
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -285,6 +280,14 @@ model customers {
 
   ausfuhrliche_diagnose String?
 
+   
+  kundeSteuernummer String? // Kunde Steuernummer
+  diagnose          String? // Diagnose
+  kodexeMassschuhe  String? // Kodexe Massschuhe
+  kodexeEinlagen    String? // Kodexe Einlagen
+  sonstiges         String? // Sonstiges
+
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -332,6 +335,16 @@ model einlagenAnswers {
   @@index([questionId])
 }
 
+enum QuestionCategory {
+  BUSINESSEINLAGE
+  ALLTAGSEINLAGE
+  SPORTEINLAGE
+}
+
+
+
+
+
 // {
 //   category: "BUSINESSEINLAGE",
 //   userId: "123",
@@ -350,11 +363,5 @@ model einlagenAnswers {
 //  { questionId: 9, selected: "Schwarz" }, 
 // ]
 // }
-
-enum QuestionCategory {
-  BUSINESSEINLAGE
-  ALLTAGSEINLAGE
-  SPORTEINLAGE
-}
 
 // https://chatgpt.com/share/688ca13d-c468-800c-8159-f0c30dccecbf8

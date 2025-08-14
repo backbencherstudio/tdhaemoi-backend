@@ -343,6 +343,11 @@ export const updateCustomer = async (req: Request, res: Response) => {
       archIndex1,
       archIndex2,
       ausfuhrliche_diagnose,
+      kundeSteuernummer,
+      diagnose,
+      kodexeMassschuhe,
+      kodexeEinlagen,
+      sonstiges,
     } = req.body;
 
     const deleteOldIfNew = (newFile: any, oldFileName: string | null) => {
@@ -418,6 +423,12 @@ export const updateCustomer = async (req: Request, res: Response) => {
       zehentyp1: csvData.B136 || zehentyp1 || existing.zehentyp1,
       zehentyp2: csvData.C136 || zehentyp2 || existing.zehentyp2,
 
+      kundeSteuernummer: kundeSteuernummer || existing.kundeSteuernummer,
+      diagnose: diagnose || existing.diagnose,
+      kodexeMassschuhe: kodexeMassschuhe || existing.kodexeMassschuhe,
+      kodexeEinlagen: kodexeEinlagen || existing.kodexeEinlagen,
+      sonstiges: sonstiges || existing.sonstiges,
+
       updatedBy: req.user.id,
     };
 
@@ -456,6 +467,63 @@ export const updateCustomer = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Update Customer Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: err.message,
+    });
+  }
+};
+
+export const updateCustomerSpecialFields = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      kundeSteuernummer,
+      diagnose,
+      kodexeMassschuhe,
+      kodexeEinlagen,
+      sonstiges,
+    } = req.body;
+
+    const existing = await prisma.customers.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const updateData = {
+      kundeSteuernummer: kundeSteuernummer || existing.kundeSteuernummer,
+      diagnose: diagnose || existing.diagnose,
+      kodexeMassschuhe: kodexeMassschuhe || existing.kodexeMassschuhe,
+      kodexeEinlagen: kodexeEinlagen || existing.kodexeEinlagen,
+      sonstiges: sonstiges || existing.sonstiges,
+      updatedBy: req.user.id,
+    };
+
+    const updatedCustomer = await prisma.customers.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        kundeSteuernummer: true,
+        diagnose: true,
+        kodexeMassschuhe: true,
+        kodexeEinlagen: true,
+        sonstiges: true,
+        updatedBy: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Customer special fields updated successfully",
+      data: updatedCustomer,
+    });
+  } catch (err: any) {
+    console.error("Update Customer Special Fields Error:", err);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
@@ -653,36 +721,41 @@ export const assignVersorgungToCustomer = async (
         .status(404)
         .json({ success: false, message: "Versorgung not found" });
 
-    await prisma.customer_versorgungen.upsert({
+    // Find existing record first
+    const existingRecord = await prisma.customer_versorgungen.findFirst({
       where: {
-        customerId_status_diagnosis_status: {
-          customerId,
-          status: versorgung.status,
-          diagnosis_status: versorgung.diagnosis_status,
-        },
-      },
-      create: {
-        name: versorgung.name,
-        rohlingHersteller: versorgung.rohlingHersteller,
-        artikelHersteller: versorgung.artikelHersteller,
-        versorgung: versorgung.versorgung,
-        material: versorgung.material,
-        langenempfehlung: versorgung.langenempfehlung,
-        status: versorgung.status,
-        diagnosis_status: versorgung.diagnosis_status,
         customerId,
-      },
-      update: {
-        name: versorgung.name,
-        rohlingHersteller: versorgung.rohlingHersteller,
-        artikelHersteller: versorgung.artikelHersteller,
-        versorgung: versorgung.versorgung,
-        material: versorgung.material,
-        langenempfehlung: versorgung.langenempfehlung,
         status: versorgung.status,
         diagnosis_status: versorgung.diagnosis_status,
       },
     });
+
+    const versorgungData = {
+      name: versorgung.name,
+      rohlingHersteller: versorgung.rohlingHersteller,
+      artikelHersteller: versorgung.artikelHersteller,
+      versorgung: versorgung.versorgung,
+      material: versorgung.material,
+      langenempfehlung: versorgung.langenempfehlung,
+      status: versorgung.status,
+      diagnosis_status: versorgung.diagnosis_status,
+    };
+
+    if (existingRecord) {
+      // Update existing record
+      await prisma.customer_versorgungen.update({
+        where: { id: existingRecord.id },
+        data: versorgungData,
+      });
+    } else {
+      // Create new record
+      await prisma.customer_versorgungen.create({
+        data: {
+          ...versorgungData,
+          customerId,
+        },
+      });
+    }
 
     // Fetch customer with relations in one query
     const updatedCustomer = await prisma.customers.findUnique({
@@ -976,14 +1049,12 @@ export const searchCustomers = async (req: Request, res: Response) => {
       page = 1,
     } = req.query;
 
-
     const limitNumber = Math.min(
       Math.max(parseInt(limit as string) || 10, 1),
       100
     );
     const pageNumber = Math.max(parseInt(page as string) || 1, 1);
     const skip = (pageNumber - 1) * limitNumber;
-
 
     if (!search && !email && !phone && !location && !id && !name) {
       return res.status(200).json({
@@ -997,7 +1068,6 @@ export const searchCustomers = async (req: Request, res: Response) => {
         },
       });
     }
-
 
     const whereConditions: any = {};
 
@@ -1024,7 +1094,6 @@ export const searchCustomers = async (req: Request, res: Response) => {
         }
       }
     }
-
 
     if (search && typeof search === "string") {
       const searchQuery = search.trim();
