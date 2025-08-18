@@ -25,6 +25,7 @@ const targetCells = [
 
 async function parseCSV(csvPath: string): Promise<any> {
   return new Promise((resolve, reject) => {
+    console.log("Parsing CSV file:", csvPath);
     const results: any = {};
     let currentRow = 0;
 
@@ -183,7 +184,10 @@ export const createCustomers = async (req: Request, res: Response) => {
       try {
         fs.unlinkSync(files.csvFile[0].path);
       } catch (err) {
-        console.error(`Failed to delete CSV file ${files.csvFile[0].path}`, err);
+        console.error(
+          `Failed to delete CSV file ${files.csvFile[0].path}`,
+          err
+        );
       }
     }
 
@@ -195,24 +199,43 @@ export const createCustomers = async (req: Request, res: Response) => {
     // Simplified response formatting to ensure screenerFile is an array
     const customerWithImages = {
       ...customerWithScreener,
-      screenerFile: (customerWithScreener?.screenerFile || []).map((screener) => ({
-        id: screener.id,
-        customerId: screener.customerId,
-        picture_10: screener.picture_10 ? getImageUrl(`/uploads/${screener.picture_10}`) : null,
-        picture_23: screener.picture_23 ? getImageUrl(`/uploads/${screener.picture_23}`) : null,
-        picture_11: screener.picture_11 ? getImageUrl(`/uploads/${screener.picture_11}`) : null,
-        picture_24: screener.picture_24 ? getImageUrl(`/uploads/${screener.picture_24}`) : null,
-        threed_model_left: screener.threed_model_left ? getImageUrl(`/uploads/${screener.threed_model_left}`) : null,
-        threed_model_right: screener.threed_model_right ? getImageUrl(`/uploads/${screener.threed_model_right}`) : null,
-        picture_17: screener.picture_17 ? getImageUrl(`/uploads/${screener.picture_17}`) : null,
-        picture_16: screener.picture_16 ? getImageUrl(`/uploads/${screener.picture_16}`) : null,
-        csvFile: screener.csvFile ? getImageUrl(`/uploads/${screener.csvFile}`) : null,
-        createdAt: screener.createdAt,
-        updatedAt: screener.updatedAt,
-      })),
+      screenerFile: (customerWithScreener?.screenerFile || []).map(
+        (screener) => ({
+          id: screener.id,
+          customerId: screener.customerId,
+          picture_10: screener.picture_10
+            ? getImageUrl(`/uploads/${screener.picture_10}`)
+            : null,
+          picture_23: screener.picture_23
+            ? getImageUrl(`/uploads/${screener.picture_23}`)
+            : null,
+          picture_11: screener.picture_11
+            ? getImageUrl(`/uploads/${screener.picture_11}`)
+            : null,
+          picture_24: screener.picture_24
+            ? getImageUrl(`/uploads/${screener.picture_24}`)
+            : null,
+          threed_model_left: screener.threed_model_left
+            ? getImageUrl(`/uploads/${screener.threed_model_left}`)
+            : null,
+          threed_model_right: screener.threed_model_right
+            ? getImageUrl(`/uploads/${screener.threed_model_right}`)
+            : null,
+          picture_17: screener.picture_17
+            ? getImageUrl(`/uploads/${screener.picture_17}`)
+            : null,
+          picture_16: screener.picture_16
+            ? getImageUrl(`/uploads/${screener.picture_16}`)
+            : null,
+          csvFile: screener.csvFile
+            ? getImageUrl(`/uploads/${screener.csvFile}`)
+            : null,
+          createdAt: screener.createdAt,
+          updatedAt: screener.updatedAt,
+        })
+      ),
     };
 
-    
     res.status(201).json({
       success: true,
       message: "Customer created successfully",
@@ -230,7 +253,6 @@ export const createCustomers = async (req: Request, res: Response) => {
     await prisma.$disconnect();
   }
 };
-
 
 export const getAllCustomers = async (req: Request, res: Response) => {
   try {
@@ -265,21 +287,38 @@ export const getAllCustomers = async (req: Request, res: Response) => {
       prisma.customers.count({ where: whereCondition }),
     ]);
 
- 
     const customersWithImages = customers.map((c) => ({
       ...c,
       screenerFile: c.screenerFile.map((screener) => ({
         id: screener.id,
         customerId: screener.customerId,
-        picture_10: screener.picture_10 ? getImageUrl(`/uploads/${screener.picture_10}`) : null,
-        picture_23: screener.picture_23 ? getImageUrl(`/uploads/${screener.picture_23}`) : null,
-        picture_11: screener.picture_11 ? getImageUrl(`/uploads/${screener.picture_11}`) : null,
-        picture_24: screener.picture_24 ? getImageUrl(`/uploads/${screener.picture_24}`) : null,
-        threed_model_left: screener.threed_model_left ? getImageUrl(`/uploads/${screener.threed_model_left}`) : null,
-        threed_model_right: screener.threed_model_right ? getImageUrl(`/uploads/${screener.threed_model_right}`) : null,
-        picture_17: screener.picture_17 ? getImageUrl(`/uploads/${screener.picture_17}`) : null,
-        picture_16: screener.picture_16 ? getImageUrl(`/uploads/${screener.picture_16}`) : null,
-        csvFile: screener.csvFile ? getImageUrl(`/uploads/${screener.csvFile}`) : null,
+        picture_10: screener.picture_10
+          ? getImageUrl(`/uploads/${screener.picture_10}`)
+          : null,
+        picture_23: screener.picture_23
+          ? getImageUrl(`/uploads/${screener.picture_23}`)
+          : null,
+        picture_11: screener.picture_11
+          ? getImageUrl(`/uploads/${screener.picture_11}`)
+          : null,
+        picture_24: screener.picture_24
+          ? getImageUrl(`/uploads/${screener.picture_24}`)
+          : null,
+        threed_model_left: screener.threed_model_left
+          ? getImageUrl(`/uploads/${screener.threed_model_left}`)
+          : null,
+        threed_model_right: screener.threed_model_right
+          ? getImageUrl(`/uploads/${screener.threed_model_right}`)
+          : null,
+        picture_17: screener.picture_17
+          ? getImageUrl(`/uploads/${screener.picture_17}`)
+          : null,
+        picture_16: screener.picture_16
+          ? getImageUrl(`/uploads/${screener.picture_16}`)
+          : null,
+        csvFile: screener.csvFile
+          ? getImageUrl(`/uploads/${screener.csvFile}`)
+          : null,
         createdAt: screener.createdAt,
         updatedAt: screener.updatedAt,
       })),
@@ -308,8 +347,6 @@ export const getAllCustomers = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const deleteCustomer = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -317,10 +354,10 @@ export const deleteCustomer = async (req: Request, res: Response) => {
     const customer = await prisma.customers.findUnique({
       where: { id },
       include: {
-        screenerFile: true,  
-        kundenHistorie: true,  
-        einlagenAnswers: true,  
-        versorgungen: true,  
+        screenerFile: true,
+        kundenHistorie: true,
+        einlagenAnswers: true,
+        versorgungen: true,
       },
     });
 
@@ -576,7 +613,6 @@ export const updateCustomerSpecialFields = async (
   }
 };
 
-
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -645,7 +681,9 @@ export const getCustomerById = async (req: Request, res: Response) => {
       picture_16: screener.picture_16
         ? getImageUrl(`/uploads/${screener.picture_16}`)
         : null,
-      csvFile: screener.csvFile ? getImageUrl(`/uploads/${screener.csvFile}`) : null,
+      csvFile: screener.csvFile
+        ? getImageUrl(`/uploads/${screener.csvFile}`)
+        : null,
       createdAt: screener.createdAt,
       updatedAt: screener.updatedAt,
     }));
@@ -672,7 +710,6 @@ export const getCustomerById = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 // export const assignVersorgungToCustomer = async (
 //   req: Request,
@@ -813,13 +850,13 @@ export const assignVersorgungToCustomer = async (
       include: {
         versorgungen: true,
         screenerFile: {
-          orderBy: { createdAt: "desc" }, 
-          take: 1,  
+          orderBy: { createdAt: "desc" },
+          take: 1,
         },
       },
     });
     // Format image URLs once
-  // Format the latest screenerFile data
+    // Format the latest screenerFile data
     const latestScreener = updatedCustomer?.screenerFile[0] || null;
     const screenerData = latestScreener
       ? {
@@ -878,8 +915,6 @@ export const assignVersorgungToCustomer = async (
   }
 };
 
-
-
 export const undoAssignVersorgungToCustomer = async (
   req: Request,
   res: Response
@@ -912,13 +947,13 @@ export const undoAssignVersorgungToCustomer = async (
       include: {
         versorgungen: true,
         screenerFile: {
-          orderBy: { createdAt: "desc" }, 
-          take: 1, 
+          orderBy: { createdAt: "desc" },
+          take: 1,
         },
       },
     });
 
-  const latestScreener = updatedCustomer?.screenerFile[0] || null;
+    const latestScreener = updatedCustomer?.screenerFile[0] || null;
     const screenerData = latestScreener
       ? {
           id: latestScreener.id,
@@ -1253,8 +1288,6 @@ export const searchCustomers = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const addScreenerFile = async (req: Request, res: Response) => {
   const { customerId } = req.params;
   const files = req.files as any;
@@ -1273,7 +1306,9 @@ export const addScreenerFile = async (req: Request, res: Response) => {
   };
 
   try {
-    const customer = await prisma.customers.findUnique({ where: { id: customerId } });
+    const customer = await prisma.customers.findUnique({
+      where: { id: customerId },
+    });
     if (!customer) {
       cleanupFiles();
       return res.status(404).json({
@@ -1331,15 +1366,33 @@ export const addScreenerFile = async (req: Request, res: Response) => {
     const formattedScreener = {
       id: newScreener.id,
       customerId: newScreener.customerId,
-      picture_10: newScreener.picture_10 ? getImageUrl(`/uploads/${newScreener.picture_10}`) : null,
-      picture_23: newScreener.picture_23 ? getImageUrl(`/uploads/${newScreener.picture_23}`) : null,
-      picture_11: newScreener.picture_11 ? getImageUrl(`/uploads/${newScreener.picture_11}`) : null,
-      picture_24: newScreener.picture_24 ? getImageUrl(`/uploads/${newScreener.picture_24}`) : null,
-      threed_model_left: newScreener.threed_model_left ? getImageUrl(`/uploads/${newScreener.threed_model_left}`) : null,
-      threed_model_right: newScreener.threed_model_right ? getImageUrl(`/uploads/${newScreener.threed_model_right}`) : null,
-      picture_17: newScreener.picture_17 ? getImageUrl(`/uploads/${newScreener.picture_17}`) : null,
-      picture_16: newScreener.picture_16 ? getImageUrl(`/uploads/${newScreener.picture_16}`) : null,
-      csvFile: newScreener.csvFile ? getImageUrl(`/uploads/${newScreener.csvFile}`) : null,
+      picture_10: newScreener.picture_10
+        ? getImageUrl(`/uploads/${newScreener.picture_10}`)
+        : null,
+      picture_23: newScreener.picture_23
+        ? getImageUrl(`/uploads/${newScreener.picture_23}`)
+        : null,
+      picture_11: newScreener.picture_11
+        ? getImageUrl(`/uploads/${newScreener.picture_11}`)
+        : null,
+      picture_24: newScreener.picture_24
+        ? getImageUrl(`/uploads/${newScreener.picture_24}`)
+        : null,
+      threed_model_left: newScreener.threed_model_left
+        ? getImageUrl(`/uploads/${newScreener.threed_model_left}`)
+        : null,
+      threed_model_right: newScreener.threed_model_right
+        ? getImageUrl(`/uploads/${newScreener.threed_model_right}`)
+        : null,
+      picture_17: newScreener.picture_17
+        ? getImageUrl(`/uploads/${newScreener.picture_17}`)
+        : null,
+      picture_16: newScreener.picture_16
+        ? getImageUrl(`/uploads/${newScreener.picture_16}`)
+        : null,
+      csvFile: newScreener.csvFile
+        ? getImageUrl(`/uploads/${newScreener.csvFile}`)
+        : null,
       createdAt: newScreener.createdAt,
       updatedAt: newScreener.updatedAt,
     };
@@ -1348,7 +1401,10 @@ export const addScreenerFile = async (req: Request, res: Response) => {
       try {
         fs.unlinkSync(files.csvFile[0].path);
       } catch (err) {
-        console.error(`Failed to delete CSV file ${files.csvFile[0].path}`, err);
+        console.error(
+          `Failed to delete CSV file ${files.csvFile[0].path}`,
+          err
+        );
       }
     }
 
@@ -1367,5 +1423,209 @@ export const addScreenerFile = async (req: Request, res: Response) => {
     });
   } finally {
     await prisma.$disconnect();
+  }
+};
+
+export const updateScreenerFile = async (req: Request, res: Response) => {
+  const { customerId, screenerId } = req.params;
+  const files = req.files as any;
+
+  const cleanupFiles = () => {
+    if (!files) return;
+    Object.keys(files).forEach((key) => {
+      files[key].forEach((file: any) => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (err) {
+          console.error(`Failed to delete file ${file.path}`, err);
+        }
+      });
+    });
+  };
+
+  try {
+    const customer = await prisma.customers.findUnique({
+      where: { id: customerId },
+      select: {
+        id: true,
+        fusslange1: true,
+        fusslange2: true,
+        fussbreite1: true,
+        fussbreite2: true,
+        kugelumfang1: true,
+        kugelumfang2: true,
+        rist1: true,
+        rist2: true,
+        archIndex1: true,
+        archIndex2: true,
+        zehentyp1: true,
+        zehentyp2: true,
+      },
+    });
+
+    if (!customer) {
+      cleanupFiles();
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const existingScreener = await prisma.screener_file.findUnique({
+      where: {
+        id: screenerId,
+      },
+    });
+
+    if (!existingScreener || existingScreener.customerId !== customerId) {
+      cleanupFiles();
+      return res.status(404).json({
+        success: false,
+        message: "Screener file not found for this customer",
+      });
+    }
+
+    const latestScreener = await prisma.screener_file.findFirst({
+      where: { customerId },
+      orderBy: { createdAt: "desc" },
+      take: 1,
+      select: { id: true },
+    });
+    console.log("latestScreener:", latestScreener)
+
+    const deleteOldIfNew = (newFile: any, oldFileName: string | null) => {
+      if (newFile && oldFileName) {
+        const oldPath = path.join(process.cwd(), "uploads", oldFileName);
+        if (fs.existsSync(oldPath)) {
+          try {
+            fs.unlinkSync(oldPath);
+            console.log(`Deleted old file: ${oldPath}`);
+          } catch (err) {
+            console.error(`Failed to delete old file: ${oldPath}`, err);
+          }
+        }
+      }
+    };
+
+
+    const updateData: any = {};
+    let csvData: any = {};
+    let csvFileName: string | null = existingScreener.csvFile;
+
+    if (files?.picture_10?.[0]) {
+      deleteOldIfNew(files.picture_10[0], existingScreener.picture_10);
+      updateData.picture_10 = files.picture_10[0].filename;
+    }
+
+    if (files?.picture_23?.[0]) {
+      deleteOldIfNew(files.picture_23[0], existingScreener.picture_23);
+      updateData.picture_23 = files.picture_23[0].filename;
+    }
+
+    if (files?.threed_model_left?.[0]) {
+      deleteOldIfNew(
+        files.threed_model_left[0],
+        existingScreener.threed_model_left
+      );
+      updateData.threed_model_left = files.threed_model_left[0].filename;
+    }
+
+    if (files?.picture_17?.[0]) {
+      deleteOldIfNew(files.picture_17[0], existingScreener.picture_17);
+      updateData.picture_17 = files.picture_17[0].filename;
+    }
+
+    if (files?.picture_11?.[0]) {
+      deleteOldIfNew(files.picture_11[0], existingScreener.picture_11);
+      updateData.picture_11 = files.picture_11[0].filename;
+    }
+
+    if (files?.picture_24?.[0]) {
+      deleteOldIfNew(files.picture_24[0], existingScreener.picture_24);
+      updateData.picture_24 = files.picture_24[0].filename;
+    }
+
+    if (files?.threed_model_right?.[0]) {
+      deleteOldIfNew(
+        files.threed_model_right[0],
+        existingScreener.threed_model_right
+      );
+      updateData.threed_model_right = files.threed_model_right[0].filename;
+    }
+
+    if (files?.picture_16?.[0]) {
+      deleteOldIfNew(files.picture_16[0], existingScreener.picture_16);
+      updateData.picture_16 = files.picture_16[0].filename;
+    }
+
+    if (files?.csvFile?.[0]) {
+      deleteOldIfNew(files.csvFile[0], existingScreener.csvFile);
+      const csvPath = files.csvFile[0].path;
+      csvFileName = files.csvFile[0].filename;
+      csvData = await parseCSV(csvPath);
+      updateData.csvFile = csvFileName;
+    }
+
+    if (Object.keys(csvData).length > 0 && latestScreener?.id === screenerId) {
+      await prisma.customers.update({
+        where: { id: customerId },
+        data: {
+          fusslange1: csvData.B58 ?? customer.fusslange1,
+          fusslange2: csvData.C58 ?? customer.fusslange2,
+          fussbreite1: csvData.B73 ?? customer.fussbreite1,
+          fussbreite2: csvData.C73 ?? customer.fussbreite2,
+          kugelumfang1: csvData.B102 ?? customer.kugelumfang1,
+          kugelumfang2: csvData.C102 ?? customer.kugelumfang2,
+          rist1: csvData.B105 ?? customer.rist1,
+          rist2: csvData.C105 ?? customer.rist2,
+          archIndex1: csvData.B120 ?? customer.archIndex1,
+          archIndex2: csvData.C120 ?? customer.archIndex2,
+          zehentyp1: csvData.B136 ?? customer.zehentyp1,
+          zehentyp2: csvData.C136 ?? customer.zehentyp2,
+          updatedBy: req.user.id,
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    // Update the screener file record only if there are changes
+    const updatedScreener = await prisma.screener_file.update({
+      where: { id: screenerId },
+      data: updateData,
+    });
+
+    // Format the response with image URLs
+    const formatFileUrl = (filename: string | null) =>
+      filename ? getImageUrl(`/uploads/${filename}`) : null;
+
+    const formattedScreener = {
+      id: updatedScreener.id,
+      customerId: updatedScreener.customerId,
+      picture_10: formatFileUrl(updatedScreener.picture_10),
+      picture_23: formatFileUrl(updatedScreener.picture_23),
+      picture_11: formatFileUrl(updatedScreener.picture_11),
+      picture_24: formatFileUrl(updatedScreener.picture_24),
+      threed_model_left: formatFileUrl(updatedScreener.threed_model_left),
+      threed_model_right: formatFileUrl(updatedScreener.threed_model_right),
+      picture_17: formatFileUrl(updatedScreener.picture_17),
+      picture_16: formatFileUrl(updatedScreener.picture_16),
+      csvFile: formatFileUrl(updatedScreener.csvFile),
+      createdAt: updatedScreener.createdAt,
+      updatedAt: updatedScreener.updatedAt,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Screener file updated successfully",
+      data: formattedScreener,
+    });
+  } catch (error: any) {
+    console.error("Update Screener File Error:", error);
+    cleanupFiles();
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
   }
 };
