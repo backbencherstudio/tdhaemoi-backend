@@ -237,7 +237,6 @@ enum versorgungenDiagnosisStatus {
   PLATTFUSS
 }
 
-
 model customers {
   id            String  @id @default(uuid())
   vorname       String
@@ -246,15 +245,7 @@ model customers {
   telefonnummer String?
   wohnort       String?
 
-  picture_10        String? //Fersenneigung left (image)
-  picture_23        String? //Plantaransicht left (image)
-  threed_model_left String? //3D-Model left   (.stl)
-  picture_17        String? //Sohlen Index left (image)
-
-  picture_11         String? //Fersenneigung right (image)
-  picture_24         String? //Plantaransich right  (image)
-  threed_model_right String? //3D-Model right   .stl
-  picture_16         String? //Sohlen Index right   (image)
+  screenerFile screener_file[]
 
   // this all data come form a single csv file
   fusslange1   String? //B58   (.csv)
@@ -273,25 +264,22 @@ model customers {
   createdBy String
   updatedBy String?
 
-  versorgungen customer_versorgungen[] @relation("customerVersorgungen")
+  // Relation to KundenHistorie
+  kundenHistorie customerHistorie[]
 
   // Relation to UserAnswer
-  einlagenAnswers einlagenAnswers[]
-
+  einlagenAnswers       einlagenAnswers[]
+  versorgungen          customer_versorgungen[] @relation("customerVersorgungen")
   ausfuhrliche_diagnose String?
 
-   
   kundeSteuernummer String? // Kunde Steuernummer
   diagnose          String? // Diagnose
   kodexeMassschuhe  String? // Kodexe Massschuhe
   kodexeEinlagen    String? // Kodexe Einlagen
   sonstiges         String? // Sonstiges
 
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
- 
 
   @@index([vorname])
   @@index([nachname])
@@ -300,8 +288,53 @@ model customers {
   @@index([wohnort])
 }
 
+model screener_file {
+  id         String    @id @default(uuid())
+  customerId String
+  customer   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  picture_10        String? //Fersenneigung left (image)
+  picture_23        String? //Plantaransicht left (image)
+  threed_model_left String? //3D-Model left   (.stl)
+  picture_17        String? //Sohlen Index left (image)
+
+  picture_11         String? //Fersenneigung right (image)
+  picture_24         String? //Plantaransich right  (image)
+  threed_model_right String? //3D-Model right   .stl
+  picture_16         String? //Sohlen Index right   (image)
+  csvFile            String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model customerHistorie {
+  id         String        @id @default(uuid())
+  customerId String
+  customer   customers     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  category   EventCategory
+
+  eventId   String?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@map("kunden_historie")
+}
+
+enum EventCategory {
+  Diagramm
+  Notizen
+  Bestellungen
+  Leistungen
+  Rechnungen
+  Zahlungen
+  Emails
+}
+
 model customer_versorgungen {
-  id                String             @id @default(uuid())
+  id                String                       @id @default(uuid())
   name              String
   rohlingHersteller String
   artikelHersteller String
@@ -340,10 +373,6 @@ enum QuestionCategory {
   ALLTAGSEINLAGE
   SPORTEINLAGE
 }
-
-
-
-
 
 // {
 //   category: "BUSINESSEINLAGE",

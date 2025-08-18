@@ -9,18 +9,18 @@ import path from "path";
 const prisma = new PrismaClient();
 
 const targetCells = [
-  "B58",
-  "C58",
-  "B73",
-  "C73",
-  "B102",
-  "C102",
-  "B105",
-  "C105",
-  "B136",
-  "C136",
-  "B120",
-  "C120",
+  "B58", // fusslange1
+  "C58", // fusslange2
+  "B73", // fussbreite1
+  "C73", // fussbreite2
+  "B102", // kugelumfang1
+  "C102", // kugelumfang2
+  "B105", // rist1
+  "C105", // rist2
+  "B136", // zehentyp1
+  "C136", // zehentyp2
+  "B120", // archIndex1
+  "C120", // archIndex2
 ];
 
 async function parseCSV(csvPath: string): Promise<any> {
@@ -33,14 +33,12 @@ async function parseCSV(csvPath: string): Promise<any> {
       .pipe(csvParser({ separator: "\t", headers: false }))
       .on("data", (row) => {
         currentRow++;
-
         targetCells.forEach((cell) => {
           const col = cell.charAt(0); // B or C
           const rowNum = parseInt(cell.slice(1));
-
           if (currentRow === rowNum) {
             const colIndex = col === "B" ? 1 : 2;
-            results[cell] = row[colIndex] || "";
+            results[cell] = row[colIndex] || null;
           }
         });
       })
@@ -50,11 +48,25 @@ async function parseCSV(csvPath: string): Promise<any> {
 }
 
 export const createCustomers = async (req: Request, res: Response) => {
+  const files = req.files as any;
+
+  const cleanupFiles = () => {
+    if (!files) return;
+    Object.keys(files).forEach((key) => {
+      files[key].forEach((file: any) => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (err) {
+          console.error(`Failed to delete file ${file.path}`, err);
+        }
+      });
+    });
+  };
+
   try {
     const missingField = ["vorname", "nachname", "email"].find(
       (field) => !req.body[field]
     );
-
     if (missingField) {
       return res.status(400).json({
         success: false,
@@ -62,27 +74,23 @@ export const createCustomers = async (req: Request, res: Response) => {
       });
     }
 
-    const { vorname, nachname, email, telefonnummer, wohnort } = req.body;
-
-    const files = req.files as any;
-
-    const cleanupFiles = () => {
-      if (!files) return;
-      Object.keys(files).forEach((key) => {
-        files[key].forEach((file: any) => {
-          try {
-            fs.unlinkSync(file.path);
-          } catch (err) {
-            console.error(`Failed to delete file ${file.path}`, err);
-          }
-        });
-      });
-    };
+    const {
+      vorname,
+      nachname,
+      email,
+      telefonnummer,
+      wohnort,
+      ausfuhrliche_diagnose,
+      kundeSteuernummer,
+      diagnose,
+      kodexeMassschuhe,
+      kodexeEinlagen,
+      sonstiges,
+    } = req.body;
 
     const existingCustomer = await prisma.customers.findUnique({
       where: { email },
     });
-
     if (existingCustomer) {
       cleanupFiles();
       return res.status(400).json({
@@ -91,87 +99,117 @@ export const createCustomers = async (req: Request, res: Response) => {
       });
     }
 
-    //Get file names
-    const picture_10 = files.picture_10?.[0]?.filename || null;
-    const picture_23 = files.picture_23?.[0]?.filename || null;
-    const threed_model_left = files.threed_model_left?.[0]?.filename || null;
-    const picture_17 = files.picture_17?.[0]?.filename || null;
-    const picture_11 = files.picture_11?.[0]?.filename || null;
-    const picture_24 = files.picture_24?.[0]?.filename || null;
-    const threed_model_right = files.threed_model_right?.[0]?.filename || null;
-    const picture_16 = files.picture_16?.[0]?.filename || null;
-
-    // Parse CSV if present
     let csvData: any = {};
+    let csvFileName: string | null = null;
     if (files.csvFile && files.csvFile[0]) {
       const csvPath = files.csvFile[0].path;
+      csvFileName = files.csvFile[0].filename;
       console.log("Parsing CSV file:", csvPath);
       csvData = await parseCSV(csvPath);
-      fs.unlinkSync(csvPath);
     }
 
-    // Save to DB
-    const customer = await prisma.customers.create({
-      data: {
-        vorname,
-        nachname,
-        email,
-        telefonnummer: telefonnummer || null,
-        wohnort: wohnort || null,
-        picture_10,
-        picture_23,
-        threed_model_left,
-        picture_17,
-        picture_11,
-        picture_24,
-        threed_model_right,
-        picture_16,
+    const customer = await prisma.$transaction(async (tx) => {
+      const newCustomer = await tx.customers.create({
+        data: {
+          vorname,
+          nachname,
+          email,
+          telefonnummer: telefonnummer || null,
+          wohnort: wohnort || null,
+          ausfuhrliche_diagnose: ausfuhrliche_diagnose || null,
+          kundeSteuernummer: kundeSteuernummer || null,
+          diagnose: diagnose || null,
+          kodexeMassschuhe: kodexeMassschuhe || null,
+          kodexeEinlagen: kodexeEinlagen || null,
+          sonstiges: sonstiges || null,
+          fusslange1: csvData.B58 || null,
+          fusslange2: csvData.C58 || null,
+          fussbreite1: csvData.B73 || null,
+          fussbreite2: csvData.C73 || null,
+          kugelumfang1: csvData.B102 || null,
+          kugelumfang2: csvData.C102 || null,
+          rist1: csvData.B105 || null,
+          rist2: csvData.C105 || null,
+          archIndex1: csvData.B120 || null,
+          archIndex2: csvData.C120 || null,
+          zehentyp1: csvData.B136 || null,
+          zehentyp2: csvData.C136 || null,
+          createdBy: req.user.id,
+          updatedBy: null,
+        },
+      });
 
-        // Save the extracted CSV values
-        fusslange1: csvData.B58 || null,
-        fusslange2: csvData.C58 || null,
-        fussbreite1: csvData.B73 || null,
-        fussbreite2: csvData.C73 || null,
-        kugelumfang1: csvData.B102 || null,
-        kugelumfang2: csvData.C102 || null,
-        rist1: csvData.B105 || null,
-        rist2: csvData.C105 || null,
-        archIndex1: csvData.B120 || null,
-        archIndex2: csvData.C120 || null,
-        zehentyp1: csvData.B136 || null,
-        zehentyp2: csvData.C136 || null,
+      if (
+        files.picture_10 ||
+        files.picture_23 ||
+        files.threed_model_left ||
+        files.picture_17 ||
+        files.picture_11 ||
+        files.picture_24 ||
+        files.threed_model_right ||
+        files.picture_16 ||
+        csvFileName
+      ) {
+        await tx.screener_file.create({
+          data: {
+            customerId: newCustomer.id,
+            picture_10: files.picture_10?.[0]?.filename || null,
+            picture_23: files.picture_23?.[0]?.filename || null,
+            threed_model_left: files.threed_model_left?.[0]?.filename || null,
+            picture_17: files.picture_17?.[0]?.filename || null,
+            picture_11: files.picture_11?.[0]?.filename || null,
+            picture_24: files.picture_24?.[0]?.filename || null,
+            threed_model_right: files.threed_model_right?.[0]?.filename || null,
+            picture_16: files.picture_16?.[0]?.filename || null,
+            csvFile: csvFileName,
+          },
+        });
+      }
 
-        createdBy: req.user.id,
-        updatedBy: null,
-      },
+      await tx.customerHistorie.create({
+        data: {
+          customerId: newCustomer.id,
+          category: "Notizen",
+          note: `Customer ${vorname} ${nachname} created by user ${req.user.id}`,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      return newCustomer;
     });
 
+    if (csvFileName && files.csvFile?.[0]?.path) {
+      try {
+        fs.unlinkSync(files.csvFile[0].path);
+      } catch (err) {
+        console.error(`Failed to delete CSV file ${files.csvFile[0].path}`, err);
+      }
+    }
+
+    const customerWithScreener = await prisma.customers.findUnique({
+      where: { id: customer.id },
+      include: { screenerFile: true },
+    });
+
+    // Simplified response formatting to ensure screenerFile is an array
     const customerWithImages = {
-      ...customer,
-      picture_10: customer.picture_10
-        ? getImageUrl(`/uploads/${customer.picture_10}`)
-        : null,
-      picture_23: customer.picture_23
-        ? getImageUrl(`/uploads/${customer.picture_23}`)
-        : null,
-      picture_11: customer.picture_11
-        ? getImageUrl(`/uploads/${customer.picture_11}`)
-        : null,
-      picture_24: customer.picture_24
-        ? getImageUrl(`/uploads/${customer.picture_24}`)
-        : null,
-      threed_model_left: customer.threed_model_left
-        ? getImageUrl(`/uploads/${customer.threed_model_left}`)
-        : null,
-      threed_model_right: customer.threed_model_right
-        ? getImageUrl(`/uploads/${customer.threed_model_right}`)
-        : null,
-      picture_17: customer.picture_17
-        ? getImageUrl(`/uploads/${customer.picture_17}`)
-        : null,
-      picture_16: customer.picture_16
-        ? getImageUrl(`/uploads/${customer.picture_16}`)
-        : null,
+      ...customerWithScreener,
+      screenerFile: (customerWithScreener?.screenerFile || []).map((screener) => ({
+        id: screener.id,
+        customerId: screener.customerId,
+        picture_10: screener.picture_10 ? getImageUrl(`/uploads/${screener.picture_10}`) : null,
+        picture_23: screener.picture_23 ? getImageUrl(`/uploads/${screener.picture_23}`) : null,
+        picture_11: screener.picture_11 ? getImageUrl(`/uploads/${screener.picture_11}`) : null,
+        picture_24: screener.picture_24 ? getImageUrl(`/uploads/${screener.picture_24}`) : null,
+        threed_model_left: screener.threed_model_left ? getImageUrl(`/uploads/${screener.threed_model_left}`) : null,
+        threed_model_right: screener.threed_model_right ? getImageUrl(`/uploads/${screener.threed_model_right}`) : null,
+        picture_17: screener.picture_17 ? getImageUrl(`/uploads/${screener.picture_17}`) : null,
+        picture_16: screener.picture_16 ? getImageUrl(`/uploads/${screener.picture_16}`) : null,
+        csvFile: screener.csvFile ? getImageUrl(`/uploads/${screener.csvFile}`) : null,
+        createdAt: screener.createdAt,
+        updatedAt: screener.updatedAt,
+      })),
     };
 
     res.status(201).json({
@@ -181,13 +219,17 @@ export const createCustomers = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Create Customer Error:", err);
+    cleanupFiles();
     res.status(500).json({
       success: false,
       message: "Something went wrong",
       error: err.message,
     });
+  } finally {
+    await prisma.$disconnect();
   }
 };
+
 
 export const getAllCustomers = async (req: Request, res: Response) => {
   try {
@@ -196,7 +238,6 @@ export const getAllCustomers = async (req: Request, res: Response) => {
     const search = (req.query.search as string) || "";
     const skip = (page - 1) * limit;
 
-    // Filter condition
     const whereCondition: any = {};
     if (search) {
       whereCondition.OR = [
@@ -206,35 +247,41 @@ export const getAllCustomers = async (req: Request, res: Response) => {
       ];
     }
 
-    //  Fetch data and total count
     const [customers, totalCount] = await Promise.all([
       prisma.customers.findMany({
         where: whereCondition,
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
-        include: { versorgungen: true },
+        include: {
+          versorgungen: true,
+          screenerFile: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
       }),
       prisma.customers.count({ where: whereCondition }),
     ]);
 
-    // Add image URLs
+ 
     const customersWithImages = customers.map((c) => ({
       ...c,
-      picture_10: c.picture_10 ? getImageUrl(`/uploads/${c.picture_10}`) : null,
-      picture_23: c.picture_23 ? getImageUrl(`/uploads/${c.picture_23}`) : null,
-      picture_11: c.picture_11 ? getImageUrl(`/uploads/${c.picture_11}`) : null,
-      picture_24: c.picture_24 ? getImageUrl(`/uploads/${c.picture_24}`) : null,
-
-      threed_model_left: c.threed_model_left
-        ? getImageUrl(`/uploads/${c.threed_model_left}`)
-        : null,
-      threed_model_right: c.threed_model_right
-        ? getImageUrl(`/uploads/${c.threed_model_right}`)
-        : null,
-
-      picture_17: c.picture_17 ? getImageUrl(`/uploads/${c.picture_17}`) : null,
-      picture_16: c.picture_16 ? getImageUrl(`/uploads/${c.picture_16}`) : null,
+      screenerFile: c.screenerFile.map((screener) => ({
+        id: screener.id,
+        customerId: screener.customerId,
+        picture_10: screener.picture_10 ? getImageUrl(`/uploads/${screener.picture_10}`) : null,
+        picture_23: screener.picture_23 ? getImageUrl(`/uploads/${screener.picture_23}`) : null,
+        picture_11: screener.picture_11 ? getImageUrl(`/uploads/${screener.picture_11}`) : null,
+        picture_24: screener.picture_24 ? getImageUrl(`/uploads/${screener.picture_24}`) : null,
+        threed_model_left: screener.threed_model_left ? getImageUrl(`/uploads/${screener.threed_model_left}`) : null,
+        threed_model_right: screener.threed_model_right ? getImageUrl(`/uploads/${screener.threed_model_right}`) : null,
+        picture_17: screener.picture_17 ? getImageUrl(`/uploads/${screener.picture_17}`) : null,
+        picture_16: screener.picture_16 ? getImageUrl(`/uploads/${screener.picture_16}`) : null,
+        csvFile: screener.csvFile ? getImageUrl(`/uploads/${screener.csvFile}`) : null,
+        createdAt: screener.createdAt,
+        updatedAt: screener.updatedAt,
+      })),
     }));
 
     res.status(200).json({
@@ -255,8 +302,12 @@ export const getAllCustomers = async (req: Request, res: Response) => {
       message: "Something went wrong",
       error: error.message,
     });
+  } finally {
+    await prisma.$disconnect();
   }
 };
+
+
 
 export const deleteCustomer = async (req: Request, res: Response) => {
   try {
@@ -264,6 +315,12 @@ export const deleteCustomer = async (req: Request, res: Response) => {
 
     const customer = await prisma.customers.findUnique({
       where: { id },
+      include: {
+        screenerFile: true,  
+        kundenHistorie: true,  
+        einlagenAnswers: true,  
+        versorgungen: true,  
+      },
     });
 
     if (!customer) {
@@ -273,24 +330,26 @@ export const deleteCustomer = async (req: Request, res: Response) => {
       });
     }
 
-    const fileFields = [
-      customer.picture_10,
-      customer.picture_23,
-      customer.picture_17,
-      customer.picture_11,
-      customer.picture_24,
-      customer.picture_16,
-      customer.threed_model_left,
-      customer.threed_model_right,
-    ];
-
-    fileFields.forEach((file) => {
-      if (file) {
-        const filePath = `uploads/${file}`;
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+    customer.screenerFile.forEach((screener) => {
+      const fileFields = [
+        screener.picture_10,
+        screener.picture_23,
+        screener.picture_17,
+        screener.picture_11,
+        screener.picture_24,
+        screener.picture_16,
+        screener.threed_model_left,
+        screener.threed_model_right,
+        screener.csvFile,
+      ];
+      fileFields.forEach((file) => {
+        if (file) {
+          const filePath = `uploads/${file}`;
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
         }
-      }
+      });
     });
 
     await prisma.customers.delete({
@@ -312,170 +371,158 @@ export const deleteCustomer = async (req: Request, res: Response) => {
 };
 
 export const updateCustomer = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    const existing = await prisma.customers.findUnique({ where: { id } });
-    if (!existing) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-      });
-    }
-
-    const files = req.files as any;
-    const {
-      vorname,
-      nachname,
-      email,
-      telefonnummer,
-      wohnort,
-      fusslange1,
-      fusslange2,
-      fussbreite1,
-      fussbreite2,
-      kugelumfang1,
-      kugelumfang2,
-      rist1,
-      rist2,
-      zehentyp1,
-      zehentyp2,
-      archIndex1,
-      archIndex2,
-      ausfuhrliche_diagnose,
-      kundeSteuernummer,
-      diagnose,
-      kodexeMassschuhe,
-      kodexeEinlagen,
-      sonstiges,
-    } = req.body;
-
-    const deleteOldIfNew = (newFile: any, oldFileName: string | null) => {
-      if (newFile && oldFileName) {
-        const oldPath = path.join(process.cwd(), "uploads", oldFileName);
-        if (fs.existsSync(oldPath)) {
-          try {
-            fs.unlinkSync(oldPath);
-            console.log(`Deleted old file: ${oldPath}`);
-          } catch (err) {
-            console.error(`Failed to delete old file: ${oldPath}`, err);
-          }
-        }
-      }
-    };
-
-    deleteOldIfNew(files.picture_10?.[0], existing.picture_10);
-    deleteOldIfNew(files.picture_23?.[0], existing.picture_23);
-    deleteOldIfNew(files.threed_model_left?.[0], existing.threed_model_left);
-    deleteOldIfNew(files.picture_17?.[0], existing.picture_17);
-    deleteOldIfNew(files.picture_11?.[0], existing.picture_11);
-    deleteOldIfNew(files.picture_24?.[0], existing.picture_24);
-    deleteOldIfNew(files.threed_model_right?.[0], existing.threed_model_right);
-    deleteOldIfNew(files.picture_16?.[0], existing.picture_16);
-
-    const picture_10 = files.picture_10?.[0]?.filename || existing.picture_10;
-    const picture_23 = files.picture_23?.[0]?.filename || existing.picture_23;
-    const threed_model_left =
-      files.threed_model_left?.[0]?.filename || existing.threed_model_left;
-    const picture_17 = files.picture_17?.[0]?.filename || existing.picture_17;
-    const picture_11 = files.picture_11?.[0]?.filename || existing.picture_11;
-    const picture_24 = files.picture_24?.[0]?.filename || existing.picture_24;
-    const threed_model_right =
-      files.threed_model_right?.[0]?.filename || existing.threed_model_right;
-    const picture_16 = files.picture_16?.[0]?.filename || existing.picture_16;
-
-    let csvData: any = {};
-    if (files.csvFile && files.csvFile[0]) {
-      const csvPath = files.csvFile[0].path;
-      csvData = await parseCSV(csvPath);
-      fs.unlinkSync(csvPath);
-    }
-
-    const updateData = {
-      vorname: vorname || existing.vorname,
-      nachname: nachname || existing.nachname,
-      email: email || existing.email,
-      telefonnummer: telefonnummer || existing.telefonnummer,
-      wohnort: wohnort || existing.wohnort,
-
-      ausfuhrliche_diagnose:
-        ausfuhrliche_diagnose || existing.ausfuhrliche_diagnose,
-
-      picture_10,
-      picture_23,
-      threed_model_left,
-      picture_17,
-      picture_11,
-      picture_24,
-      threed_model_right,
-      picture_16,
-
-      fusslange1: csvData.B58 || fusslange1 || existing.fusslange1,
-      fusslange2: csvData.C58 || fusslange2 || existing.fusslange2,
-      fussbreite1: csvData.B73 || fussbreite1 || existing.fussbreite1,
-      fussbreite2: csvData.C73 || fussbreite2 || existing.fussbreite2,
-      kugelumfang1: csvData.B102 || kugelumfang1 || existing.kugelumfang1,
-      kugelumfang2: csvData.C102 || kugelumfang2 || existing.kugelumfang2,
-      rist1: csvData.B105 || rist1 || existing.rist1,
-      rist2: csvData.C105 || rist2 || existing.rist2,
-      archIndex1: csvData.B120 || archIndex1 || existing.archIndex1,
-      archIndex2: csvData.C120 || archIndex2 || existing.archIndex2,
-      zehentyp1: csvData.B136 || zehentyp1 || existing.zehentyp1,
-      zehentyp2: csvData.C136 || zehentyp2 || existing.zehentyp2,
-
-      kundeSteuernummer: kundeSteuernummer || existing.kundeSteuernummer,
-      diagnose: diagnose || existing.diagnose,
-      kodexeMassschuhe: kodexeMassschuhe || existing.kodexeMassschuhe,
-      kodexeEinlagen: kodexeEinlagen || existing.kodexeEinlagen,
-      sonstiges: sonstiges || existing.sonstiges,
-
-      updatedBy: req.user.id,
-    };
-
-    const updatedCustomer = await prisma.customers.update({
-      where: { id },
-      data: updateData,
-      include: { versorgungen: true },
-    });
-
-    const customerWithImages = {
-      ...updatedCustomer,
-      picture_10: updatedCustomer?.picture_10
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_10}`)
-        : null,
-      picture_23: updatedCustomer?.picture_23
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_23}`)
-        : null,
-      picture_11: updatedCustomer?.picture_11
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_11}`)
-        : null,
-      picture_24: updatedCustomer?.picture_24
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_24}`)
-        : null,
-      threed_model_left: updatedCustomer?.threed_model_left
-        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_left}`)
-        : null,
-      threed_model_right: updatedCustomer?.threed_model_right
-        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_right}`)
-        : null,
-    };
-
-    res.status(200).json({
-      success: true,
-      message: "Customer updated successfully",
-      data: customerWithImages,
-    });
-  } catch (err: any) {
-    console.error("Update Customer Error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-      error: err.message,
-    });
-  }
+  // try {
+  //   const { id } = req.params;
+  //   const existing = await prisma.customers.findUnique({ where: { id } });
+  //   if (!existing) {
+  //     return res.status(404).json({
+  //       success: false,
+  //       message: "Customer not found",
+  //     });
+  //   }
+  //   const files = req.files as any;
+  //   const {
+  //     vorname,
+  //     nachname,
+  //     email,
+  //     telefonnummer,
+  //     wohnort,
+  //     fusslange1,
+  //     fusslange2,
+  //     fussbreite1,
+  //     fussbreite2,
+  //     kugelumfang1,
+  //     kugelumfang2,
+  //     rist1,
+  //     rist2,
+  //     zehentyp1,
+  //     zehentyp2,
+  //     archIndex1,
+  //     archIndex2,
+  //     ausfuhrliche_diagnose,
+  //     kundeSteuernummer,
+  //     diagnose,
+  //     kodexeMassschuhe,
+  //     kodexeEinlagen,
+  //     sonstiges,
+  //   } = req.body;
+  //   const deleteOldIfNew = (newFile: any, oldFileName: string | null) => {
+  //     if (newFile && oldFileName) {
+  //       const oldPath = path.join(process.cwd(), "uploads", oldFileName);
+  //       if (fs.existsSync(oldPath)) {
+  //         try {
+  //           fs.unlinkSync(oldPath);
+  //           console.log(`Deleted old file: ${oldPath}`);
+  //         } catch (err) {
+  //           console.error(`Failed to delete old file: ${oldPath}`, err);
+  //         }
+  //       }
+  //     }
+  //   };
+  //   deleteOldIfNew(files.picture_10?.[0], existing.picture_10);
+  //   deleteOldIfNew(files.picture_23?.[0], existing.picture_23);
+  //   deleteOldIfNew(files.threed_model_left?.[0], existing.threed_model_left);
+  //   deleteOldIfNew(files.picture_17?.[0], existing.picture_17);
+  //   deleteOldIfNew(files.picture_11?.[0], existing.picture_11);
+  //   deleteOldIfNew(files.picture_24?.[0], existing.picture_24);
+  //   deleteOldIfNew(files.threed_model_right?.[0], existing.threed_model_right);
+  //   deleteOldIfNew(files.picture_16?.[0], existing.picture_16);
+  //   const picture_10 = files.picture_10?.[0]?.filename || existing.picture_10;
+  //   const picture_23 = files.picture_23?.[0]?.filename || existing.picture_23;
+  //   const threed_model_left =
+  //     files.threed_model_left?.[0]?.filename || existing.threed_model_left;
+  //   const picture_17 = files.picture_17?.[0]?.filename || existing.picture_17;
+  //   const picture_11 = files.picture_11?.[0]?.filename || existing.picture_11;
+  //   const picture_24 = files.picture_24?.[0]?.filename || existing.picture_24;
+  //   const threed_model_right =
+  //     files.threed_model_right?.[0]?.filename || existing.threed_model_right;
+  //   const picture_16 = files.picture_16?.[0]?.filename || existing.picture_16;
+  //   let csvData: any = {};
+  //   if (files.csvFile && files.csvFile[0]) {
+  //     const csvPath = files.csvFile[0].path;
+  //     csvData = await parseCSV(csvPath);
+  //     fs.unlinkSync(csvPath);
+  //   }
+  //   const updateData = {
+  //     vorname: vorname || existing.vorname,
+  //     nachname: nachname || existing.nachname,
+  //     email: email || existing.email,
+  //     telefonnummer: telefonnummer || existing.telefonnummer,
+  //     wohnort: wohnort || existing.wohnort,
+  //     ausfuhrliche_diagnose:
+  //       ausfuhrliche_diagnose || existing.ausfuhrliche_diagnose,
+  //     picture_10,
+  //     picture_23,
+  //     threed_model_left,
+  //     picture_17,
+  //     picture_11,
+  //     picture_24,
+  //     threed_model_right,
+  //     picture_16,
+  //     fusslange1: csvData.B58 || fusslange1 || existing.fusslange1,
+  //     fusslange2: csvData.C58 || fusslange2 || existing.fusslange2,
+  //     fussbreite1: csvData.B73 || fussbreite1 || existing.fussbreite1,
+  //     fussbreite2: csvData.C73 || fussbreite2 || existing.fussbreite2,
+  //     kugelumfang1: csvData.B102 || kugelumfang1 || existing.kugelumfang1,
+  //     kugelumfang2: csvData.C102 || kugelumfang2 || existing.kugelumfang2,
+  //     rist1: csvData.B105 || rist1 || existing.rist1,
+  //     rist2: csvData.C105 || rist2 || existing.rist2,
+  //     archIndex1: csvData.B120 || archIndex1 || existing.archIndex1,
+  //     archIndex2: csvData.C120 || archIndex2 || existing.archIndex2,
+  //     zehentyp1: csvData.B136 || zehentyp1 || existing.zehentyp1,
+  //     zehentyp2: csvData.C136 || zehentyp2 || existing.zehentyp2,
+  //     kundeSteuernummer: kundeSteuernummer || existing.kundeSteuernummer,
+  //     diagnose: diagnose || existing.diagnose,
+  //     kodexeMassschuhe: kodexeMassschuhe || existing.kodexeMassschuhe,
+  //     kodexeEinlagen: kodexeEinlagen || existing.kodexeEinlagen,
+  //     sonstiges: sonstiges || existing.sonstiges,
+  //     updatedBy: req.user.id,
+  //   };
+  //   const updatedCustomer = await prisma.customers.update({
+  //     where: { id },
+  //     data: updateData,
+  //     include: { versorgungen: true },
+  //   });
+  //   const customerWithImages = {
+  //     ...updatedCustomer,
+  //     picture_10: updatedCustomer?.picture_10
+  //       ? getImageUrl(`/uploads/${updatedCustomer.picture_10}`)
+  //       : null,
+  //     picture_23: updatedCustomer?.picture_23
+  //       ? getImageUrl(`/uploads/${updatedCustomer.picture_23}`)
+  //       : null,
+  //     picture_11: updatedCustomer?.picture_11
+  //       ? getImageUrl(`/uploads/${updatedCustomer.picture_11}`)
+  //       : null,
+  //     picture_24: updatedCustomer?.picture_24
+  //       ? getImageUrl(`/uploads/${updatedCustomer.picture_24}`)
+  //       : null,
+  //     threed_model_left: updatedCustomer?.threed_model_left
+  //       ? getImageUrl(`/uploads/${updatedCustomer.threed_model_left}`)
+  //       : null,
+  //     threed_model_right: updatedCustomer?.threed_model_right
+  //       ? getImageUrl(`/uploads/${updatedCustomer.threed_model_right}`)
+  //       : null,
+  //   };
+  //   res.status(200).json({
+  //     success: true,
+  //     message: "Customer updated successfully",
+  //     data: customerWithImages,
+  //   });
+  // } catch (err: any) {
+  //   console.error("Update Customer Error:", err);
+  //   res.status(500).json({
+  //     success: false,
+  //     message: "Something went wrong",
+  //     error: err.message,
+  //   });
+  // }
 };
 
-export const updateCustomerSpecialFields = async (req: Request, res: Response) => {
+export const updateCustomerSpecialFields = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const { id } = req.params;
     const {
@@ -485,7 +532,6 @@ export const updateCustomerSpecialFields = async (req: Request, res: Response) =
       kodexeEinlagen,
       sonstiges,
     } = req.body;
-
     const existing = await prisma.customers.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({
@@ -493,7 +539,6 @@ export const updateCustomerSpecialFields = async (req: Request, res: Response) =
         message: "Customer not found",
       });
     }
-
     const updateData = {
       kundeSteuernummer: kundeSteuernummer || existing.kundeSteuernummer,
       diagnose: diagnose || existing.diagnose,
@@ -502,7 +547,6 @@ export const updateCustomerSpecialFields = async (req: Request, res: Response) =
       sonstiges: sonstiges || existing.sonstiges,
       updatedBy: req.user.id,
     };
-
     const updatedCustomer = await prisma.customers.update({
       where: { id },
       data: updateData,
@@ -516,7 +560,6 @@ export const updateCustomerSpecialFields = async (req: Request, res: Response) =
         updatedBy: true,
       },
     });
-
     res.status(200).json({
       success: true,
       message: "Customer special fields updated successfully",
@@ -532,6 +575,7 @@ export const updateCustomerSpecialFields = async (req: Request, res: Response) =
   }
 };
 
+
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -542,6 +586,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
         einlagenAnswers: {
           orderBy: [{ category: "asc" }, { questionId: "asc" }],
         },
+        screenerFile: true,
       },
     });
 
@@ -552,7 +597,6 @@ export const getCustomerById = async (req: Request, res: Response) => {
       });
     }
 
-    // Format einlagenAnswers by category with question structure
     const einlagenAnswersByCategory = customer.einlagenAnswers.reduce(
       (acc, answer) => {
         if (!acc[answer.category]) {
@@ -562,51 +606,61 @@ export const getCustomerById = async (req: Request, res: Response) => {
           };
         }
 
-        // Format answer to match frontend MCQ structure
         const formattedAnswer = {
           questionId: parseInt(answer.questionId),
           selected: answer.answer,
         };
-
         acc[answer.category].answers.push(formattedAnswer);
         return acc;
       },
       {} as Record<string, any>
     );
 
+    // Map screenerFile data to include image URLs
+    const screenerFilesWithImages = customer.screenerFile.map((screener) => ({
+      id: screener.id,
+      customerId: screener.customerId,
+      picture_10: screener.picture_10
+        ? getImageUrl(`/uploads/${screener.picture_10}`)
+        : null,
+      picture_23: screener.picture_23
+        ? getImageUrl(`/uploads/${screener.picture_23}`)
+        : null,
+      picture_11: screener.picture_11
+        ? getImageUrl(`/uploads/${screener.picture_11}`)
+        : null,
+      picture_24: screener.picture_24
+        ? getImageUrl(`/uploads/${screener.picture_24}`)
+        : null,
+      threed_model_left: screener.threed_model_left
+        ? getImageUrl(`/uploads/${screener.threed_model_left}`)
+        : null,
+      threed_model_right: screener.threed_model_right
+        ? getImageUrl(`/uploads/${screener.threed_model_right}`)
+        : null,
+      picture_17: screener.picture_17
+        ? getImageUrl(`/uploads/${screener.picture_17}`)
+        : null,
+      picture_16: screener.picture_16
+        ? getImageUrl(`/uploads/${screener.picture_16}`)
+        : null,
+      csvFile: screener.csvFile ? getImageUrl(`/uploads/${screener.csvFile}`) : null,
+      createdAt: screener.createdAt,
+      updatedAt: screener.updatedAt,
+    }));
+
     const customerWithImages = {
       ...customer,
-      picture_10: customer.picture_10
-        ? getImageUrl(`/uploads/${customer.picture_10}`)
-        : null,
-      picture_23: customer.picture_23
-        ? getImageUrl(`/uploads/${customer.picture_23}`)
-        : null,
-      picture_11: customer.picture_11
-        ? getImageUrl(`/uploads/${customer.picture_11}`)
-        : null,
-      picture_24: customer.picture_24
-        ? getImageUrl(`/uploads/${customer.picture_24}`)
-        : null,
-      threed_model_left: customer.threed_model_left
-        ? getImageUrl(`/uploads/${customer.threed_model_left}`)
-        : null,
-      threed_model_right: customer.threed_model_right
-        ? getImageUrl(`/uploads/${customer.threed_model_right}`)
-        : null,
-      picture_17: customer.picture_17
-        ? getImageUrl(`/uploads/${customer.picture_17}`)
-        : null,
-      picture_16: customer.picture_16
-        ? getImageUrl(`/uploads/${customer.picture_16}`)
-        : null,
-      // Replace einlagenAnswers with formatted version
+      // Note: The original code had image fields directly on customers, but they are now in screenerFile.
+      // If you still need these at the customer level, they should be moved to screenerFile or handled separately.
       einlagenAnswers: Object.values(einlagenAnswersByCategory),
+      screenerFile: screenerFilesWithImages, // Replace with mapped screener data
     };
+
     res.status(200).json({
       success: true,
       message: "Customer fetched successfully",
-      data: customerWithImages,
+      data: [customerWithImages], // Wrap in array to match your desired output structure
     });
   } catch (error: any) {
     console.error("Get Customer By ID Error:", error);
@@ -617,6 +671,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
     });
   }
 };
+
 
 // export const assignVersorgungToCustomer = async (
 //   req: Request,
@@ -706,12 +761,10 @@ export const assignVersorgungToCustomer = async (
 ) => {
   try {
     const { customerId, versorgungenId } = req.params;
-
     const [customer, versorgung] = await Promise.all([
       prisma.customers.findUnique({ where: { id: customerId } }),
       prisma.versorgungen.findUnique({ where: { id: versorgungenId } }),
     ]);
-
     if (!customer)
       return res
         .status(404)
@@ -720,7 +773,6 @@ export const assignVersorgungToCustomer = async (
       return res
         .status(404)
         .json({ success: false, message: "Versorgung not found" });
-
     // Find existing record first
     const existingRecord = await prisma.customer_versorgungen.findFirst({
       where: {
@@ -729,7 +781,6 @@ export const assignVersorgungToCustomer = async (
         diagnosis_status: versorgung.diagnosis_status,
       },
     });
-
     const versorgungData = {
       name: versorgung.name,
       rohlingHersteller: versorgung.rohlingHersteller,
@@ -740,7 +791,6 @@ export const assignVersorgungToCustomer = async (
       status: versorgung.status,
       diagnosis_status: versorgung.diagnosis_status,
     };
-
     if (existingRecord) {
       // Update existing record
       await prisma.customer_versorgungen.update({
@@ -756,41 +806,60 @@ export const assignVersorgungToCustomer = async (
         },
       });
     }
-
     // Fetch customer with relations in one query
     const updatedCustomer = await prisma.customers.findUnique({
       where: { id: customerId },
-      include: { versorgungen: true },
+      include: {
+        versorgungen: true,
+        screenerFile: {
+          orderBy: { createdAt: "desc" }, 
+          take: 1,  
+        },
+      },
     });
-
     // Format image URLs once
+  // Format the latest screenerFile data
+    const latestScreener = updatedCustomer?.screenerFile[0] || null;
+    const screenerData = latestScreener
+      ? {
+          id: latestScreener.id,
+          customerId: latestScreener.customerId,
+          picture_10: latestScreener.picture_10
+            ? getImageUrl(`/uploads/${latestScreener.picture_10}`)
+            : null,
+          picture_23: latestScreener.picture_23
+            ? getImageUrl(`/uploads/${latestScreener.picture_23}`)
+            : null,
+          picture_11: latestScreener.picture_11
+            ? getImageUrl(`/uploads/${latestScreener.picture_11}`)
+            : null,
+          picture_24: latestScreener.picture_24
+            ? getImageUrl(`/uploads/${latestScreener.picture_24}`)
+            : null,
+          threed_model_left: latestScreener.threed_model_left
+            ? getImageUrl(`/uploads/${latestScreener.threed_model_left}`)
+            : null,
+          threed_model_right: latestScreener.threed_model_right
+            ? getImageUrl(`/uploads/${latestScreener.threed_model_right}`)
+            : null,
+          picture_17: latestScreener.picture_17
+            ? getImageUrl(`/uploads/${latestScreener.picture_17}`)
+            : null,
+          picture_16: latestScreener.picture_16
+            ? getImageUrl(`/uploads/${latestScreener.picture_16}`)
+            : null,
+          csvFile: latestScreener.csvFile
+            ? getImageUrl(`/uploads/${latestScreener.csvFile}`)
+            : null,
+          createdAt: latestScreener.createdAt,
+          updatedAt: latestScreener.updatedAt,
+        }
+      : null;
+
+    // Format the customer response
     const formattedCustomer = {
       ...updatedCustomer,
-      picture_10: updatedCustomer?.picture_10
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_10}`)
-        : null,
-      picture_23: updatedCustomer?.picture_23
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_23}`)
-        : null,
-      picture_11: updatedCustomer?.picture_11
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_11}`)
-        : null,
-      picture_24: updatedCustomer?.picture_24
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_24}`)
-        : null,
-      threed_model_left: updatedCustomer?.threed_model_left
-        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_left}`)
-        : null,
-      threed_model_right: updatedCustomer?.threed_model_right
-        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_right}`)
-        : null,
-
-      picture_17: updatedCustomer.picture_17
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_17}`)
-        : null,
-      picture_16: updatedCustomer.picture_16
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_16}`)
-        : null,
+      screenerFile: screenerData ? [screenerData] : [], // Wrap in array as per your desired output
     };
 
     res.status(200).json({
@@ -808,6 +877,8 @@ export const assignVersorgungToCustomer = async (
   }
 };
 
+
+
 export const undoAssignVersorgungToCustomer = async (
   req: Request,
   res: Response
@@ -815,11 +886,9 @@ export const undoAssignVersorgungToCustomer = async (
   try {
     const { customerId, versorgungenId } = req.params;
 
-    // ✅ Find assignment in customer_versorgungen
     const existing = await prisma.customer_versorgungen.findFirst({
       where: {
         customerId,
-        // Match original versorgungen data
         name:
           (
             await prisma.versorgungen.findUnique({
@@ -828,7 +897,6 @@ export const undoAssignVersorgungToCustomer = async (
           )?.name || "",
       },
     });
-
     if (!existing) {
       return res.status(404).json({
         success: false,
@@ -836,48 +904,66 @@ export const undoAssignVersorgungToCustomer = async (
       });
     }
 
-    // ✅ Delete assignment
     await prisma.customer_versorgungen.delete({ where: { id: existing.id } });
 
-    // ✅ Fetch updated customer with all assigned versorgungen
     const updatedCustomer = await prisma.customers.findUnique({
       where: { id: customerId },
-      include: { versorgungen: true },
+      include: {
+        versorgungen: true,
+        screenerFile: {
+          orderBy: { createdAt: "desc" }, 
+          take: 1, 
+        },
+      },
     });
 
-    const customerWithImages = {
-      ...updatedCustomer,
-      picture_10: updatedCustomer?.picture_10
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_10}`)
-        : null,
-      picture_23: updatedCustomer?.picture_23
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_23}`)
-        : null,
-      picture_11: updatedCustomer?.picture_11
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_11}`)
-        : null,
-      picture_24: updatedCustomer?.picture_24
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_24}`)
-        : null,
-      threed_model_left: updatedCustomer?.threed_model_left
-        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_left}`)
-        : null,
-      threed_model_right: updatedCustomer?.threed_model_right
-        ? getImageUrl(`/uploads/${updatedCustomer.threed_model_right}`)
-        : null,
+  const latestScreener = updatedCustomer?.screenerFile[0] || null;
+    const screenerData = latestScreener
+      ? {
+          id: latestScreener.id,
+          customerId: latestScreener.customerId,
+          picture_10: latestScreener.picture_10
+            ? getImageUrl(`/uploads/${latestScreener.picture_10}`)
+            : null,
+          picture_23: latestScreener.picture_23
+            ? getImageUrl(`/uploads/${latestScreener.picture_23}`)
+            : null,
+          picture_11: latestScreener.picture_11
+            ? getImageUrl(`/uploads/${latestScreener.picture_11}`)
+            : null,
+          picture_24: latestScreener.picture_24
+            ? getImageUrl(`/uploads/${latestScreener.picture_24}`)
+            : null,
+          threed_model_left: latestScreener.threed_model_left
+            ? getImageUrl(`/uploads/${latestScreener.threed_model_left}`)
+            : null,
+          threed_model_right: latestScreener.threed_model_right
+            ? getImageUrl(`/uploads/${latestScreener.threed_model_right}`)
+            : null,
+          picture_17: latestScreener.picture_17
+            ? getImageUrl(`/uploads/${latestScreener.picture_17}`)
+            : null,
+          picture_16: latestScreener.picture_16
+            ? getImageUrl(`/uploads/${latestScreener.picture_16}`)
+            : null,
+          csvFile: latestScreener.csvFile
+            ? getImageUrl(`/uploads/${latestScreener.csvFile}`)
+            : null,
+          createdAt: latestScreener.createdAt,
+          updatedAt: latestScreener.updatedAt,
+        }
+      : null;
 
-      picture_17: updatedCustomer.picture_17
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_17}`)
-        : null,
-      picture_16: updatedCustomer.picture_16
-        ? getImageUrl(`/uploads/${updatedCustomer.picture_16}`)
-        : null,
+    // Format the customer response
+    const formattedCustomer = {
+      ...updatedCustomer,
+      screenerFile: screenerData ? [screenerData] : [], // Wrap in array as per your desired output
     };
 
     res.status(200).json({
       success: true,
       message: "Versorgung assignment undone successfully",
-      data: customerWithImages,
+      data: formattedCustomer,
     });
   } catch (error: any) {
     console.error("Undo Assign Versorgung Error:", error);
@@ -1048,14 +1134,12 @@ export const searchCustomers = async (req: Request, res: Response) => {
       limit = 10,
       page = 1,
     } = req.query;
-
     const limitNumber = Math.min(
       Math.max(parseInt(limit as string) || 10, 1),
       100
     );
     const pageNumber = Math.max(parseInt(page as string) || 1, 1);
     const skip = (pageNumber - 1) * limitNumber;
-
     if (!search && !email && !phone && !location && !id && !name) {
       return res.status(200).json({
         success: true,
@@ -1068,14 +1152,11 @@ export const searchCustomers = async (req: Request, res: Response) => {
         },
       });
     }
-
     const whereConditions: any = {};
-
     if (name && typeof name === "string") {
       const nameQuery = name.trim();
       if (nameQuery) {
         const nameParts = nameQuery.split(/\s+/).filter(Boolean);
-
         if (nameParts.length > 1) {
           whereConditions.AND = [
             { vorname: { contains: nameParts[0], mode: "insensitive" } },
@@ -1094,7 +1175,6 @@ export const searchCustomers = async (req: Request, res: Response) => {
         }
       }
     }
-
     if (search && typeof search === "string") {
       const searchQuery = search.trim();
       if (searchQuery) {
@@ -1107,18 +1187,15 @@ export const searchCustomers = async (req: Request, res: Response) => {
         ];
       }
     }
-
     if (email && typeof email === "string" && email.trim() && !search) {
       whereConditions.email = { contains: email.trim(), mode: "insensitive" };
     }
-
     if (phone && typeof phone === "string" && phone.trim() && !search) {
       whereConditions.telefonnummer = {
         contains: phone.trim(),
         mode: "insensitive",
       };
     }
-
     if (
       location &&
       typeof location === "string" &&
@@ -1130,11 +1207,9 @@ export const searchCustomers = async (req: Request, res: Response) => {
         mode: "insensitive",
       };
     }
-
     if (id && typeof id === "string" && id.trim()) {
       whereConditions.id = id.trim();
     }
-
     const [total, customers] = await prisma.$transaction([
       prisma.customers.count({ where: whereConditions }),
       prisma.customers.findMany({
@@ -1153,7 +1228,6 @@ export const searchCustomers = async (req: Request, res: Response) => {
         orderBy: [{ vorname: "asc" }, { nachname: "asc" }],
       }),
     ]);
-
     // Format response
     const response = {
       success: true,
@@ -1167,7 +1241,6 @@ export const searchCustomers = async (req: Request, res: Response) => {
         createdAt: customer.createdAt,
       })),
     };
-
     res.status(200).json(response);
   } catch (error: any) {
     console.error("Search Customers Error:", error);
@@ -1176,5 +1249,122 @@ export const searchCustomers = async (req: Request, res: Response) => {
       message: "Internal server error",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
+  }
+};
+
+
+
+export const addScreenerFile = async (req: Request, res: Response) => {
+  const { customerId } = req.params;
+  const files = req.files as any;
+
+  const cleanupFiles = () => {
+    if (!files) return;
+    Object.keys(files).forEach((key) => {
+      files[key].forEach((file: any) => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (err) {
+          console.error(`Failed to delete file ${file.path}`, err);
+        }
+      });
+    });
+  };
+
+  try {
+    const customer = await prisma.customers.findUnique({ where: { id: customerId } });
+    if (!customer) {
+      cleanupFiles();
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    let csvFileName: string | null = null;
+    let csvData: any = {};
+    if (files.csvFile && files.csvFile[0]) {
+      const csvPath = files.csvFile[0].path;
+      csvFileName = files.csvFile[0].filename;
+      console.log("Parsing CSV file:", csvPath);
+      csvData = await parseCSV(csvPath);
+    }
+
+    if (Object.keys(csvData).length > 0) {
+      await prisma.customers.update({
+        where: { id: customerId },
+        data: {
+          fusslange1: csvData.B58 || null,
+          fusslange2: csvData.C58 || null,
+          fussbreite1: csvData.B73 || null,
+          fussbreite2: csvData.C73 || null,
+          kugelumfang1: csvData.B102 || null,
+          kugelumfang2: csvData.C102 || null,
+          rist1: csvData.B105 || null,
+          rist2: csvData.C105 || null,
+          archIndex1: csvData.B120 || null,
+          archIndex2: csvData.C120 || null,
+          zehentyp1: csvData.B136 || null,
+          zehentyp2: csvData.C136 || null,
+          updatedBy: req.user.id,
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    const newScreener = await prisma.screener_file.create({
+      data: {
+        customerId,
+        picture_10: files.picture_10?.[0]?.filename || null,
+        picture_23: files.picture_23?.[0]?.filename || null,
+        threed_model_left: files.threed_model_left?.[0]?.filename || null,
+        picture_17: files.picture_17?.[0]?.filename || null,
+        picture_11: files.picture_11?.[0]?.filename || null,
+        picture_24: files.picture_24?.[0]?.filename || null,
+        threed_model_right: files.threed_model_right?.[0]?.filename || null,
+        picture_16: files.picture_16?.[0]?.filename || null,
+        csvFile: csvFileName,
+      },
+    });
+
+    const formattedScreener = {
+      id: newScreener.id,
+      customerId: newScreener.customerId,
+      picture_10: newScreener.picture_10 ? getImageUrl(`/uploads/${newScreener.picture_10}`) : null,
+      picture_23: newScreener.picture_23 ? getImageUrl(`/uploads/${newScreener.picture_23}`) : null,
+      picture_11: newScreener.picture_11 ? getImageUrl(`/uploads/${newScreener.picture_11}`) : null,
+      picture_24: newScreener.picture_24 ? getImageUrl(`/uploads/${newScreener.picture_24}`) : null,
+      threed_model_left: newScreener.threed_model_left ? getImageUrl(`/uploads/${newScreener.threed_model_left}`) : null,
+      threed_model_right: newScreener.threed_model_right ? getImageUrl(`/uploads/${newScreener.threed_model_right}`) : null,
+      picture_17: newScreener.picture_17 ? getImageUrl(`/uploads/${newScreener.picture_17}`) : null,
+      picture_16: newScreener.picture_16 ? getImageUrl(`/uploads/${newScreener.picture_16}`) : null,
+      csvFile: newScreener.csvFile ? getImageUrl(`/uploads/${newScreener.csvFile}`) : null,
+      createdAt: newScreener.createdAt,
+      updatedAt: newScreener.updatedAt,
+    };
+
+    if (csvFileName && files.csvFile?.[0]?.path) {
+      try {
+        fs.unlinkSync(files.csvFile[0].path);
+      } catch (err) {
+        console.error(`Failed to delete CSV file ${files.csvFile[0].path}`, err);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "New screener file set added successfully",
+      data: formattedScreener,
+    });
+  } catch (error: any) {
+    console.error("Add Screener File Error:", error);
+    cleanupFiles();
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  } finally {
+    await prisma.$disconnect();
   }
 };
