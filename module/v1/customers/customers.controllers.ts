@@ -212,6 +212,7 @@ export const createCustomers = async (req: Request, res: Response) => {
       })),
     };
 
+    
     res.status(201).json({
       success: true,
       message: "Customer created successfully",
