@@ -333,6 +333,8 @@ enum EventCategory {
   Emails
 }
 
+
+
 model customer_versorgungen {
   id                String                       @id @default(uuid())
   name              String
@@ -373,6 +375,21 @@ enum QuestionCategory {
   ALLTAGSEINLAGE
   SPORTEINLAGE
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // {
 //   category: "BUSINESSEINLAGE",
