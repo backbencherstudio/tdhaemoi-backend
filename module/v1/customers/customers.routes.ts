@@ -12,7 +12,8 @@ import {
   updateCustomerSpecialFields,
   addScreenerFile,
   updateScreenerFile,
-  deleteScreenerFile
+  deleteScreenerFile,
+  getScreenerFileById
 } from "./customers.controllers";
 import upload from "../../../config/multer.config";
 
@@ -103,6 +104,12 @@ router.delete(
   "/delete-screener-file/:screenerId",
   verifyUser("PARTNER", "ADMIN"),
   deleteScreenerFile
+);
+
+router.get(
+  "/screener-file/:screenerId",
+  verifyUser("PARTNER", "ADMIN"),
+  getScreenerFileById
 );
 
 export default router;

@@ -49,6 +49,7 @@ async function parseCSV(csvPath: string): Promise<any> {
 }
 
 
+
 export const createCustomers = async (req: Request, res: Response) => {
   const files = req.files as any;
 
@@ -109,8 +110,9 @@ export const createCustomers = async (req: Request, res: Response) => {
       console.log("Parsing CSV file:", csvPath);
       csvData = await parseCSV(csvPath);
     }
+    let screenerFileId = null;
 
-    const customer = await prisma.$transaction(async (tx) => {
+    const customerWithScreener = await prisma.$transaction(async (tx) => {
       const newCustomer = await tx.customers.create({
         data: {
           vorname,
@@ -141,6 +143,7 @@ export const createCustomers = async (req: Request, res: Response) => {
         },
       });
 
+      let screenerFile = null;
       if (
         files.picture_10 ||
         files.picture_23 ||
@@ -152,7 +155,7 @@ export const createCustomers = async (req: Request, res: Response) => {
         files.picture_16 ||
         csvFileName
       ) {
-        await tx.screener_file.create({
+        screenerFile = await tx.screener_file.create({
           data: {
             customerId: newCustomer.id,
             picture_10: files.picture_10?.[0]?.filename || null,
@@ -166,19 +169,25 @@ export const createCustomers = async (req: Request, res: Response) => {
             csvFile: csvFileName,
           },
         });
+        screenerFileId = screenerFile.id;
       }
 
-      // await tx.customerHistorie.create({
-      //   data: {
-      //     customerId: newCustomer.id,
-      //     category: "Notizen",
-      //     note: `Customer ${vorname} ${nachname} created by user ${req.user.id}`,
-      //     createdAt: new Date(),
-      //     updatedAt: new Date(),
-      //   },
-      // });
+      // Create customer history with category "Leistungen" (Services)
+      await tx.customerHistorie.create({
+        data: {
+          customerId: newCustomer.id,
+          category: "Leistungen",
+          url: `/customers/screener-file/${screenerFileId}`,
+          methord: "GET",
+          eventId: newCustomer.id,
+        },
+      });
 
-      return newCustomer;
+      // Return the complete customer object with screenerFile
+      return {
+        ...newCustomer,
+        screenerFile: screenerFile ? [screenerFile] : []
+      };
     });
 
     if (csvFileName && files.csvFile?.[0]?.path) {
@@ -192,49 +201,42 @@ export const createCustomers = async (req: Request, res: Response) => {
       }
     }
 
-    const customerWithScreener = await prisma.customers.findUnique({
-      where: { id: customer.id },
-      include: { screenerFile: true },
-    });
-
-    // Simplified response formatting to ensure screenerFile is an array
+    // Transform the screenerFile URLs
     const customerWithImages = {
       ...customerWithScreener,
-      screenerFile: (customerWithScreener?.screenerFile || []).map(
-        (screener) => ({
-          id: screener.id,
-          customerId: screener.customerId,
-          picture_10: screener.picture_10
-            ? getImageUrl(`/uploads/${screener.picture_10}`)
-            : null,
-          picture_23: screener.picture_23
-            ? getImageUrl(`/uploads/${screener.picture_23}`)
-            : null,
-          picture_11: screener.picture_11
-            ? getImageUrl(`/uploads/${screener.picture_11}`)
-            : null,
-          picture_24: screener.picture_24
-            ? getImageUrl(`/uploads/${screener.picture_24}`)
-            : null,
-          threed_model_left: screener.threed_model_left
-            ? getImageUrl(`/uploads/${screener.threed_model_left}`)
-            : null,
-          threed_model_right: screener.threed_model_right
-            ? getImageUrl(`/uploads/${screener.threed_model_right}`)
-            : null,
-          picture_17: screener.picture_17
-            ? getImageUrl(`/uploads/${screener.picture_17}`)
-            : null,
-          picture_16: screener.picture_16
-            ? getImageUrl(`/uploads/${screener.picture_16}`)
-            : null,
-          csvFile: screener.csvFile
-            ? getImageUrl(`/uploads/${screener.csvFile}`)
-            : null,
-          createdAt: screener.createdAt,
-          updatedAt: screener.updatedAt,
-        })
-      ),
+      screenerFile: customerWithScreener.screenerFile.map((screener) => ({
+        id: screener.id,
+        customerId: screener.customerId,
+        picture_10: screener.picture_10
+          ? getImageUrl(`/uploads/${screener.picture_10}`)
+          : null,
+        picture_23: screener.picture_23
+          ? getImageUrl(`/uploads/${screener.picture_23}`)
+          : null,
+        picture_11: screener.picture_11
+          ? getImageUrl(`/uploads/${screener.picture_11}`)
+          : null,
+        picture_24: screener.picture_24
+          ? getImageUrl(`/uploads/${screener.picture_24}`)
+          : null,
+        threed_model_left: screener.threed_model_left
+          ? getImageUrl(`/uploads/${screener.threed_model_left}`)
+          : null,
+        threed_model_right: screener.threed_model_right
+          ? getImageUrl(`/uploads/${screener.threed_model_right}`)
+          : null,
+        picture_17: screener.picture_17
+          ? getImageUrl(`/uploads/${screener.picture_17}`)
+          : null,
+        picture_16: screener.picture_16
+          ? getImageUrl(`/uploads/${screener.picture_16}`)
+          : null,
+        csvFile: screener.csvFile
+          ? getImageUrl(`/uploads/${screener.csvFile}`)
+          : null,
+        createdAt: screener.createdAt,
+        updatedAt: screener.updatedAt,
+      }))
     };
 
     res.status(201).json({
@@ -252,6 +254,253 @@ export const createCustomers = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// export const createCustomers = async (req: Request, res: Response) => {
+//   const files = req.files as any;
+
+//   const cleanupFiles = () => {
+//     if (!files) return;
+//     Object.keys(files).forEach((key) => {
+//       files[key].forEach((file: any) => {
+//         try {
+//           fs.unlinkSync(file.path);
+//         } catch (err) {
+//           console.error(`Failed to delete file ${file.path}`, err);
+//         }
+//       });
+//     });
+//   };
+
+//   try {
+//     const missingField = ["vorname", "nachname", "email"].find(
+//       (field) => !req.body[field]
+//     );
+//     if (missingField) {
+//       return res.status(400).json({
+//         success: false,
+//         message: `${missingField} is required!`,
+//       });
+//     }
+
+//     const {
+//       vorname,
+//       nachname,
+//       email,
+//       telefonnummer,
+//       wohnort,
+//       ausfuhrliche_diagnose,
+//       kundeSteuernummer,
+//       diagnose,
+//       kodexeMassschuhe,
+//       kodexeEinlagen,
+//       sonstiges,
+//     } = req.body;
+
+//     const existingCustomer = await prisma.customers.findUnique({
+//       where: { email },
+//     });
+//     if (existingCustomer) {
+//       cleanupFiles();
+//       return res.status(400).json({
+//         success: false,
+//         message: "Email already exists",
+//       });
+//     }
+
+//     let csvData: any = {};
+//     let csvFileName: string | null = null;
+//     if (files.csvFile && files.csvFile[0]) {
+//       const csvPath = files.csvFile[0].path;
+//       csvFileName = files.csvFile[0].filename;
+//       console.log("Parsing CSV file:", csvPath);
+//       csvData = await parseCSV(csvPath);
+//     }
+//     let screenerFileId = null;
+
+//     const customer = await prisma.$transaction(async (tx) => {
+//       const newCustomer = await tx.customers.create({
+//         data: {
+//           vorname,
+//           nachname,
+//           email,
+//           telefonnummer: telefonnummer || null,
+//           wohnort: wohnort || null,
+//           ausfuhrliche_diagnose: ausfuhrliche_diagnose || null,
+//           kundeSteuernummer: kundeSteuernummer || null,
+//           diagnose: diagnose || null,
+//           kodexeMassschuhe: kodexeMassschuhe || null,
+//           kodexeEinlagen: kodexeEinlagen || null,
+//           sonstiges: sonstiges || null,
+//           fusslange1: csvData.B58 || null,
+//           fusslange2: csvData.C58 || null,
+//           fussbreite1: csvData.B73 || null,
+//           fussbreite2: csvData.C73 || null,
+//           kugelumfang1: csvData.B102 || null,
+//           kugelumfang2: csvData.C102 || null,
+//           rist1: csvData.B105 || null,
+//           rist2: csvData.C105 || null,
+//           archIndex1: csvData.B120 || null,
+//           archIndex2: csvData.C120 || null,
+//           zehentyp1: csvData.B136 || null,
+//           zehentyp2: csvData.C136 || null,
+//           createdBy: req.user.id,
+//           updatedBy: null,
+//         },
+//       });
+
+//       if (
+//         files.picture_10 ||
+//         files.picture_23 ||
+//         files.threed_model_left ||
+//         files.picture_17 ||
+//         files.picture_11 ||
+//         files.picture_24 ||
+//         files.threed_model_right ||
+//         files.picture_16 ||
+//         csvFileName
+//       ) {
+//         const screenerFile = await tx.screener_file.create({
+//           data: {
+//             customerId: newCustomer.id,
+//             picture_10: files.picture_10?.[0]?.filename || null,
+//             picture_23: files.picture_23?.[0]?.filename || null,
+//             threed_model_left: files.threed_model_left?.[0]?.filename || null,
+//             picture_17: files.picture_17?.[0]?.filename || null,
+//             picture_11: files.picture_11?.[0]?.filename || null,
+//             picture_24: files.picture_24?.[0]?.filename || null,
+//             threed_model_right: files.threed_model_right?.[0]?.filename || null,
+//             picture_16: files.picture_16?.[0]?.filename || null,
+//             csvFile: csvFileName,
+//           },
+//         });
+//         screenerFileId = screenerFile.id;
+//       }
+
+//       // Create customer history with category "Leistungen" (Services)
+//       await tx.customerHistorie.create({
+//         data: {
+//           customerId: newCustomer.id,
+//           category: "Leistungen",
+//           url: `/customers/screener-file/${screenerFileId}`,
+//           methord: "GET",
+//           eventId: newCustomer.id,
+//         },
+//       });
+
+//       return newCustomer;
+//     });
+
+//     if (csvFileName && files.csvFile?.[0]?.path) {
+//       try {
+//         fs.unlinkSync(files.csvFile[0].path);
+//       } catch (err) {
+//         console.error(
+//           `Failed to delete CSV file ${files.csvFile[0].path}`,
+//           err
+//         );
+//       }
+//     }
+
+//     const customerWithScreener = await prisma.customers.findUnique({
+//       where: { id: customer.id },
+//       include: {
+//         screenerFile: true,
+//       },
+//     });
+
+//     // Simplified response formatting to ensure screenerFile is an array
+//     const customerWithImages = {
+//       ...customerWithScreener,
+//       screenerFile: (customerWithScreener?.screenerFile || []).map(
+//         (screener) => ({
+//           id: screener.id,
+//           customerId: screener.customerId,
+//           picture_10: screener.picture_10
+//             ? getImageUrl(`/uploads/${screener.picture_10}`)
+//             : null,
+//           picture_23: screener.picture_23
+//             ? getImageUrl(`/uploads/${screener.picture_23}`)
+//             : null,
+//           picture_11: screener.picture_11
+//             ? getImageUrl(`/uploads/${screener.picture_11}`)
+//             : null,
+//           picture_24: screener.picture_24
+//             ? getImageUrl(`/uploads/${screener.picture_24}`)
+//             : null,
+//           threed_model_left: screener.threed_model_left
+//             ? getImageUrl(`/uploads/${screener.threed_model_left}`)
+//             : null,
+//           threed_model_right: screener.threed_model_right
+//             ? getImageUrl(`/uploads/${screener.threed_model_right}`)
+//             : null,
+//           picture_17: screener.picture_17
+//             ? getImageUrl(`/uploads/${screener.picture_17}`)
+//             : null,
+//           picture_16: screener.picture_16
+//             ? getImageUrl(`/uploads/${screener.picture_16}`)
+//             : null,
+//           csvFile: screener.csvFile
+//             ? getImageUrl(`/uploads/${screener.csvFile}`)
+//             : null,
+//           createdAt: screener.createdAt,
+//           updatedAt: screener.updatedAt,
+//         })
+//       ),
+//     };
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Customer created successfully",
+//       data: customerWithImages,
+//     });
+//   } catch (err: any) {
+//     console.error("Create Customer Error:", err);
+//     cleanupFiles();
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: err.message,
+//     });
+//   }
+// };
+
+
+
+
+
+
+
+
+
+
 
 export const getAllCustomers = async (req: Request, res: Response) => {
   try {
@@ -405,8 +654,6 @@ export const deleteCustomer = async (req: Request, res: Response) => {
     });
   }
 };
-
-
 
 export const updateCustomer = async (req: Request, res: Response) => {
   try {
@@ -1614,6 +1861,55 @@ export const deleteScreenerFile = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Delete Screener File Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const getScreenerFileById = async (req: Request, res: Response) => {
+  try {
+    const { screenerId } = req.params;
+
+    const screenerFile = await prisma.screener_file.findUnique({
+      where: { id: screenerId },
+    });
+
+    if (!screenerFile) {
+      return res.status(404).json({
+        success: false,
+        message: "Screener file not found",
+      });
+    }
+
+    const formatFileUrl = (filename: string | null) =>
+      filename ? getImageUrl(`/uploads/${filename}`) : null;
+
+    const formattedScreener = {
+      id: screenerFile.id,
+      customerId: screenerFile.customerId,
+      picture_10: formatFileUrl(screenerFile.picture_10),
+      picture_23: formatFileUrl(screenerFile.picture_23),
+      picture_11: formatFileUrl(screenerFile.picture_11),
+      picture_24: formatFileUrl(screenerFile.picture_24),
+      threed_model_left: formatFileUrl(screenerFile.threed_model_left),
+      threed_model_right: formatFileUrl(screenerFile.threed_model_right),
+      picture_17: formatFileUrl(screenerFile.picture_17),
+      picture_16: formatFileUrl(screenerFile.picture_16),
+      csvFile: formatFileUrl(screenerFile.csvFile),
+      createdAt: screenerFile.createdAt,
+      updatedAt: screenerFile.updatedAt,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Screener file fetched successfully",
+      data: formattedScreener,
+    });
+  } catch (error: any) {
+    console.error("Get Screener File Error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
