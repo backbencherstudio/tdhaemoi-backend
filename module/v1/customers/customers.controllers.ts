@@ -48,8 +48,6 @@ async function parseCSV(csvPath: string): Promise<any> {
   });
 }
 
-
-
 export const createCustomers = async (req: Request, res: Response) => {
   const files = req.files as any;
 
@@ -184,7 +182,7 @@ export const createCustomers = async (req: Request, res: Response) => {
 
       return {
         ...newCustomer,
-        screenerFile: screenerFile ? [screenerFile] : []
+        screenerFile: screenerFile ? [screenerFile] : [],
       };
     });
 
@@ -235,7 +233,7 @@ export const createCustomers = async (req: Request, res: Response) => {
           : null,
         createdAt: screener.createdAt,
         updatedAt: screener.updatedAt,
-      }))
+      })),
     };
 
     res.status(201).json({
@@ -253,7 +251,6 @@ export const createCustomers = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 // export const createCustomers = async (req: Request, res: Response) => {
 //   const files = req.files as any;
@@ -463,7 +460,6 @@ export const createCustomers = async (req: Request, res: Response) => {
 //     });
 //   }
 // };
-
 
 export const getAllCustomers = async (req: Request, res: Response) => {
   try {
@@ -762,91 +758,187 @@ export const updateCustomerSpecialFields = async (
   }
 };
 
+
+//----------------------------------------getCustomerById--------------------------------------------------
+// export const getCustomerById = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params;
+//     const customer = await prisma.customers.findUnique({
+//       where: { id: id },
+//       include: {
+//         versorgungen: true,
+//         einlagenAnswers: {
+//           orderBy: [{ category: "asc" }, { questionId: "asc" }],
+//         },
+//         screenerFile: true,
+//         customerHistorie: true,
+//       },
+//     });
+
+//     if (!customer) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Customer not found",
+//       });
+//     }
+
+//     const einlagenAnswersByCategory = customer.einlagenAnswers.reduce(
+//       (acc, answer) => {
+//         if (!acc[answer.category]) {
+//           acc[answer.category] = {
+//             category: answer.category,
+//             answers: [],
+//           };
+//         }
+
+//         const formattedAnswer = {
+//           questionId: parseInt(answer.questionId),
+//           selected: answer.answer,
+//         };
+//         acc[answer.category].answers.push(formattedAnswer);
+//         return acc;
+//       },
+//       {} as Record<string, any>
+//     );
+
+//     const screenerFilesWithImages = customer.screenerFile
+//       .sort(
+//         (a, b) =>
+//           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+//       ) // Sort by createdAt (latest first)
+//       .map((screener) => ({
+//         id: screener.id,
+//         customerId: screener.customerId,
+//         picture_10: screener.picture_10
+//           ? getImageUrl(`/uploads/${screener.picture_10}`)
+//           : null,
+//         picture_23: screener.picture_23
+//           ? getImageUrl(`/uploads/${screener.picture_23}`)
+//           : null,
+//         picture_11: screener.picture_11
+//           ? getImageUrl(`/uploads/${screener.picture_11}`)
+//           : null,
+//         picture_24: screener.picture_24
+//           ? getImageUrl(`/uploads/${screener.picture_24}`)
+//           : null,
+//         threed_model_left: screener.threed_model_left
+//           ? getImageUrl(`/uploads/${screener.threed_model_left}`)
+//           : null,
+//         threed_model_right: screener.threed_model_right
+//           ? getImageUrl(`/uploads/${screener.threed_model_right}`)
+//           : null,
+//         picture_17: screener.picture_17
+//           ? getImageUrl(`/uploads/${screener.picture_17}`)
+//           : null,
+//         picture_16: screener.picture_16
+//           ? getImageUrl(`/uploads/${screener.picture_16}`)
+//           : null,
+//         csvFile: screener.csvFile
+//           ? getImageUrl(`/uploads/${screener.csvFile}`)
+//           : null,
+//         createdAt: screener.createdAt,
+//         updatedAt: screener.updatedAt,
+//       }));
+
+//     const customerHistorieWithUrls = customer.customerHistorie.map(
+//       (history) => ({
+//         ...history,
+//         url: history.url ? getImageUrl(history.url) : null,
+//       })
+//     );
+
+//     const customerWithImages = {
+//       ...customer,
+//       einlagenAnswers: Object.values(einlagenAnswersByCategory),
+//       screenerFile: screenerFilesWithImages,
+//       customerHistorie: customerHistorieWithUrls,
+//     };
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Customer fetched successfully",
+//       data: [customerWithImages],
+//     });
+//   } catch (error: any) {
+//     console.error("Get Customer By ID Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
+
+//optimize code of getCustomerById
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const customer = await prisma.customers.findUnique({
-      where: { id: id },
-      include: {
-        versorgungen: true,
-        einlagenAnswers: {
-          orderBy: [{ category: "asc" }, { questionId: "asc" }],
-        },
-        screenerFile: true,
-      },
-    });
-
+    
+    const [customer, versorgungen, einlagenAnswers, screenerFiles, customerHistories] = await Promise.all([
+      prisma.customers.findUnique({ where: { id } }),
+      prisma.customer_versorgungen.findMany({ where: { customerId: id } }),
+      prisma.einlagenAnswers.findMany({
+        where: { customerId: id },
+        orderBy: [{ category: "asc" }, { questionId: "asc" }],
+      }),
+      prisma.screener_file.findMany({
+        where: { customerId: id },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.customerHistorie.findMany({ where: { customerId: id } }),
+    ]);
+    
     if (!customer) {
       return res.status(404).json({
         success: false,
         message: "Customer not found",
       });
     }
-
-    const einlagenAnswersByCategory = customer.einlagenAnswers.reduce(
-      (acc, answer) => {
-        if (!acc[answer.category]) {
-          acc[answer.category] = {
-            category: answer.category,
-            answers: [],
-          };
+    
+    const einlagenAnswersByCategory = new Map();
+    einlagenAnswers.forEach((answer) => {
+      if (!einlagenAnswersByCategory.has(answer.category)) {
+        einlagenAnswersByCategory.set(answer.category, {
+          category: answer.category,
+          answers: [],
+        });
+      }
+      
+      einlagenAnswersByCategory.get(answer.category).answers.push({
+        questionId: parseInt(answer.questionId),
+        selected: answer.answer,
+      });
+    });
+    
+    const processedScreenerFiles = screenerFiles.map(screener => {
+      const result = { ...screener };
+      const imageFields = [
+        'picture_10', 'picture_23', 'picture_11', 'picture_24',
+        'threed_model_left', 'threed_model_right', 'picture_17', 'picture_16', 'csvFile'
+      ];
+      
+      imageFields.forEach(field => {
+        if (result[field]) {
+          result[field] = getImageUrl(`/uploads/${result[field]}`);
         }
-
-        const formattedAnswer = {
-          questionId: parseInt(answer.questionId),
-          selected: answer.answer,
-        };
-        acc[answer.category].answers.push(formattedAnswer);
-        return acc;
-      },
-      {} as Record<string, any>
-    );
-
-    const screenerFilesWithImages = customer.screenerFile
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ) // Sort by createdAt (latest first)
-      .map((screener) => ({
-        id: screener.id,
-        customerId: screener.customerId,
-        picture_10: screener.picture_10
-          ? getImageUrl(`/uploads/${screener.picture_10}`)
-          : null,
-        picture_23: screener.picture_23
-          ? getImageUrl(`/uploads/${screener.picture_23}`)
-          : null,
-        picture_11: screener.picture_11
-          ? getImageUrl(`/uploads/${screener.picture_11}`)
-          : null,
-        picture_24: screener.picture_24
-          ? getImageUrl(`/uploads/${screener.picture_24}`)
-          : null,
-        threed_model_left: screener.threed_model_left
-          ? getImageUrl(`/uploads/${screener.threed_model_left}`)
-          : null,
-        threed_model_right: screener.threed_model_right
-          ? getImageUrl(`/uploads/${screener.threed_model_right}`)
-          : null,
-        picture_17: screener.picture_17
-          ? getImageUrl(`/uploads/${screener.picture_17}`)
-          : null,
-        picture_16: screener.picture_16
-          ? getImageUrl(`/uploads/${screener.picture_16}`)
-          : null,
-        csvFile: screener.csvFile
-          ? getImageUrl(`/uploads/${screener.csvFile}`)
-          : null,
-        createdAt: screener.createdAt,
-        updatedAt: screener.updatedAt,
-      }));
-
+      });
+      
+      return result;
+    });
+    
+    const processedHistories = customerHistories.map(history => ({
+      ...history,
+      url: history.url ? getImageUrl(history.url) : null,
+    }));
+    
     const customerWithImages = {
       ...customer,
-      einlagenAnswers: Object.values(einlagenAnswersByCategory),
-      screenerFile: screenerFilesWithImages,
+      versorgungen,
+      einlagenAnswers: Array.from(einlagenAnswersByCategory.values()),
+      screenerFile: processedScreenerFiles,
+      customerHistorie: processedHistories,
     };
-
+    
     res.status(200).json({
       success: true,
       message: "Customer fetched successfully",
@@ -861,88 +953,8 @@ export const getCustomerById = async (req: Request, res: Response) => {
     });
   }
 };
+//----------------------------------------end getCustomerById--------------------------------------------------
 
-// export const assignVersorgungToCustomer = async (
-//   req: Request,
-//   res: Response
-// ) => {
-//   try {
-//     const { customerId, versorgungenId } = req.params;
-
-//     // 1. Check if customer exists
-//     const customer = await prisma.customers.findUnique({
-//       where: { id: customerId },
-//       include: { versorgungen: true },
-//     });
-//     if (!customer) {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "Customer not found" });
-//     }
-
-//     // 2. Get Versorgungen data
-//     const versorgung = await prisma.versorgungen.findUnique({
-//       where: { id: versorgungenId },
-//     });
-//     if (!versorgung) {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "Versorgung not found" });
-//     }
-
-//     // 3. Check if this customer already has a versorgung with the same status
-//     const existing = await prisma.customer_versorgungen.findFirst({
-//       where: { customerId: customerId, status: versorgung.status },
-//     });
-
-//     let result;
-
-//     if (existing) {
-//       // 4. Replace existing record with new versorgung data
-//       result = await prisma.customer_versorgungen.update({
-//         where: { id: existing.id },
-//         data: {
-//           name: versorgung.name,
-//           rohlingHersteller: versorgung.rohlingHersteller,
-//           artikelHersteller: versorgung.artikelHersteller,
-//           versorgung: versorgung.versorgung,
-//           material: versorgung.material,
-//           langenempfehlung: versorgung.langenempfehlung,
-//           status: versorgung.status,
-//         },
-//       });
-//     } else {
-//       // 5. Create new if not exists for this status
-//       result = await prisma.customer_versorgungen.create({
-//         data: {
-//           name: versorgung.name,
-//           rohlingHersteller: versorgung.rohlingHersteller,
-//           artikelHersteller: versorgung.artikelHersteller,
-//           versorgung: versorgung.versorgung,
-//           material: versorgung.material,
-//           langenempfehlung: versorgung.langenempfehlung,
-//           status: versorgung.status,
-//           customerId: customer.id,
-//         },
-//       });
-//     }
-
-//     res.status(201).json({
-//       success: true,
-//       message: existing
-//         ? "Versorgung replaced successfully for this status"
-//         : "Versorgung assigned to customer successfully",
-//       data: result,
-//     });
-//   } catch (error: any) {
-//     console.error("Assign Versorgung Error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
 
 export const assignVersorgungToCustomer = async (
   req: Request,
