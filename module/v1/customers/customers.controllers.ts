@@ -172,7 +172,6 @@ export const createCustomers = async (req: Request, res: Response) => {
         screenerFileId = screenerFile.id;
       }
 
-      // Create customer history with category "Leistungen" (Services)
       await tx.customerHistorie.create({
         data: {
           customerId: newCustomer.id,
@@ -183,25 +182,25 @@ export const createCustomers = async (req: Request, res: Response) => {
         },
       });
 
-      // Return the complete customer object with screenerFile
       return {
         ...newCustomer,
         screenerFile: screenerFile ? [screenerFile] : []
       };
     });
 
-    if (csvFileName && files.csvFile?.[0]?.path) {
-      try {
-        fs.unlinkSync(files.csvFile[0].path);
-      } catch (err) {
-        console.error(
-          `Failed to delete CSV file ${files.csvFile[0].path}`,
-          err
-        );
-      }
-    }
+    // if (csvFileName && files.csvFile?.[0]?.path) {
+    //   try {
+    //     fs.unlinkSync(files.csvFile[0].path);
+    //   } catch (err) {
+    //     console.error(
+    //       `Failed to delete CSV file ${files.csvFile[0].path}`,
+    //       err
+    //     );
+    //   }
+    // }
 
-    // Transform the screenerFile URLs
+    console.log("Customer created successfully:", customerWithScreener);
+
     const customerWithImages = {
       ...customerWithScreener,
       screenerFile: customerWithScreener.screenerFile.map((screener) => ({
@@ -254,33 +253,6 @@ export const createCustomers = async (req: Request, res: Response) => {
     });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // export const createCustomers = async (req: Request, res: Response) => {
@@ -491,15 +463,6 @@ export const createCustomers = async (req: Request, res: Response) => {
 //     });
 //   }
 // };
-
-
-
-
-
-
-
-
-
 
 
 export const getAllCustomers = async (req: Request, res: Response) => {
