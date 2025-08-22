@@ -48,6 +48,7 @@ async function parseCSV(csvPath: string): Promise<any> {
   });
 }
 
+
 export const createCustomers = async (req: Request, res: Response) => {
   const files = req.files as any;
 
@@ -167,15 +168,15 @@ export const createCustomers = async (req: Request, res: Response) => {
         });
       }
 
-      await tx.customerHistorie.create({
-        data: {
-          customerId: newCustomer.id,
-          category: "Notizen",
-          note: `Customer ${vorname} ${nachname} created by user ${req.user.id}`,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
+      // await tx.customerHistorie.create({
+      //   data: {
+      //     customerId: newCustomer.id,
+      //     category: "Notizen",
+      //     note: `Customer ${vorname} ${nachname} created by user ${req.user.id}`,
+      //     createdAt: new Date(),
+      //     updatedAt: new Date(),
+      //   },
+      // });
 
       return newCustomer;
     });
@@ -249,8 +250,6 @@ export const createCustomers = async (req: Request, res: Response) => {
       message: "Something went wrong",
       error: err.message,
     });
-  } finally {
-    await prisma.$disconnect();
   }
 };
 
@@ -355,7 +354,6 @@ export const deleteCustomer = async (req: Request, res: Response) => {
       where: { id },
       include: {
         screenerFile: true,
-        kundenHistorie: true,
         einlagenAnswers: true,
         versorgungen: true,
       },
@@ -408,154 +406,6 @@ export const deleteCustomer = async (req: Request, res: Response) => {
   }
 };
 
-// export const updateCustomer = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params;
-//     const existing = await prisma.customers.findUnique({ where: { id } });
-//     if (!existing) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Customer not found",
-//       });
-//     }
-//     const files = req.files as any;
-//     const {
-      // vorname,
-      // nachname,
-      // email,
-      // telefonnummer,
-      // wohnort,
-      // fusslange1,
-      // fusslange2,
-      // fussbreite1,
-      // fussbreite2,
-      // kugelumfang1,
-      // kugelumfang2,
-      // rist1,
-      // rist2,
-      // zehentyp1,
-      // zehentyp2,
-      // archIndex1,
-      // archIndex2,
-      // ausfuhrliche_diagnose,
-      // kundeSteuernummer,
-      // diagnose,
-      // kodexeMassschuhe,
-      // kodexeEinlagen,
-      // sonstiges,
-//     } = req.body;
-//     const deleteOldIfNew = (newFile: any, oldFileName: string | null) => {
-//       if (newFile && oldFileName) {
-//         const oldPath = path.join(process.cwd(), "uploads", oldFileName);
-//         if (fs.existsSync(oldPath)) {
-//           try {
-//             fs.unlinkSync(oldPath);
-//             console.log(`Deleted old file: ${oldPath}`);
-//           } catch (err) {
-//             console.error(`Failed to delete old file: ${oldPath}`, err);
-//           }
-//         }
-//       }
-//     };
-//     deleteOldIfNew(files.picture_10?.[0], existing.picture_10);
-//     deleteOldIfNew(files.picture_23?.[0], existing.picture_23);
-//     deleteOldIfNew(files.threed_model_left?.[0], existing.threed_model_left);
-//     deleteOldIfNew(files.picture_17?.[0], existing.picture_17);
-//     deleteOldIfNew(files.picture_11?.[0], existing.picture_11);
-//     deleteOldIfNew(files.picture_24?.[0], existing.picture_24);
-//     deleteOldIfNew(files.threed_model_right?.[0], existing.threed_model_right);
-//     deleteOldIfNew(files.picture_16?.[0], existing.picture_16);
-//     const picture_10 = files.picture_10?.[0]?.filename || existing.picture_10;
-//     const picture_23 = files.picture_23?.[0]?.filename || existing.picture_23;
-//     const threed_model_left =
-//       files.threed_model_left?.[0]?.filename || existing.threed_model_left;
-//     const picture_17 = files.picture_17?.[0]?.filename || existing.picture_17;
-//     const picture_11 = files.picture_11?.[0]?.filename || existing.picture_11;
-//     const picture_24 = files.picture_24?.[0]?.filename || existing.picture_24;
-//     const threed_model_right =
-//       files.threed_model_right?.[0]?.filename || existing.threed_model_right;
-//     const picture_16 = files.picture_16?.[0]?.filename || existing.picture_16;
-//     let csvData: any = {};
-//     if (files.csvFile && files.csvFile[0]) {
-//       const csvPath = files.csvFile[0].path;
-//       csvData = await parseCSV(csvPath);
-//       fs.unlinkSync(csvPath);
-//     }
-//     const updateData = {
-//       vorname: vorname || existing.vorname,
-//       nachname: nachname || existing.nachname,
-//       email: email || existing.email,
-//       telefonnummer: telefonnummer || existing.telefonnummer,
-//       wohnort: wohnort || existing.wohnort,
-//       ausfuhrliche_diagnose:
-//         ausfuhrliche_diagnose || existing.ausfuhrliche_diagnose,
-//       picture_10,
-//       picture_23,
-//       threed_model_left,
-//       picture_17,
-//       picture_11,
-//       picture_24,
-//       threed_model_right,
-//       picture_16,
-//       fusslange1: csvData.B58 || fusslange1 || existing.fusslange1,
-//       fusslange2: csvData.C58 || fusslange2 || existing.fusslange2,
-//       fussbreite1: csvData.B73 || fussbreite1 || existing.fussbreite1,
-//       fussbreite2: csvData.C73 || fussbreite2 || existing.fussbreite2,
-//       kugelumfang1: csvData.B102 || kugelumfang1 || existing.kugelumfang1,
-//       kugelumfang2: csvData.C102 || kugelumfang2 || existing.kugelumfang2,
-//       rist1: csvData.B105 || rist1 || existing.rist1,
-//       rist2: csvData.C105 || rist2 || existing.rist2,
-//       archIndex1: csvData.B120 || archIndex1 || existing.archIndex1,
-//       archIndex2: csvData.C120 || archIndex2 || existing.archIndex2,
-//       zehentyp1: csvData.B136 || zehentyp1 || existing.zehentyp1,
-//       zehentyp2: csvData.C136 || zehentyp2 || existing.zehentyp2,
-//       kundeSteuernummer: kundeSteuernummer || existing.kundeSteuernummer,
-//       diagnose: diagnose || existing.diagnose,
-//       kodexeMassschuhe: kodexeMassschuhe || existing.kodexeMassschuhe,
-//       kodexeEinlagen: kodexeEinlagen || existing.kodexeEinlagen,
-//       sonstiges: sonstiges || existing.sonstiges,
-//       updatedBy: req.user.id,
-//     };
-//     const updatedCustomer = await prisma.customers.update({
-//       where: { id },
-//       data: updateData,
-//       include: { versorgungen: true },
-//     });
-//     const customerWithImages = {
-//       ...updatedCustomer,
-//       picture_10: updatedCustomer?.picture_10
-//         ? getImageUrl(`/uploads/${updatedCustomer.picture_10}`)
-//         : null,
-//       picture_23: updatedCustomer?.picture_23
-//         ? getImageUrl(`/uploads/${updatedCustomer.picture_23}`)
-//         : null,
-//       picture_11: updatedCustomer?.picture_11
-//         ? getImageUrl(`/uploads/${updatedCustomer.picture_11}`)
-//         : null,
-//       picture_24: updatedCustomer?.picture_24
-//         ? getImageUrl(`/uploads/${updatedCustomer.picture_24}`)
-//         : null,
-//       threed_model_left: updatedCustomer?.threed_model_left
-//         ? getImageUrl(`/uploads/${updatedCustomer.threed_model_left}`)
-//         : null,
-//       threed_model_right: updatedCustomer?.threed_model_right
-//         ? getImageUrl(`/uploads/${updatedCustomer.threed_model_right}`)
-//         : null,
-//     };
-//     res.status(200).json({
-//       success: true,
-//       message: "Customer updated successfully",
-//       data: customerWithImages,
-//     });
-//   } catch (err: any) {
-//     console.error("Update Customer Error:", err);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: err.message,
-//     });
-//   }
-// };
 
 
 export const updateCustomer = async (req: Request, res: Response) => {
@@ -595,14 +445,15 @@ export const updateCustomer = async (req: Request, res: Response) => {
       kodexeEinlagen,
       sonstiges,
     } = req.body;
- 
+
     const updateData = {
       vorname: vorname || existing.vorname,
       nachname: nachname || existing.nachname,
       email: email || existing.email,
       telefonnummer: telefonnummer || existing.telefonnummer,
       wohnort: wohnort || existing.wohnort,
-      ausfuhrliche_diagnose: ausfuhrliche_diagnose || existing.ausfuhrliche_diagnose,
+      ausfuhrliche_diagnose:
+        ausfuhrliche_diagnose || existing.ausfuhrliche_diagnose,
       kundeSteuernummer: kundeSteuernummer || existing.kundeSteuernummer,
       diagnose: diagnose || existing.diagnose,
       kodexeMassschuhe: kodexeMassschuhe || existing.kodexeMassschuhe,
@@ -627,9 +478,9 @@ export const updateCustomer = async (req: Request, res: Response) => {
     const updatedCustomer = await prisma.customers.update({
       where: { id },
       data: updateData,
-      include: { versorgungen: true },  
+      include: { versorgungen: true },
     });
- 
+
     res.status(200).json({
       success: true,
       message: "Customer updated successfully",
@@ -644,9 +495,6 @@ export const updateCustomer = async (req: Request, res: Response) => {
     });
   }
 };
-
-
-
 
 export const updateCustomerSpecialFields = async (
   req: Request,
@@ -744,39 +592,44 @@ export const getCustomerById = async (req: Request, res: Response) => {
       {} as Record<string, any>
     );
 
-    const screenerFilesWithImages = customer.screenerFile.map((screener) => ({
-      id: screener.id,
-      customerId: screener.customerId,
-      picture_10: screener.picture_10
-        ? getImageUrl(`/uploads/${screener.picture_10}`)
-        : null,
-      picture_23: screener.picture_23
-        ? getImageUrl(`/uploads/${screener.picture_23}`)
-        : null,
-      picture_11: screener.picture_11
-        ? getImageUrl(`/uploads/${screener.picture_11}`)
-        : null,
-      picture_24: screener.picture_24
-        ? getImageUrl(`/uploads/${screener.picture_24}`)
-        : null,
-      threed_model_left: screener.threed_model_left
-        ? getImageUrl(`/uploads/${screener.threed_model_left}`)
-        : null,
-      threed_model_right: screener.threed_model_right
-        ? getImageUrl(`/uploads/${screener.threed_model_right}`)
-        : null,
-      picture_17: screener.picture_17
-        ? getImageUrl(`/uploads/${screener.picture_17}`)
-        : null,
-      picture_16: screener.picture_16
-        ? getImageUrl(`/uploads/${screener.picture_16}`)
-        : null,
-      csvFile: screener.csvFile
-        ? getImageUrl(`/uploads/${screener.csvFile}`)
-        : null,
-      createdAt: screener.createdAt,
-      updatedAt: screener.updatedAt,
-    }));
+    const screenerFilesWithImages = customer.screenerFile
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ) // Sort by createdAt (latest first)
+      .map((screener) => ({
+        id: screener.id,
+        customerId: screener.customerId,
+        picture_10: screener.picture_10
+          ? getImageUrl(`/uploads/${screener.picture_10}`)
+          : null,
+        picture_23: screener.picture_23
+          ? getImageUrl(`/uploads/${screener.picture_23}`)
+          : null,
+        picture_11: screener.picture_11
+          ? getImageUrl(`/uploads/${screener.picture_11}`)
+          : null,
+        picture_24: screener.picture_24
+          ? getImageUrl(`/uploads/${screener.picture_24}`)
+          : null,
+        threed_model_left: screener.threed_model_left
+          ? getImageUrl(`/uploads/${screener.threed_model_left}`)
+          : null,
+        threed_model_right: screener.threed_model_right
+          ? getImageUrl(`/uploads/${screener.threed_model_right}`)
+          : null,
+        picture_17: screener.picture_17
+          ? getImageUrl(`/uploads/${screener.picture_17}`)
+          : null,
+        picture_16: screener.picture_16
+          ? getImageUrl(`/uploads/${screener.picture_16}`)
+          : null,
+        csvFile: screener.csvFile
+          ? getImageUrl(`/uploads/${screener.csvFile}`)
+          : null,
+        createdAt: screener.createdAt,
+        updatedAt: screener.updatedAt,
+      }));
 
     const customerWithImages = {
       ...customer,
@@ -1572,7 +1425,7 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
       take: 1,
       select: { id: true },
     });
-    console.log("latestScreener:", latestScreener)
+    console.log("latestScreener:", latestScreener);
 
     const deleteOldIfNew = (newFile: any, oldFileName: string | null) => {
       if (newFile && oldFileName) {
@@ -1587,7 +1440,6 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
         }
       }
     };
-
 
     const updateData: any = {};
     let csvData: any = {};
@@ -1711,13 +1563,12 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
   }
 };
 
-
 export const deleteScreenerFile = async (req: Request, res: Response) => {
   const { screenerId } = req.params;
 
   try {
     const screenerFile = await prisma.screener_file.findUnique({
-      where: { id: screenerId }
+      where: { id: screenerId },
     });
 
     if (!screenerFile) {
@@ -1770,4 +1621,3 @@ export const deleteScreenerFile = async (req: Request, res: Response) => {
     });
   }
 };
-

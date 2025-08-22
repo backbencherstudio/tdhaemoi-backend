@@ -16,6 +16,7 @@ export const getAllexercises = async (req: Request, res: Response) => {
 };
 
 
+ 
 
 export const sendExercisesEmail = async (req: Request, res: Response) => {
   try {
@@ -23,51 +24,47 @@ export const sendExercisesEmail = async (req: Request, res: Response) => {
     const pdfFile = req.file;
 
     if (!email || !pdfFile) {
-      if (pdfFile) fs.unlinkSync(pdfFile.path);
-
-      res.status(400).json({
+      if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
+      return res.status(400).json({
         success: false,
-        message: "Email and PDF file are required",
+        message: 'Email and PDF file are required',
       });
-      return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      fs.unlinkSync(pdfFile.path);
-      res.status(400).json({
+      if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
+      return res.status(400).json({
         success: false,
-        message: "Invalid email format",
+        message: 'Invalid email format',
       });
-      return;
     }
 
-    if (pdfFile.mimetype !== "application/pdf") {
-      fs.unlinkSync(pdfFile.path);
-      res.status(400).json({
+    if (pdfFile.mimetype !== 'application/pdf') {
+      if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
+      return res.status(400).json({
         success: false,
-        message: "Only PDF files are allowed",
+        message: 'Only PDF files are allowed',
       });
-      return;
     }
 
-    // Send email with PDF content
+    console.time('sendPdfToEmail');
     await sendPdfToEmail(email, pdfFile);
+    console.timeEnd('sendPdfToEmail');
 
-    // Clean up
-    fs.unlinkSync(pdfFile.path);
+    // Clean up file after email is sent
+    if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "Email with PDF content sent successfully",
+      message: 'Email with PDF sent successfully',
     });
   } catch (error: any) {
-    // Clean up file if error occurs
-    if (req.file) fs.unlinkSync(req.file.path);
-
-    res.status(500).json({
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    console.error('Error in sendExercisesEmail:', error);
+    return res.status(500).json({
       success: false,
-      message: error.message || "Failed to send email",
+      message: error.message || 'Failed to send email',
     });
   }
 };

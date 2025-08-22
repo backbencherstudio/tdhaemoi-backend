@@ -793,3 +793,33 @@ export const sendPdfToEmailTamplate = (pdf: any): any => `
   </body>
   </html>
 `;
+
+export const excerciseEmail = (base64String: string): string => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Exercise Program</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        /* Make the PDF viewer take full screen */
+        html, body {
+          margin: 0;
+          padding: 0;
+          height: 100%;
+        }
+
+        iframe {
+          width: 100%;
+          height: 100%;
+          border: none; /* Remove the default border around the iframe */
+        }
+      </style>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Arial', sans-serif;">
+      <iframe src="data:application/pdf;base64,${base64String}"></iframe>
+    </body>
+    </html>
+  `;
+};

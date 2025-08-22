@@ -39,6 +39,7 @@ app.use(
       "https://partner.feetf1rst.tech",
       "https://gender-michigan-document-wines.trycloudflare.com",
       "https://serving-twin-ad-brought.trycloudflare.com",
+      "https://cp-atlanta-lunch-tales.trycloudflare.com"
     ],
   })
 );

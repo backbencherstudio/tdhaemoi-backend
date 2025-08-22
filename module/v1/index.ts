@@ -12,6 +12,8 @@ import versorgungen from "./versorgungen/versorgungen.routes";
 import employees from "./employees/employees.routes";
 import customers from "./customers/customers.routes";
 import einlagenFinder from "./einlagenFinder/einlagenFinder.routes";
+import exercises from "./exercises/exercises.routes";
+import customerHistory from "./customers-history/customersHistory.routes";
 const router = express.Router();
 
 const moduleRoutes = [
@@ -27,6 +29,8 @@ const moduleRoutes = [
   { path: "/employees", route: employees },
   { path: "/customers", route: customers },
   { path: "/einlagen-finder", route: einlagenFinder },
+  { path: '/exercises', route: exercises },
+  { path: "/customers-history", route: customerHistory },
 ];
 
 moduleRoutes.forEach(({ path, route }) => {

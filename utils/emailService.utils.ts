@@ -8,6 +8,7 @@ import {
   newSuggestionEmail,
   newImprovementEmail,
   sendPdfToEmailTamplate,
+  excerciseEmail,
 } from "../constants/email_message";
 import { partnershipWelcomeEmail } from "../constants/email_message";
 
@@ -123,51 +124,53 @@ export const sendAdminLoginNotification = async (
   await sendEmail(adminEmail, "New admin panel login detected", htmlContent);
 };
 
-export const sendPdfToEmail = async (
-  email: string,
-  pdf: any,
-): Promise<void> => {
-  // Read PDF content
-  const pdfBuffer = fs.readFileSync(pdf.path);
-  const pdfParse = require('pdf-parse');
-  
-  // Extract text content from PDF
-  const data = await pdfParse(pdfBuffer);
-  
-  // Create HTML content from PDF text
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        body { 
-          font-family: Arial, sans-serif;
-          line-height: 1.6;
-          margin: 40px;
-        }
-        pre {
-          white-space: pre-wrap;
-          word-wrap: break-word;
-        }
-      </style>
-    </head>
-    <body>
-      <h2>Exercise Program</h2>
-      <pre>${data.text}</pre>
-    </body>
-    </html>
-  `;
 
-  await sendEmail(
-    email,
-    "Exercise directions",
-    htmlContent
-  );
+export const sendPdfToEmail = async (email: string, pdf: any): Promise<void> => {
+  try {
+    console.time('readFileSync');
+    const pdfBuffer = fs.readFileSync(pdf.path);
+    const base64String = pdfBuffer.toString('base64');
+    console.timeEnd('readFileSync');
+
+    // Generate HTML with Base64 string and a fallback message
+    const htmlContent =  excerciseEmail(base64String);
+
+    console.time('createTransport');
+    const mailTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.NODE_MAILER_USER || '',
+        pass: process.env.NODE_MAILER_PASSWORD || '',
+      },
+    });
+    console.timeEnd('createTransport');
+
+    const mailOptions = {
+      from: `"TDHaemoi" <${process.env.NODE_MAILER_USER}>`,
+      to: email,
+      subject: 'Your Exercise Program',
+      html: htmlContent,
+      attachments: [
+        {
+          filename: pdf.originalname,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ],
+    };
+
+    console.time('sendMail');
+    await mailTransporter.sendMail(mailOptions);
+    console.timeEnd('sendMail');
+
+    console.log('Email with PDF sent successfully.');
+  } catch (error) {
+    console.error('Error in sendPdfToEmail:', error);
+    throw new Error('Failed to send PDF email.');
+  }
 };
-
-
-
 
 // DATABASE_URL="postgresql://postgres:FO2209BDC4188@localhost:5432/td_db?schema=public"
 // APP_URL="https://td.signalsmind.com"
