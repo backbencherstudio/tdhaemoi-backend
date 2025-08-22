@@ -281,11 +281,12 @@ model customers {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([vorname])
-  @@index([nachname])
-  @@index([email])
+  @@index([vorname, nachname])
   @@index([telefonnummer])
   @@index([wohnort])
+  @@index([email])
+  @@index([id, vorname])
+  @@index([id, email])
 }
 
 model screener_file {
@@ -306,36 +307,42 @@ model screener_file {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([id])
+  @@index([createdAt])  
+
 }
 
 model customerHistorie {
-  id         String         @id @default(uuid())
+  id         String        @id @default(uuid())
   customerId String
-  customer   customers      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer   customers     @relation(fields: [customerId], references: [id], onDelete: Cascade)
   category   EventCategory
 
-  url        String?
-  methord    String?
-  paymentIs  String?
-  eventId    String?
+  url       String?
+  methord   String?
+  paymentIs String?
+  eventId   String?
 
-  note       String?
+  note String?
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([customerId])
+  @@index([eventId])
+  @@index([category])
 }
 
-
 enum EventCategory {
-  Notizen      //Notes
+  Notizen //Notes
   Bestellungen //Orders
-  Leistungen   //Services
-  Rechnungen   //Invoices
-  Zahlungen    //Payments
-  Emails       //Emails
-  Termin       //Appointment
+  Leistungen //Services
+  Rechnungen //Invoices
+  Zahlungen //Payments
+  Emails //Emails
+  Termin //Appointment
 }
 
 model customer_versorgungen {
@@ -357,6 +364,8 @@ model customer_versorgungen {
 
   @@unique([customerId, status, diagnosis_status])
   @@index([id, name])
+  @@index([customerId])
+  @@index([status])
 }
 
 model einlagenAnswers {

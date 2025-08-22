@@ -108,7 +108,7 @@ router.delete(
 
 router.get(
   "/screener-file/:screenerId",
-  verifyUser("PARTNER", "ADMIN"),
+  // verifyUser("PARTNER", "ADMIN"),
   getScreenerFileById
 );
 
