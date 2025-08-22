@@ -185,7 +185,6 @@ export const createCustomers = async (req: Request, res: Response) => {
         screenerFile: screenerFile ? [screenerFile] : [],
       };
     });
-    
 
     // if (csvFileName && files.csvFile?.[0]?.path) {
     //   try {
@@ -759,7 +758,6 @@ export const updateCustomerSpecialFields = async (
   }
 };
 
-
 //----------------------------------------getCustomerById--------------------------------------------------
 // export const getCustomerById = async (req: Request, res: Response) => {
 //   try {
@@ -874,8 +872,14 @@ export const updateCustomerSpecialFields = async (
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
-    const [customer, versorgungen, einlagenAnswers, screenerFiles, customerHistories] = await Promise.all([
+
+    const [
+      customer,
+      versorgungen,
+      einlagenAnswers,
+      screenerFiles,
+      customerHistories,
+    ] = await Promise.all([
       prisma.customers.findUnique({ where: { id } }),
       prisma.customer_versorgungen.findMany({ where: { customerId: id } }),
       prisma.einlagenAnswers.findMany({
@@ -888,14 +892,14 @@ export const getCustomerById = async (req: Request, res: Response) => {
       }),
       prisma.customerHistorie.findMany({ where: { customerId: id } }),
     ]);
-    
+
     if (!customer) {
       return res.status(404).json({
         success: false,
         message: "Customer not found",
       });
     }
-    
+
     const einlagenAnswersByCategory = new Map();
     einlagenAnswers.forEach((answer) => {
       if (!einlagenAnswersByCategory.has(answer.category)) {
@@ -904,34 +908,41 @@ export const getCustomerById = async (req: Request, res: Response) => {
           answers: [],
         });
       }
-      
+
       einlagenAnswersByCategory.get(answer.category).answers.push({
         questionId: parseInt(answer.questionId),
         selected: answer.answer,
       });
     });
-    
-    const processedScreenerFiles = screenerFiles.map(screener => {
+
+    const processedScreenerFiles = screenerFiles.map((screener) => {
       const result = { ...screener };
       const imageFields = [
-        'picture_10', 'picture_23', 'picture_11', 'picture_24',
-        'threed_model_left', 'threed_model_right', 'picture_17', 'picture_16', 'csvFile'
+        "picture_10",
+        "picture_23",
+        "picture_11",
+        "picture_24",
+        "threed_model_left",
+        "threed_model_right",
+        "picture_17",
+        "picture_16",
+        "csvFile",
       ];
-      
-      imageFields.forEach(field => {
+
+      imageFields.forEach((field) => {
         if (result[field]) {
           result[field] = getImageUrl(`/uploads/${result[field]}`);
         }
       });
-      
+
       return result;
     });
-    
-    const processedHistories = customerHistories.map(history => ({
+
+    const processedHistories = customerHistories.map((history) => ({
       ...history,
       url: history.url ? getImageUrl(history.url) : null,
     }));
-    
+
     const customerWithImages = {
       ...customer,
       versorgungen,
@@ -939,7 +950,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
       screenerFile: processedScreenerFiles,
       customerHistorie: processedHistories,
     };
-    
+
     res.status(200).json({
       success: true,
       message: "Customer fetched successfully",
@@ -955,7 +966,6 @@ export const getCustomerById = async (req: Request, res: Response) => {
   }
 };
 //----------------------------------------end getCustomerById--------------------------------------------------
-
 
 export const assignVersorgungToCustomer = async (
   req: Request,
@@ -1554,16 +1564,26 @@ export const addScreenerFile = async (req: Request, res: Response) => {
       updatedAt: newScreener.updatedAt,
     };
 
-    if (csvFileName && files.csvFile?.[0]?.path) {
-      try {
-        fs.unlinkSync(files.csvFile[0].path);
-      } catch (err) {
-        console.error(
-          `Failed to delete CSV file ${files.csvFile[0].path}`,
-          err
-        );
-      }
-    }
+    await prisma.customerHistorie.create({
+      data: {
+        customerId: customerId,
+        category: "Leistungen",
+        url: `/customers/screener-file/${newScreener.id}`,
+        methord: "GET",
+        eventId: customerId,
+      },
+    });
+
+    // if (csvFileName && files.csvFile?.[0]?.path) {
+    //   try {
+    //     fs.unlinkSync(files.csvFile[0].path);
+    //   } catch (err) {
+    //     console.error(
+    //       `Failed to delete CSV file ${files.csvFile[0].path}`,
+    //       err
+    //     );
+    //   }
+    // }
 
     res.status(201).json({
       success: true,

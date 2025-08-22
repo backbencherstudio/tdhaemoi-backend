@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { data } from "../../../assets/v1/data";
+import { baseUrl, getImageUrl } from "../../../utils/base_utl";
 
 const prisma = new PrismaClient();
 
@@ -116,10 +117,17 @@ export const getAllCustomerHistory = async (req: Request, res: Response) => {
       prisma.customerHistorie.count({ where: whereCondition }),
     ]);
 
+    const historyWithBaseUrl = history.map((record) => {
+      if (record.url) {
+        record.url = getImageUrl(record.url);
+      }
+      return record;
+    });
+
     res.status(200).json({
       success: true,
       message: "Customer history retrieved successfully",
-      data: history,
+      data: historyWithBaseUrl,
       pagination: {
         totalItems: totalCount,
         totalPages: Math.ceil(totalCount / limitNumber),
@@ -136,8 +144,6 @@ export const getAllCustomerHistory = async (req: Request, res: Response) => {
       message: "Something went wrong",
       error: error.message,
     });
-  } finally {
-    await prisma.$disconnect();
   }
 };
 
