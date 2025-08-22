@@ -1,5 +1,5 @@
 import express from "express";
-import { createCustomerHistoryNote, getAllCustomerHistory, getCustomerHistoryById } from "./customersHistory.controllers";
+import { createCustomerHistoryNote, getAllCustomerHistory, getCustomerHistoryById, updateCustomerHistory } from "./customersHistory.controllers";
 import { verifyUser } from "../../../middleware/verifyUsers";
 
 const router = express.Router();
@@ -9,5 +9,7 @@ router.post("/notizen/:customerId", verifyUser("ADMIN", "PARTNER"), createCustom
 router.get("/", verifyUser("ADMIN", "PARTNER"), getAllCustomerHistory);
 
 router.get("/:id", verifyUser("ADMIN", "PARTNER"), getCustomerHistoryById);
+
+router.patch("/:historyId", verifyUser("ADMIN", "PARTNER"), updateCustomerHistory); 
 
 export default router;
