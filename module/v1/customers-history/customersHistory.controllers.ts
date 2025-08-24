@@ -10,7 +10,7 @@ export const createCustomerHistoryNote = async (
   res: Response
 ) => {
   try {
-    const { note } = req.body;
+    const { note, date } = req.body;
     const { customerId } = req.params;
 
     if (!note) {
@@ -45,12 +45,14 @@ export const createCustomerHistoryNote = async (
         },
         category: "Notizen",
         note: note,
+        date: date,
       },
       select: {
         id: true,
         customerId: true,
         category: true,
         note: true,
+        date: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -182,7 +184,7 @@ export const getCustomerHistoryById = async (req: Request, res: Response) => {
 export const updateCustomerHistory = async (req: Request, res: Response) => {
   try {
     const { historyId } = req.params;
-    const { note, url, methord, paymentIs, eventId, category } = req.body;
+    const { note, url, methord, date, paymentIs, eventId, category } = req.body;
 
     if (!historyId) {
       return res.status(400).json({
@@ -197,6 +199,7 @@ export const updateCustomerHistory = async (req: Request, res: Response) => {
       methord !== undefined ||
       paymentIs !== undefined ||
       eventId !== undefined ||
+      date !== undefined ||
       category !== undefined;
 
     if (!hasUpdateData) {
@@ -245,6 +248,7 @@ export const updateCustomerHistory = async (req: Request, res: Response) => {
     if (paymentIs !== undefined) updateData.paymentIs = paymentIs;
     if (eventId !== undefined) updateData.eventId = eventId;
     if (category !== undefined) updateData.category = category;
+    if (date !== undefined) updateData.date = date;
 
     const updatedHistory = await prisma.customerHistorie.update({
       where: { id: historyId },
@@ -263,7 +267,6 @@ export const updateCustomerHistory = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("Update Customer History Error:", error);
 
- 
     if (error.code === "P2025") {
       return res.status(404).json({
         success: false,
