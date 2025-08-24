@@ -5,60 +5,6 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import { getImageUrl } from "../../../utils/base_utl";
 import { getPaginationOptions, getPaginationResult } from "../../../utils/pagination";
 
-// model User {
-//   id                     String                  @id @default(uuid())
-//   name                   String?
-//   email                  String                  @unique
-//   password               String
-//   image                  String?
-//   role                   Role                    @default(ADMIN)
-//   createdAt              DateTime                @default(now()) @map("created_at")
-//   updatedAt              DateTime                @updatedAt
-//   suggestions            SuggestionFeetf1rst[]
-//   sentMessages           Message[]               @relation("sent_messages")
-//   receivedMessages       Message[]               @relation("received_messages")
-//   accounta               account[]
-//   appointments           appointment[]
-//   improvementSuggestions ImprovementSuggestion[]
-//   messageVisibility      MessageVisibility[]
-
-//   @@map("users")
-// }
-
-// model Message {
-//   id             String              @id @default(uuid())
-//   subject        String
-//   content        String
-//   senderId       String
-//   sender         User                @relation("sent_messages", fields: [senderId], references: [id], onDelete: Cascade)
-//   recipientId    String?
-//   recipient      User?               @relation("received_messages", fields: [recipientId], references: [id], onDelete: SetNull)
-//   recipientEmail String // For non-registered recipients
-//   isFavorite     Boolean             @default(false)
-//   isDeleted      Boolean             @default(false)
-//   createdAt      DateTime            @default(now())
-//   updatedAt      DateTime            @updatedAt
-//   visibilities   MessageVisibility[]
-
-//   @@index([senderId])
-//   @@index([recipientId])
-//   @@map("messages")
-// }
-
-// model MessageVisibility {
-//   id         String   @id @default(uuid())
-//   messageId  String
-//   userId     String
-//   isDeleted  Boolean  @default(false)
-//   isFavorite Boolean  @default(false)
-//   message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-//   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   createdAt  DateTime @default(now())
-//   updatedAt  DateTime @updatedAt
-
-//   @@unique([messageId, userId])
-//   @@map("message_visibilities")
-// }
 
 const prisma = new PrismaClient();
 
