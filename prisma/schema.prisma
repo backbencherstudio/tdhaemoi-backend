@@ -325,6 +325,7 @@ model customerHistorie {
   customerId String
   customer   customers     @relation(fields: [customerId], references: [id], onDelete: Cascade)
   category   EventCategory
+  date       DateTime?
 
   url       String?
   methord   String?
