@@ -534,124 +534,70 @@ export const getAllPartners = async (req: Request, res: Response) => {
   }
 };
 
+
+
 export const checkAuthStatus = async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers["authorization"];
-
     if (!authHeader) {
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
         message: "No token provided",
       });
-      return;
     }
 
-    // Remove 'Bearer ' prefix if present
-    const token = authHeader.startsWith("Bearer ")
-      ? authHeader.slice(7)
-      : authHeader;
-
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
     if (!token) {
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
         message: "Invalid token format",
       });
-      return;
     }
 
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET as string);
     } catch (jwtError) {
-      res.status(401).json({
+      console.error("JWT verification error:", jwtError);
+      return res.status(401).json({
         success: false,
         message: "Invalid or expired token",
       });
-      return;
     }
 
     if (!decoded || typeof decoded !== "object" || !decoded.id) {
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
         message: "Invalid token payload",
       });
-      return;
     }
 
-    const user = await prisma.user
-      .findUnique({
-        where: { id: decoded.id },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          role: true,
-          accounta: {
-            select: {
-              token: true,
-              expires_at: true,
-            },
-          },
-        },
-      })
-      .catch(() => null); // Handle potential database errors gracefully
+    // Fetch user based on the decoded ID
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+    });
 
     if (!user) {
-      res.status(404).json({
+      return res.status(404).json({
         success: false,
         message: "User not found",
       });
-      return;
-    }
-
-    const account = user.accounta[0];
-
-    // Add buffer time (5 minutes) to prevent edge cases
-    const bufferTime = 5 * 60 * 1000; // 5 minutes in milliseconds
-    const now = new Date();
-    const expirationDate = account?.expires_at
-      ? new Date(account.expires_at)
-      : null;
-    const isExpired =
-      !expirationDate || now.getTime() + bufferTime > expirationDate.getTime();
-
-    if (!account || !account.token || isExpired) {
-      res.status(401).json({
-        success: false,
-        message: "Session expired",
-      });
-      return;
-    }
-
-    console.log(account.token);
-    console.log(user);
-    console.log(token);
-    // Verify that the token matches the one stored in the database
-    if (account.token !== token) {
-      res.status(401).json({
-        success: false,
-        message: "Invalid session",
-      });
-      return;
     }
 
     res.status(200).json({
       success: true,
       user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
+        ...user,
         image: user.image ? `${baseUrl}/uploads/${user.image}` : null,
-        role: user.role,
       },
     });
   } catch (error) {
-    // Log the error for debugging but don't expose details to client
     console.error("Auth check error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Authentication check failed",
     });
   }
 };
+
+
