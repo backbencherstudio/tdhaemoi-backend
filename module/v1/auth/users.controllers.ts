@@ -86,12 +86,10 @@ export const createUser = async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
     const image = req.file;
-    
+
     const missingField = ["name", "email", "password"].find(
       (field) => !req.body[field]
     );
-    
-    
 
     if (missingField) {
       if (image) {
@@ -173,7 +171,7 @@ export const createUser = async (req: Request, res: Response) => {
 };
 
 export const loginUser = async (req: Request, res: Response) => {
-  console.log(req.body)
+  console.log(req.body);
   try {
     const { email, password } = req.body;
 
@@ -193,7 +191,7 @@ export const loginUser = async (req: Request, res: Response) => {
         email,
       },
     });
-    console.log(user)
+    console.log(user);
 
     if (!user) {
       res.status(404).json({
@@ -534,8 +532,6 @@ export const getAllPartners = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const checkAuthStatus = async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers["authorization"];
@@ -546,7 +542,9 @@ export const checkAuthStatus = async (req: Request, res: Response) => {
       });
     }
 
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : authHeader;
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -584,10 +582,12 @@ export const checkAuthStatus = async (req: Request, res: Response) => {
       });
     }
 
+    const { password, ...userData } = user;
+
     res.status(200).json({
       success: true,
       user: {
-        ...user,
+        ...userData,
         image: user.image ? `${baseUrl}/uploads/${user.image}` : null,
       },
     });
@@ -599,5 +599,3 @@ export const checkAuthStatus = async (req: Request, res: Response) => {
     });
   }
 };
-
-
