@@ -8,12 +8,133 @@ import { getPaginationOptions, getPaginationResult } from "../../../utils/pagina
 
 const prisma = new PrismaClient();
 
+// export const createMessage = async (req: Request, res: Response) => {
+//   try {
+//     const { email: recipientEmail, subject, content } = req.body;
+//     const { id: senderId } = req.user;
+
+//     // Validate required fields
+//     const missingField = ["email", "subject", "content"].find(
+//       (field) => !req.body[field]
+//     );
+//     if (missingField) {
+//       res.status(400).json({
+//         success: false,
+//         message: `${missingField} is required!`,
+//       });
+//       return;
+//     }
+
+//     if (!validator.isEmail(recipientEmail)) {
+//       res.status(400).json({
+//         success: false,
+//         message: "Invalid email format!",
+//       });
+//       return;
+//     }
+
+//     const recipientUser = await prisma.user.findUnique({
+//       where: { email: recipientEmail },
+//       select: { id: true },
+//     });
+
+//     const newMessage = await prisma.message.create({
+//       data: {
+//         subject,
+//         content,
+//         senderId,
+//         recipientId: recipientUser?.id || null,
+//         recipientEmail,
+//         visibilities: {
+//           create: [
+//             {
+//               userId: senderId,
+//               isFavorite: false,
+//               isDeleted: false,
+//             },
+//             ...(recipientUser
+//               ? [
+//                   {
+//                     userId: recipientUser.id,
+//                     isFavorite: false,
+//                     isDeleted: false,
+//                   },
+//                 ]
+//               : []),
+//           ],
+//         },
+//       },
+//       include: {
+//         // sender: {
+//         //   select: {
+//         //     id: true,
+//         //     name: true,
+//         //     email: true,
+//         //     image: true,
+//         //   },
+//         // },
+//         recipient: {
+//           select: {
+//             id: true,
+//             name: true,
+//             email: true,
+//             image: true,
+//           },
+//         },
+//       },
+//     });
+
+//     sendEmail(recipientEmail, subject, content);
+
+//     const responseData = {
+//       id: newMessage.id,
+//       subject: newMessage.subject,
+//       content: newMessage.content,
+//       // sender: {
+//       //   id: newMessage.sender.id,
+//       //   name: newMessage.sender.name,
+//       //   email: newMessage.sender.email,
+//       //   image: newMessage.sender.image
+//       //     ? getImageUrl(newMessage.sender.image)
+//       //     : null,
+//       // },
+//       recipient: newMessage.recipient
+//         ? {
+//             id: newMessage.recipient.id,
+//             name: newMessage.recipient.name,
+//             email: newMessage.recipient.email,
+//             image: newMessage.recipient.image
+//               ? getImageUrl(`/uploads/${newMessage.recipient.image}`)
+//               : null,
+//           }
+//         : null,
+//       recipientEmail: newMessage.recipientEmail,
+//       createdAt: newMessage.createdAt,
+//       isFavorite: false,
+//     };
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Message created successfully",
+//       data: responseData,
+//     });
+//   } catch (error) {
+//     console.error("Create message error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error instanceof Error ? error.message : "Unknown error",
+//     });
+//   }
+// };
+
+
+
 export const createMessage = async (req: Request, res: Response) => {
   try {
     const { email: recipientEmail, subject, content } = req.body;
     const { id: senderId } = req.user;
 
-    // Validate required fields
     const missingField = ["email", "subject", "content"].find(
       (field) => !req.body[field]
     );
@@ -33,17 +154,56 @@ export const createMessage = async (req: Request, res: Response) => {
       return;
     }
 
-    const recipientUser = await prisma.user.findUnique({
-      where: { email: recipientEmail },
-      select: { id: true },
+    let recipientId: string | null = null;
+    let recipientData: any = null;
+    let recipientType: 'user' | 'customer' | 'external' = 'external';
+
+    await prisma.$transaction(async (tx) => {
+      // First check users table
+      const recipientUser = await tx.user.findUnique({
+        where: { email: recipientEmail },
+        select: { id: true, name: true, email: true, image: true },
+      });
+
+      if (recipientUser) {
+        recipientId = recipientUser.id;
+        recipientType = 'user';
+        recipientData = {
+          id: recipientUser.id,
+          name: recipientUser.name,
+          email: recipientUser.email,
+          image: recipientUser.image ? getImageUrl(`/uploads/${recipientUser.image}`) : null,
+          type: 'user'
+        };
+        return; // Exit early if user found
+      }
+
+      // If no user found, check customers table
+      const recipientCustomer = await tx.customers.findUnique({
+        where: { email: recipientEmail },
+        select: { id: true, vorname: true, nachname: true, email: true },
+      });
+
+      if (recipientCustomer) {
+        console.log(recipientCustomer)
+        recipientId = recipientCustomer.id;
+        recipientType = 'customer';
+        recipientData = {
+          id: recipientCustomer.id,
+          name: `${recipientCustomer.vorname} ${recipientCustomer.nachname}`,
+          email: recipientCustomer.email,
+          image: null,
+          type: 'customer'
+        };
+      }
     });
 
     const newMessage = await prisma.message.create({
       data: {
         subject,
         content,
-        senderId,
-        recipientId: recipientUser?.id || null,
+        senderId: senderId, // FIXED: Always use the authenticated user as sender
+        recipientId: recipientId, // This can be null for external recipients
         recipientEmail,
         visibilities: {
           create: [
@@ -52,10 +212,10 @@ export const createMessage = async (req: Request, res: Response) => {
               isFavorite: false,
               isDeleted: false,
             },
-            ...(recipientUser
+            ...(recipientId
               ? [
                   {
-                    userId: recipientUser.id,
+                    userId: recipientId,
                     isFavorite: false,
                     isDeleted: false,
                   },
@@ -64,51 +224,18 @@ export const createMessage = async (req: Request, res: Response) => {
           ],
         },
       },
-      include: {
-        // sender: {
-        //   select: {
-        //     id: true,
-        //     name: true,
-        //     email: true,
-        //     image: true,
-        //   },
-        // },
-        recipient: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
-      },
     });
 
+    // Send email to recipient
     sendEmail(recipientEmail, subject, content);
 
     const responseData = {
       id: newMessage.id,
       subject: newMessage.subject,
       content: newMessage.content,
-      // sender: {
-      //   id: newMessage.sender.id,
-      //   name: newMessage.sender.name,
-      //   email: newMessage.sender.email,
-      //   image: newMessage.sender.image
-      //     ? getImageUrl(newMessage.sender.image)
-      //     : null,
-      // },
-      recipient: newMessage.recipient
-        ? {
-            id: newMessage.recipient.id,
-            name: newMessage.recipient.name,
-            email: newMessage.recipient.email,
-            image: newMessage.recipient.image
-              ? getImageUrl(`/uploads/${newMessage.recipient.image}`)
-              : null,
-          }
-        : null,
+      recipient: recipientData,
       recipientEmail: newMessage.recipientEmail,
+      recipientType,
       createdAt: newMessage.createdAt,
       isFavorite: false,
     };
@@ -127,6 +254,7 @@ export const createMessage = async (req: Request, res: Response) => {
     });
   }
 };
+
 
 
 

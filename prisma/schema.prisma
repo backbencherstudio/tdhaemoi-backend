@@ -139,6 +139,7 @@ model Message {
   recipientEmail String // For non-registered recipients
   isFavorite     Boolean             @default(false)
   isDeleted      Boolean             @default(false)
+  recipientType  RecipientType?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   visibilities   MessageVisibility[]
@@ -146,6 +147,12 @@ model Message {
   @@index([senderId])
   @@index([recipientId])
   @@map("messages")
+}
+
+enum RecipientType {
+  USER
+  CUSTOMER
+  EXTERNAL
 }
 
 model MessageVisibility {
@@ -310,8 +317,7 @@ model screener_file {
 
   @@index([customerId])
   @@index([id])
-  @@index([createdAt])  
-
+  @@index([createdAt])
 }
 
 model customerHistorie {
