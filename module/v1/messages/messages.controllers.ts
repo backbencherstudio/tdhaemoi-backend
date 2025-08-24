@@ -3,138 +3,74 @@ import validator from "validator";
 import { sendEmail } from "../../../utils/emailService.utils";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { getImageUrl } from "../../../utils/base_utl";
-import { getPaginationOptions, getPaginationResult } from "../../../utils/pagination";
+import {
+  getPaginationOptions,
+  getPaginationResult,
+} from "../../../utils/pagination";
 
+// model User {
+//   id                     String                  @id @default(uuid())
+//   name                   String?
+//   email                  String                  @unique
+//   password               String
+//   image                  String?
+//   role                   Role                    @default(ADMIN)
+//   createdAt              DateTime                @default(now()) @map("created_at")
+//   updatedAt              DateTime                @updatedAt
+//   suggestions            SuggestionFeetf1rst[]
+//   sentMessages           Message[]               @relation("sent_messages")
+//   receivedMessages       Message[]               @relation("received_messages")
+//   accounta               account[]
+//   appointments           appointment[]
+//   improvementSuggestions ImprovementSuggestion[]
+//   messageVisibility      MessageVisibility[]
+
+//   @@map("users")
+// }
+
+// model Message {
+//   id             String              @id @default(uuid())
+//   subject        String
+//   content        String
+//   senderId       String
+//   sender         User                @relation("sent_messages", fields: [senderId], references: [id], onDelete: Cascade)
+//   recipientId    String?
+//   recipient      User?               @relation("received_messages", fields: [recipientId], references: [id], onDelete: SetNull)
+//   recipientEmail String // For non-registered recipients
+//   isFavorite     Boolean             @default(false)
+//   isDeleted      Boolean             @default(false)
+//   createdAt      DateTime            @default(now())
+//   updatedAt      DateTime            @updatedAt
+//   visibilities   MessageVisibility[]
+
+//   @@index([senderId])
+//   @@index([recipientId])
+//   @@map("messages")
+// }
+
+// model MessageVisibility {
+//   id         String   @id @default(uuid())
+//   messageId  String
+//   userId     String
+//   isDeleted  Boolean  @default(false)
+//   isFavorite Boolean  @default(false)
+//   message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+//   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   createdAt  DateTime @default(now())
+//   updatedAt  DateTime @updatedAt
+
+//   @@unique([messageId, userId])
+//   @@map("message_visibilities")
+// }
 
 const prisma = new PrismaClient();
-
-// export const createMessage = async (req: Request, res: Response) => {
-//   try {
-//     const { email: recipientEmail, subject, content } = req.body;
-//     const { id: senderId } = req.user;
-
-//     // Validate required fields
-//     const missingField = ["email", "subject", "content"].find(
-//       (field) => !req.body[field]
-//     );
-//     if (missingField) {
-//       res.status(400).json({
-//         success: false,
-//         message: `${missingField} is required!`,
-//       });
-//       return;
-//     }
-
-//     if (!validator.isEmail(recipientEmail)) {
-//       res.status(400).json({
-//         success: false,
-//         message: "Invalid email format!",
-//       });
-//       return;
-//     }
-
-//     const recipientUser = await prisma.user.findUnique({
-//       where: { email: recipientEmail },
-//       select: { id: true },
-//     });
-
-//     const newMessage = await prisma.message.create({
-//       data: {
-//         subject,
-//         content,
-//         senderId,
-//         recipientId: recipientUser?.id || null,
-//         recipientEmail,
-//         visibilities: {
-//           create: [
-//             {
-//               userId: senderId,
-//               isFavorite: false,
-//               isDeleted: false,
-//             },
-//             ...(recipientUser
-//               ? [
-//                   {
-//                     userId: recipientUser.id,
-//                     isFavorite: false,
-//                     isDeleted: false,
-//                   },
-//                 ]
-//               : []),
-//           ],
-//         },
-//       },
-//       include: {
-//         // sender: {
-//         //   select: {
-//         //     id: true,
-//         //     name: true,
-//         //     email: true,
-//         //     image: true,
-//         //   },
-//         // },
-//         recipient: {
-//           select: {
-//             id: true,
-//             name: true,
-//             email: true,
-//             image: true,
-//           },
-//         },
-//       },
-//     });
-
-//     sendEmail(recipientEmail, subject, content);
-
-//     const responseData = {
-//       id: newMessage.id,
-//       subject: newMessage.subject,
-//       content: newMessage.content,
-//       // sender: {
-//       //   id: newMessage.sender.id,
-//       //   name: newMessage.sender.name,
-//       //   email: newMessage.sender.email,
-//       //   image: newMessage.sender.image
-//       //     ? getImageUrl(newMessage.sender.image)
-//       //     : null,
-//       // },
-//       recipient: newMessage.recipient
-//         ? {
-//             id: newMessage.recipient.id,
-//             name: newMessage.recipient.name,
-//             email: newMessage.recipient.email,
-//             image: newMessage.recipient.image
-//               ? getImageUrl(`/uploads/${newMessage.recipient.image}`)
-//               : null,
-//           }
-//         : null,
-//       recipientEmail: newMessage.recipientEmail,
-//       createdAt: newMessage.createdAt,
-//       isFavorite: false,
-//     };
-
-//     res.status(201).json({
-//       success: true,
-//       message: "Message created successfully",
-//       data: responseData,
-//     });
-//   } catch (error) {
-//     console.error("Create message error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error instanceof Error ? error.message : "Unknown error",
-//     });
-//   }
-// };
-
-
 
 export const createMessage = async (req: Request, res: Response) => {
   try {
     const { email: recipientEmail, subject, content } = req.body;
     const { id: senderId } = req.user;
 
+    // Validate required fields
     const missingField = ["email", "subject", "content"].find(
       (field) => !req.body[field]
     );
@@ -154,56 +90,17 @@ export const createMessage = async (req: Request, res: Response) => {
       return;
     }
 
-    let recipientId: string | null = null;
-    let recipientData: any = null;
-    let recipientType: 'user' | 'customer' | 'external' = 'external';
-
-    await prisma.$transaction(async (tx) => {
-      // First check users table
-      const recipientUser = await tx.user.findUnique({
-        where: { email: recipientEmail },
-        select: { id: true, name: true, email: true, image: true },
-      });
-
-      if (recipientUser) {
-        recipientId = recipientUser.id;
-        recipientType = 'user';
-        recipientData = {
-          id: recipientUser.id,
-          name: recipientUser.name,
-          email: recipientUser.email,
-          image: recipientUser.image ? getImageUrl(`/uploads/${recipientUser.image}`) : null,
-          type: 'user'
-        };
-        return; // Exit early if user found
-      }
-
-      // If no user found, check customers table
-      const recipientCustomer = await tx.customers.findUnique({
-        where: { email: recipientEmail },
-        select: { id: true, vorname: true, nachname: true, email: true },
-      });
-
-      if (recipientCustomer) {
-        console.log(recipientCustomer)
-        recipientId = recipientCustomer.id;
-        recipientType = 'customer';
-        recipientData = {
-          id: recipientCustomer.id,
-          name: `${recipientCustomer.vorname} ${recipientCustomer.nachname}`,
-          email: recipientCustomer.email,
-          image: null,
-          type: 'customer'
-        };
-      }
+    const recipientUser = await prisma.user.findUnique({
+      where: { email: recipientEmail },
+      select: { id: true },
     });
 
     const newMessage = await prisma.message.create({
       data: {
         subject,
         content,
-        senderId: senderId, // FIXED: Always use the authenticated user as sender
-        recipientId: recipientId, // This can be null for external recipients
+        senderId,
+        recipientId: recipientUser?.id || null,
         recipientEmail,
         visibilities: {
           create: [
@@ -212,10 +109,10 @@ export const createMessage = async (req: Request, res: Response) => {
               isFavorite: false,
               isDeleted: false,
             },
-            ...(recipientId
+            ...(recipientUser
               ? [
                   {
-                    userId: recipientId,
+                    userId: recipientUser.id,
                     isFavorite: false,
                     isDeleted: false,
                   },
@@ -224,18 +121,72 @@ export const createMessage = async (req: Request, res: Response) => {
           ],
         },
       },
+      include: {
+        // sender: {
+        //   select: {
+        //     id: true,
+        //     name: true,
+        //     email: true,
+        //     image: true,
+        //   },
+        // },
+        recipient: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+      },
     });
 
-    // Send email to recipient
+
+    //set customer history if it's customer
+    if (!recipientUser) {
+      const customers = await prisma.customers.findUnique({
+        where: { email: recipientEmail },
+        select: { id: true, email: true },
+      });
+      if (customers) {
+        
+        await prisma.customerHistorie.create({
+          data: {
+            customerId: customers.id,
+            category: "Emails",
+            url: `/message/system-inbox/${newMessage.id}`,
+            methord: "GET",
+          },
+          select: { id: true },
+        });
+      }
+    }
+
     sendEmail(recipientEmail, subject, content);
 
     const responseData = {
       id: newMessage.id,
       subject: newMessage.subject,
       content: newMessage.content,
-      recipient: recipientData,
+      // sender: {
+      //   id: newMessage.sender.id,
+      //   name: newMessage.sender.name,
+      //   email: newMessage.sender.email,
+      //   image: newMessage.sender.image
+      //     ? getImageUrl(newMessage.sender.image)
+      //     : null,
+      // },
+      recipient: newMessage.recipient
+        ? {
+            id: newMessage.recipient.id,
+            name: newMessage.recipient.name,
+            email: newMessage.recipient.email,
+            image: newMessage.recipient.image
+              ? getImageUrl(`/uploads/${newMessage.recipient.image}`)
+              : null,
+          }
+        : null,
       recipientEmail: newMessage.recipientEmail,
-      recipientType,
       createdAt: newMessage.createdAt,
       isFavorite: false,
     };
@@ -254,10 +205,6 @@ export const createMessage = async (req: Request, res: Response) => {
     });
   }
 };
-
-
-
-
 
 // export const getSentMessages = async (req: Request, res: Response) => {
 //   try {
@@ -353,7 +300,8 @@ export const getSentMessages = async (req: Request, res: Response) => {
   try {
     const { id: userId } = req.user;
     const { page, limit } = getPaginationOptions(req);
-    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const search =
+      typeof req.query.search === "string" ? req.query.search : undefined;
     const skip = (page - 1) * limit;
 
     const baseWhere: Prisma.MessageWhereInput = {
@@ -366,27 +314,25 @@ export const getSentMessages = async (req: Request, res: Response) => {
       },
     };
 
- 
     let where: Prisma.MessageWhereInput = baseWhere;
 
     if (search) {
       where = {
         ...baseWhere,
         OR: [
-          { subject: { contains: search, mode: 'insensitive' } },
-          { recipientEmail: { contains: search, mode: 'insensitive' } },
+          { subject: { contains: search, mode: "insensitive" } },
+          { recipientEmail: { contains: search, mode: "insensitive" } },
           {
             recipient: {
               OR: [
-                { name: { contains: search, mode: 'insensitive' } },
-                { email: { contains: search, mode: 'insensitive' } },
+                { name: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
               ],
             },
           },
         ],
       };
     }
-
 
     const total = await prisma.message.count({
       where,
@@ -437,7 +383,10 @@ export const getSentMessages = async (req: Request, res: Response) => {
       recipientEmail: message.recipientEmail,
     }));
 
-    const result = getPaginationResult(formattedMessages, total, { page, limit });
+    const result = getPaginationResult(formattedMessages, total, {
+      page,
+      limit,
+    });
 
     res.status(200).json({
       success: true,
@@ -454,8 +403,6 @@ export const getSentMessages = async (req: Request, res: Response) => {
     });
   }
 };
-
-
 
 // export const getReceivedMessages = async (req: Request, res: Response) => {
 //   try {
@@ -531,7 +478,7 @@ export const getSentMessages = async (req: Request, res: Response) => {
 //             id: message.sender.id,
 //             name: message.sender.name,
 //             email: message.sender.email,
-//             image: message.sender.image 
+//             image: message.sender.image
 //               ? getImageUrl(`/uploads/${message.sender.image}`)
 //               : null,
 //             role: message.sender.role,
@@ -562,7 +509,8 @@ export const getReceivedMessages = async (req: Request, res: Response) => {
   try {
     const { id: userId, email } = req.user;
     const { page, limit } = getPaginationOptions(req);
-    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const search =
+      typeof req.query.search === "string" ? req.query.search : undefined;
     const skip = (page - 1) * limit;
 
     const baseWhere: Prisma.MessageWhereInput = {
@@ -588,12 +536,12 @@ export const getReceivedMessages = async (req: Request, res: Response) => {
         ...baseWhere,
         OR: [
           ...(baseWhere.OR as Prisma.MessageWhereInput[]),
-          { subject: { contains: search, mode: 'insensitive' } },
+          { subject: { contains: search, mode: "insensitive" } },
           {
             sender: {
               OR: [
-                { name: { contains: search, mode: 'insensitive' } },
-                { email: { contains: search, mode: 'insensitive' } },
+                { name: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
               ],
             },
           },
@@ -641,7 +589,7 @@ export const getReceivedMessages = async (req: Request, res: Response) => {
             id: message.sender.id,
             name: message.sender.name,
             email: message.sender.email,
-            image: message.sender.image 
+            image: message.sender.image
               ? getImageUrl(`/uploads/${message.sender.image}`)
               : null,
             role: message.sender.role,
@@ -650,7 +598,10 @@ export const getReceivedMessages = async (req: Request, res: Response) => {
       recipientEmail: message.recipientEmail,
     }));
 
-    const result = getPaginationResult(formattedMessages, total, { page, limit });
+    const result = getPaginationResult(formattedMessages, total, {
+      page,
+      limit,
+    });
 
     res.status(200).json({
       success: true,
@@ -668,7 +619,6 @@ export const getReceivedMessages = async (req: Request, res: Response) => {
   }
 };
 
-
 export const setToFavorite = async (req: Request, res: Response) => {
   try {
     const { id: userId } = req.user;
@@ -685,11 +635,11 @@ export const setToFavorite = async (req: Request, res: Response) => {
     });
 
     if (!visibility) {
-       res.status(404).json({
+      res.status(404).json({
         success: false,
         message: "Message not found or you don't have permission to access it",
       });
-      return
+      return;
     }
 
     const updatedVisibility = await prisma.messageVisibility.update({
@@ -730,11 +680,11 @@ export const setToFavorite = async (req: Request, res: Response) => {
     });
 
     if (!message) {
-       res.status(404).json({
+      res.status(404).json({
         success: false,
         message: "Message not found",
       });
-      return
+      return;
     }
 
     // Format the response
@@ -751,22 +701,27 @@ export const setToFavorite = async (req: Request, res: Response) => {
       //   image: message.sender.image ? getImageUrl(message.sender.image) : null,
       //   role: message.sender.role,
       // } : null,
-      recipient: message.recipient ? {
-        id: message.recipient.id,
-        name: message.recipient.name,
-        email: message.recipient.email,
-        image: message.recipient.image ? getImageUrl(`/uploads/${message.recipient.image}`) : null,
-        role: message.recipient.role,
-      } : null,
+      recipient: message.recipient
+        ? {
+            id: message.recipient.id,
+            name: message.recipient.name,
+            email: message.recipient.email,
+            image: message.recipient.image
+              ? getImageUrl(`/uploads/${message.recipient.image}`)
+              : null,
+            role: message.recipient.role,
+          }
+        : null,
       recipientEmail: message.recipientEmail,
     };
 
     res.status(200).json({
       success: true,
-      message: `Message ${updatedVisibility.isFavorite ? "added to" : "removed from"} favorites`,
+      message: `Message ${
+        updatedVisibility.isFavorite ? "added to" : "removed from"
+      } favorites`,
       data: responseData,
     });
-
   } catch (error) {
     console.error("Toggle favorite error:", error);
     res.status(500).json({
@@ -777,12 +732,12 @@ export const setToFavorite = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getFavoriteMessages = async (req: Request, res: Response) => {
   try {
     const { id: userId } = req.user;
     const { page, limit } = getPaginationOptions(req);
-    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const search =
+      typeof req.query.search === "string" ? req.query.search : undefined;
     const skip = (page - 1) * limit;
 
     // Base where clause for favorites
@@ -803,27 +758,26 @@ export const getFavoriteMessages = async (req: Request, res: Response) => {
             {
               sender: {
                 OR: [
-                  { name: { contains: search, mode: 'insensitive' } },
-                  { email: { contains: search, mode: 'insensitive' } },
+                  { name: { contains: search, mode: "insensitive" } },
+                  { email: { contains: search, mode: "insensitive" } },
                 ],
               },
             },
             {
               recipient: {
                 OR: [
-                  { name: { contains: search, mode: 'insensitive' } },
-                  { email: { contains: search, mode: 'insensitive' } },
+                  { name: { contains: search, mode: "insensitive" } },
+                  { email: { contains: search, mode: "insensitive" } },
                 ],
               },
             },
-            { subject: { contains: search, mode: 'insensitive' } },
-            { content: { contains: search, mode: 'insensitive' } },
+            { subject: { contains: search, mode: "insensitive" } },
+            { content: { contains: search, mode: "insensitive" } },
           ],
         },
       };
     }
 
- 
     const total = await prisma.messageVisibility.count({
       where,
     });
@@ -854,16 +808,16 @@ export const getFavoriteMessages = async (req: Request, res: Response) => {
           },
         },
       },
-      orderBy: { message: { createdAt: 'desc' } },
+      orderBy: { message: { createdAt: "desc" } },
       skip,
       take: limit,
     });
 
     const formattedMessages = favoriteMessages.map((visibility) => {
       if (!visibility.message) {
-        throw new Error('Message not found for visibility record');
+        throw new Error("Message not found for visibility record");
       }
-      
+
       return {
         id: visibility.message.id,
         subject: visibility.message.subject,
@@ -896,24 +850,26 @@ export const getFavoriteMessages = async (req: Request, res: Response) => {
       };
     });
 
-    const result = getPaginationResult(formattedMessages, total, { page, limit });
+    const result = getPaginationResult(formattedMessages, total, {
+      page,
+      limit,
+    });
 
     res.status(200).json({
       success: true,
-      message: 'Favorite messages retrieved successfully',
+      message: "Favorite messages retrieved successfully",
       data: result.data,
       pagination: result.pagination,
     });
   } catch (error) {
-    console.error('Get favorite messages error:', error);
+    console.error("Get favorite messages error:", error);
     res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : 'Frontend error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: error instanceof Error ? error.message : "Frontend error",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
-
 
 export const getMessageById = async (req: Request, res: Response) => {
   try {
@@ -930,11 +886,11 @@ export const getMessageById = async (req: Request, res: Response) => {
     });
 
     if (!visibility || visibility.isDeleted) {
-       res.status(404).json({
+      res.status(404).json({
         success: false,
         message: "Message not found or you don't have permission to access it",
       });
-      return
+      return;
     }
 
     const message = await prisma.message.findUnique({
@@ -962,11 +918,11 @@ export const getMessageById = async (req: Request, res: Response) => {
     });
 
     if (!message) {
-       res.status(404).json({
+      res.status(404).json({
         success: false,
         message: "Message not found",
       });
-      return
+      return;
     }
 
     const responseData = {
@@ -975,24 +931,28 @@ export const getMessageById = async (req: Request, res: Response) => {
       content: message.content,
       createdAt: message.createdAt,
       isFavorite: visibility.isFavorite,
-      sender: message.sender ? {
-        id: message.sender.id,
-        name: message.sender.name,
-        email: message.sender.email,
-        image: message.sender.image 
-          ? getImageUrl(`/uploads/${message.sender.image}`)
-          : null,
-        role: message.sender.role,
-      } : null,
-      recipient: message.recipient ? {
-        id: message.recipient.id,
-        name: message.recipient.name,
-        email: message.recipient.email,
-        image: message.recipient.image 
-          ? getImageUrl(`/uploads/${message.recipient.image}`)
-          : null,
-        role: message.recipient.role,
-      } : null,
+      sender: message.sender
+        ? {
+            id: message.sender.id,
+            name: message.sender.name,
+            email: message.sender.email,
+            image: message.sender.image
+              ? getImageUrl(`/uploads/${message.sender.image}`)
+              : null,
+            role: message.sender.role,
+          }
+        : null,
+      recipient: message.recipient
+        ? {
+            id: message.recipient.id,
+            name: message.recipient.name,
+            email: message.recipient.email,
+            image: message.recipient.image
+              ? getImageUrl(`/uploads/${message.recipient.image}`)
+              : null,
+            role: message.recipient.role,
+          }
+        : null,
       recipientEmail: message.recipientEmail,
     };
 
@@ -1001,7 +961,6 @@ export const getMessageById = async (req: Request, res: Response) => {
       message: "Message retrieved successfully",
       data: responseData,
     });
-
   } catch (error) {
     console.error("Get message by ID error:", error);
     res.status(500).json({
@@ -1012,18 +971,17 @@ export const getMessageById = async (req: Request, res: Response) => {
   }
 };
 
-
 export const permanentDeleteMessages = async (req: Request, res: Response) => {
   try {
     const { id: userId } = req.user;
     const { messageIds } = req.body;
 
     if (!Array.isArray(messageIds) || messageIds.length === 0) {
-       res.status(400).json({
+      res.status(400).json({
         success: false,
         message: "messageIds must be a non-empty array of message IDs",
       });
-      return
+      return;
     }
 
     await prisma.$transaction(async (prisma) => {
@@ -1042,7 +1000,7 @@ export const permanentDeleteMessages = async (req: Request, res: Response) => {
         select: { id: true },
       });
 
-      const orphanedIds = orphanedMessages.map(m => m.id);
+      const orphanedIds = orphanedMessages.map((m) => m.id);
 
       if (orphanedIds.length > 0) {
         await prisma.message.deleteMany({
@@ -1065,10 +1023,8 @@ export const permanentDeleteMessages = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const deleteSingleMessage = async (req: Request, res: Response) => {
-  console.log(req.user)
+  console.log(req.user);
   try {
     const { id: userId } = req.user;
     const { id: messageId } = req.params;
@@ -1083,11 +1039,11 @@ export const deleteSingleMessage = async (req: Request, res: Response) => {
     });
 
     if (!visibility) {
-       res.status(404).json({
+      res.status(404).json({
         success: false,
         message: "Message not found or you don't have permission to access it",
       });
-      return
+      return;
     }
 
     await prisma.messageVisibility.update({
@@ -1110,7 +1066,6 @@ export const deleteSingleMessage = async (req: Request, res: Response) => {
       },
     });
 
-
     res.status(200).json({
       success: true,
       message: "Message moved to trash",
@@ -1120,6 +1075,97 @@ export const deleteSingleMessage = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Failed to delete message",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+
+// in system functionality
+export const getSystemInboxMessage = async (req: Request, res: Response) => {
+  try {
+    const { messageId } = req.params;
+
+    if (!messageId) {
+      return res.status(400).json({
+        success: false,
+        message: "Message ID is required",
+      });
+    }
+
+    // Find the message by ID
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+        recipient: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: "Message not found",
+      });
+    }
+
+    // Format the response
+    const formattedMessage = {
+      id: message.id,
+      subject: message.subject,
+      content: message.content,
+      createdAt: message.createdAt,
+      sender: message.sender
+        ? {
+            id: message.sender.id,
+            name: message.sender.name,
+            email: message.sender.email,
+            image: message.sender.image
+              ? getImageUrl(`/uploads/${message.sender.image}`)
+              : null,
+            role: message.sender.role,
+          }
+        : null,
+      recipient: message.recipient
+        ? {
+            id: message.recipient.id,
+            name: message.recipient.name,
+            email: message.recipient.email,
+            image: message.recipient.image
+              ? getImageUrl(`/uploads/${message.recipient.image}`)
+              : null,
+            role: message.recipient.role,
+          }
+        : null,
+      recipientEmail: message.recipientEmail,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "System inbox message retrieved successfully",
+      data: formattedMessage,
+    });
+  } catch (error) {
+    console.error("Get system inbox message error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }

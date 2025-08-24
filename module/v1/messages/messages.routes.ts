@@ -7,7 +7,8 @@ import {
   getFavoriteMessages,
   getMessageById,
   permanentDeleteMessages,
-  deleteSingleMessage
+  deleteSingleMessage,
+  getSystemInboxMessage
 } from "./messages.controllers";
 import { verifyUser } from "../../../middleware/verifyUsers";
 
@@ -16,10 +17,18 @@ const router = express.Router();
 router.post("/", verifyUser("PARTNER", "ADMIN"), createMessage);
 router.get("/sendbox", verifyUser("PARTNER", "ADMIN"), getSentMessages);
 router.get("/inbox", verifyUser("PARTNER", "ADMIN"), getReceivedMessages);
+
+
 //select as favourite
 router.put("/:id/favorite", verifyUser("PARTNER", "ADMIN"), setToFavorite);
 
 router.get("/favorites", verifyUser("PARTNER", "ADMIN"), getFavoriteMessages);
+
+// in system functionality-----------------
+router.get("/system-inbox/:messageId", getSystemInboxMessage);
+//-----------------------------------------
+
+
 router.get("/:id", verifyUser("PARTNER", "ADMIN"), getMessageById);
 // Add this to your existing routes
 router.delete(
@@ -33,6 +42,9 @@ router.delete(
   verifyUser("PARTNER", "ADMIN"),
   deleteSingleMessage
 );
+
+
+
 
 
 export default router;
