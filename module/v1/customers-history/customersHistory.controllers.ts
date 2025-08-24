@@ -284,3 +284,51 @@ export const updateCustomerHistory = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const deleteCustomerHistory = async (req: Request, res: Response) => {
+  try {
+    const { historyId } = req.params;
+
+    if (!historyId) {
+      return res.status(400).json({
+        success: false,
+        message: "historyId parameter is required",
+      });
+    }
+
+    const existingHistory = await prisma.customerHistorie.findUnique({
+      where: { id: historyId },
+    });
+
+    if (!existingHistory) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer history record not found",
+      });
+    }
+
+    await prisma.customerHistorie.delete({
+      where: { id: historyId },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Customer history deleted successfully",
+    });
+  } catch (error: any) {
+    console.error("Delete Customer History Error:", error);
+
+    if (error.code === "P2025") {
+      return res.status(404).json({
+        success: false,
+        message: "Customer history record not found",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while deleting customer history",
+      error: error.message ? error.message : "Internal server error",
+    });
+  }
+};

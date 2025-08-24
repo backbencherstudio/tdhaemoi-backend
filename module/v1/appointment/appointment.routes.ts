@@ -6,6 +6,7 @@ import {
   updateAppointment,
   deleteAppointment,
   getMyAppointments,
+  getSystemAppointment
 } from "./appointment.controllers";
 
 import { verifyUser } from "../../../middleware/verifyUsers";
@@ -13,6 +14,11 @@ import { verifyUser } from "../../../middleware/verifyUsers";
 const router = express.Router();
 
 router.post("/", verifyUser("PARTNER", "ADMIN"), createAppointment);
+
+router.get(
+  "/system-appointment/:customerId/:appointmentId",
+  getSystemAppointment
+);
 
 router.get("/", verifyUser("ADMIN"), getAllAppointments);
 

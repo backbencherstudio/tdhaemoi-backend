@@ -3,8 +3,6 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-
-
 // model appointment {
 //   id            String   @id @default(uuid())
 //   customer_name String
@@ -22,11 +20,19 @@ const prisma = new PrismaClient();
 //   @@map("appointment")
 // }
 
-
 // Create appointment
 export const createAppointment = async (req: Request, res: Response) => {
   try {
-    const { customer_name, customerId,  time, date, reason, assignedTo, details, isClient } = req.body;
+    const {
+      customer_name,
+      customerId,
+      time,
+      date,
+      reason,
+      assignedTo,
+      details,
+      isClient,
+    } = req.body;
     const { id } = req.user;
 
     const missingField = [
@@ -39,13 +45,12 @@ export const createAppointment = async (req: Request, res: Response) => {
     ].find((field) => !req.body[field]);
 
     if (missingField) {
-       res.status(400).json({
+      res.status(400).json({
         success: false,
         message: `${missingField} is required!`,
       });
-      return
+      return;
     }
-
 
     const appointmentData: any = {
       customer_name,
@@ -55,7 +60,7 @@ export const createAppointment = async (req: Request, res: Response) => {
       assignedTo,
       details,
       userId: id,
-      customerId
+      customerId,
     };
 
     if (typeof isClient !== "undefined") {
@@ -66,16 +71,70 @@ export const createAppointment = async (req: Request, res: Response) => {
       data: appointmentData,
     });
 
-    
+    if (isClient && customerId) {
+      console.log("heat")
+      await prisma.customerHistorie.create({
+        data: {
+          customerId,
+          category: "Termin",
+          url: `/appointment/system-appointment/${customerId}/${appointment.id}`,
+          methord: "GET",
+        },
+        select: { id: true },
+      });
+    }
 
-     res.status(201).json({
+    res.status(201).json({
       success: true,
       message: "Appointment created successfully",
       appointment,
     });
   } catch (error) {
     console.error("Create appointment error:", error);
-     res.status(500).json({
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+// controllers/appointment.ts
+
+export const getSystemAppointment = async (req: Request, res: Response) => {
+  try {
+    const { customerId, appointmentId } = req.params;
+
+    const appointment = await prisma.appointment.findFirst({
+      where: {
+        id: appointmentId,
+        customerId: customerId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      appointment,
+    });
+  } catch (error) {
+    console.error("Get system appointment error:", error);
+    res.status(500).json({
       success: false,
       message: "Something went wrong",
       error: error.message,
@@ -158,7 +217,8 @@ export const getAppointmentById = async (req: Request, res: Response) => {
 export const updateAppointment = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { customer_name, time, date, reason, assignedTo, details, isClient } = req.body;
+    const { customer_name, time, date, reason, assignedTo, details, isClient } =
+      req.body;
 
     const existingAppointment = await prisma.appointment.findUnique({
       where: { id },
@@ -181,7 +241,8 @@ export const updateAppointment = async (req: Request, res: Response) => {
         reason: reason || existingAppointment.reason,
         assignedTo: assignedTo || existingAppointment.assignedTo,
         details: details || existingAppointment.details,
-        isClient: isClient !== undefined ? isClient : existingAppointment.isClient,
+        isClient:
+          isClient !== undefined ? isClient : existingAppointment.isClient,
       },
     });
 
@@ -241,22 +302,24 @@ export const getMyAppointments = async (req: Request, res: Response) => {
     const { id } = req.user;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const search = (req.query.search as string) || '';
+    const search = (req.query.search as string) || "";
     const skip = (page - 1) * limit;
 
     // Define search conditions for better readability
-    const searchConditions = search ? [
-      { customer_name: { contains: search, mode: 'insensitive' as const } },
-      { details: { contains: search, mode: 'insensitive' as const } },
-      { reason: { contains: search, mode: 'insensitive' as const } },
-      { assignedTo: { contains: search, mode: 'insensitive' as const } },
-      { time: { contains: search, mode: 'insensitive' as const } }
-    ] : undefined;
+    const searchConditions = search
+      ? [
+          { customer_name: { contains: search, mode: "insensitive" as const } },
+          { details: { contains: search, mode: "insensitive" as const } },
+          { reason: { contains: search, mode: "insensitive" as const } },
+          { assignedTo: { contains: search, mode: "insensitive" as const } },
+          { time: { contains: search, mode: "insensitive" as const } },
+        ]
+      : undefined;
 
     // Define base where condition
     const whereCondition = {
       userId: id,
-      OR: searchConditions
+      OR: searchConditions,
     };
 
     const [appointments, totalCount] = await Promise.all([
@@ -265,7 +328,7 @@ export const getMyAppointments = async (req: Request, res: Response) => {
         skip,
         take: limit,
         orderBy: {
-          createdAt: 'desc'
+          createdAt: "desc",
         },
         // include: {
         //   user: {
@@ -277,8 +340,8 @@ export const getMyAppointments = async (req: Request, res: Response) => {
         // }
       }),
       prisma.appointment.count({
-        where: whereCondition
-      })
+        where: whereCondition,
+      }),
     ]);
 
     res.status(200).json({
@@ -288,15 +351,15 @@ export const getMyAppointments = async (req: Request, res: Response) => {
         total: totalCount,
         page,
         limit,
-        totalPages: Math.ceil(totalCount / limit)
-      }
+        totalPages: Math.ceil(totalCount / limit),
+      },
     });
   } catch (error) {
-    console.error('Get my appointments error:', error);
+    console.error("Get my appointments error:", error);
     res.status(500).json({
       success: false,
-      message: 'Something went wrong',
-      error: error.message
+      message: "Something went wrong",
+      error: error.message,
     });
   }
 };
