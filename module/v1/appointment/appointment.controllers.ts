@@ -3,10 +3,30 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+
+
+// model appointment {
+//   id            String   @id @default(uuid())
+//   customer_name String
+//   time          String
+//   date          DateTime
+//   reason        String
+//   assignedTo    String
+//   details       String
+//   isClient      Boolean?
+//   userId        String
+//   customerId    String?
+//   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   createdAt     DateTime @default(now())
+
+//   @@map("appointment")
+// }
+
+
 // Create appointment
 export const createAppointment = async (req: Request, res: Response) => {
   try {
-    const { customer_name, time, date, reason, assignedTo, details, isClient } = req.body;
+    const { customer_name, customerId,  time, date, reason, assignedTo, details, isClient } = req.body;
     const { id } = req.user;
 
     const missingField = [
@@ -26,7 +46,7 @@ export const createAppointment = async (req: Request, res: Response) => {
       return
     }
 
-    // 🔥 Build data object conditionally
+
     const appointmentData: any = {
       customer_name,
       time,
@@ -35,9 +55,9 @@ export const createAppointment = async (req: Request, res: Response) => {
       assignedTo,
       details,
       userId: id,
+      customerId
     };
 
-    // ✅ Only include isClient if it was sent (not undefined)
     if (typeof isClient !== "undefined") {
       appointmentData.isClient = isClient;
     }
@@ -45,6 +65,8 @@ export const createAppointment = async (req: Request, res: Response) => {
     const appointment = await prisma.appointment.create({
       data: appointmentData,
     });
+
+    
 
      res.status(201).json({
       success: true,
