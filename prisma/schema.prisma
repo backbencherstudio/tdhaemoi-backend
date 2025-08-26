@@ -316,7 +316,6 @@ model screener_file {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   @@index([customerId])
   @@index([id])
   @@index([createdAt])
