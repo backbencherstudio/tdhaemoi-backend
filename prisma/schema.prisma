@@ -246,12 +246,13 @@ enum versorgungenDiagnosisStatus {
 }
 
 model customers {
-  id            String  @id @default(uuid())
-  vorname       String
-  nachname      String
-  email         String  @unique
-  telefonnummer String?
-  wohnort       String?
+  id             String  @id @default(uuid())
+  customerNumber Int     @unique @default(autoincrement())
+  vorname        String
+  nachname       String
+  email          String  @unique
+  telefonnummer  String?
+  wohnort        String?
 
   screenerFile screener_file[]
 
