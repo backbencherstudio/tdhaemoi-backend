@@ -197,7 +197,7 @@ export const createCustomers = async (req: Request, res: Response) => {
     //   }
     // }
 
-    console.log("Customer created successfully:", customerWithScreener);
+    // console.log("Customer created successfully:", customerWithScreener);
 
     const customerWithImages = {
       ...customerWithScreener,
