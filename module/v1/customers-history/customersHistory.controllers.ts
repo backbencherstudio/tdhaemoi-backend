@@ -46,6 +46,7 @@ export const createCustomerHistoryNote = async (
         category: "Notizen",
         note: note,
         date: date,
+        system_note: note,
       },
       select: {
         id: true,
@@ -181,6 +182,116 @@ export const getCustomerHistoryById = async (req: Request, res: Response) => {
   }
 };
 
+// export const updateCustomerHistory = async (req: Request, res: Response) => {
+//   try {
+//     const { historyId } = req.params;
+//     const { note, url, methord, date, paymentIs, eventId, category } = req.body;
+
+//     if (!historyId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "historyId parameter is required",
+//       });
+//     }
+
+//     const hasUpdateData =
+//       note !== undefined ||
+//       url !== undefined ||
+//       methord !== undefined ||
+//       paymentIs !== undefined ||
+//       eventId !== undefined ||
+//       date !== undefined ||
+//       category !== undefined;
+
+//     if (!hasUpdateData) {
+//       return res.status(400).json({
+//         success: false,
+//         message:
+//           "At least one field (note, url, methord, paymentIs, eventId, or category) is required for update",
+//       });
+//     }
+
+//     const validEventCategories = [
+//       "Notizen",
+//       "Bestellungen",
+//       "Leistungen",
+//       "Rechnungen",
+//       "Zahlungen",
+//       "Emails",
+//       "Termin",
+//     ];
+
+//     if (category && !validEventCategories.includes(category)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid category value",
+//         error: `Category must be one of: ${validEventCategories.join(", ")}`,
+//         validCategories: validEventCategories,
+//       });
+//     }
+
+//     const existingHistory = await prisma.customerHistorie.findUnique({
+//       where: { id: historyId },
+//     });
+
+//     if (!existingHistory) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Customer history record not found",
+//       });
+//     }
+
+//     const updateData: any = {};
+
+//     // if (note !== undefined) updateData.note = note;
+//     if (note !== undefined) {
+//       updateData.note = note;
+//       if (existingHistory.category === "Notizen") {
+//         updateData.system_note = note;
+//       }
+//     }
+//     if (url !== undefined) updateData.url = url;
+//     if (methord !== undefined) updateData.methord = methord;
+//     if (paymentIs !== undefined) updateData.paymentIs = paymentIs;
+//     if (eventId !== undefined) updateData.eventId = eventId;
+//     if (category !== undefined) updateData.category = category;
+//     if (date !== undefined) updateData.date = date;
+
+//     const updatedHistory = await prisma.customerHistorie.update({
+//       where: { id: historyId },
+//       data: updateData,
+//     });
+
+//     if (updatedHistory.url) {
+//       updatedHistory.url = getImageUrl(updatedHistory.url);
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Customer history updated successfully",
+//       data: updatedHistory,
+//     });
+//   } catch (error: any) {
+//     console.error("Update Customer History Error:", error);
+
+//     if (error.code === "P2025") {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Customer history record not found",
+//       });
+//     }
+
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong while updating customer history",
+//       error:
+//         process.env.NODE_ENV === "development"
+//           ? error.message
+//           : "Internal server error",
+//     });
+//   }
+// };
+
 export const updateCustomerHistory = async (req: Request, res: Response) => {
   try {
     const { historyId } = req.params;
@@ -193,56 +304,54 @@ export const updateCustomerHistory = async (req: Request, res: Response) => {
       });
     }
 
-    const hasUpdateData =
-      note !== undefined ||
-      url !== undefined ||
-      methord !== undefined ||
-      paymentIs !== undefined ||
-      eventId !== undefined ||
-      date !== undefined ||
-      category !== undefined;
+    const updateFields = {
+      note,
+      url,
+      methord,
+      date,
+      paymentIs,
+      eventId,
+      category,
+    };
+    const hasUpdateData = Object.values(updateFields).some(
+      (value) => value !== undefined
+    );
 
     if (!hasUpdateData) {
       return res.status(400).json({
         success: false,
-        message:
-          "At least one field (note, url, methord, paymentIs, eventId, or category) is required for update",
+        message: "At least one field is required for update",
       });
     }
 
-    const validEventCategories = [
-      "Notizen",
-      "Bestellungen",
-      "Leistungen",
-      "Rechnungen",
-      "Zahlungen",
-      "Emails",
-      "Termin",
-    ];
+    if (category !== undefined) {
+      const validEventCategories = new Set([
+        "Notizen",
+        "Bestellungen",
+        "Leistungen",
+        "Rechnungen",
+        "Zahlungen",
+        "Emails",
+        "Termin",
+      ]);
 
-    if (category && !validEventCategories.includes(category)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid category value",
-        error: `Category must be one of: ${validEventCategories.join(", ")}`,
-        validCategories: validEventCategories,
-      });
-    }
-
-    const existingHistory = await prisma.customerHistorie.findUnique({
-      where: { id: historyId },
-    });
-
-    if (!existingHistory) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer history record not found",
-      });
+      if (!validEventCategories.has(category)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid category value",
+          error: `Category must be one of: ${Array.from(
+            validEventCategories
+          ).join(", ")}`,
+          validCategories: Array.from(validEventCategories),
+        });
+      }
     }
 
     const updateData: any = {};
 
-    if (note !== undefined) updateData.note = note;
+    if (note !== undefined) {
+      updateData.note = note;
+    }
     if (url !== undefined) updateData.url = url;
     if (methord !== undefined) updateData.methord = methord;
     if (paymentIs !== undefined) updateData.paymentIs = paymentIs;
@@ -252,7 +361,14 @@ export const updateCustomerHistory = async (req: Request, res: Response) => {
 
     const updatedHistory = await prisma.customerHistorie.update({
       where: { id: historyId },
-      data: updateData,
+      data: {
+        ...updateData,
+        ...(note !== undefined && {
+          system_note: {
+            set: updateData.category === "Notizen" ? note : undefined,
+          },
+        }),
+      },
     });
 
     if (updatedHistory.url) {
@@ -277,10 +393,7 @@ export const updateCustomerHistory = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong while updating customer history",
-      error:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : "Internal server error",
+      error: error.message ? error.message : "Internal server error",
     });
   }
 };

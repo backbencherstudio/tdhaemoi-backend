@@ -177,6 +177,7 @@ export const createCustomers = async (req: Request, res: Response) => {
           url: `/customers/screener-file/${screenerFileId}`,
           methord: "GET",
           eventId: newCustomer.id,
+          system_note: "Fußscan"
         },
       });
 
@@ -1571,6 +1572,7 @@ export const addScreenerFile = async (req: Request, res: Response) => {
         url: `/customers/screener-file/${newScreener.id}`,
         methord: "GET",
         eventId: customerId,
+        system_note: "Fußscan"
       },
     });
 

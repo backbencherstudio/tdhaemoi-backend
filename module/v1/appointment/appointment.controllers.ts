@@ -72,13 +72,20 @@ export const createAppointment = async (req: Request, res: Response) => {
     });
 
     if (isClient && customerId) {
-      console.log("heat")
+      const formattedDate = new Date(date).toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+
+      console.log("heat");
       await prisma.customerHistorie.create({
         data: {
           customerId,
           category: "Termin",
           url: `/appointment/system-appointment/${customerId}/${appointment.id}`,
           methord: "GET",
+          system_note: `Termin zur Laufanalyse am ${formattedDate}`,
         },
         select: { id: true },
       });
@@ -141,7 +148,6 @@ export const getSystemAppointment = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 // Get all appointments
 export const getAllAppointments = async (req: Request, res: Response) => {

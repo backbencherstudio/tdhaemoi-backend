@@ -141,7 +141,6 @@ export const createMessage = async (req: Request, res: Response) => {
       },
     });
 
-
     //set customer history if it's customer
     if (!recipientUser) {
       const customers = await prisma.customers.findUnique({
@@ -149,13 +148,13 @@ export const createMessage = async (req: Request, res: Response) => {
         select: { id: true, email: true },
       });
       if (customers) {
-        
         await prisma.customerHistorie.create({
           data: {
             customerId: customers.id,
             category: "Emails",
             url: `/message/system-inbox/${newMessage.id}`,
             methord: "GET",
+            system_note: "Kunde hat Email gesendet",
           },
           select: { id: true },
         });
@@ -1079,7 +1078,6 @@ export const deleteSingleMessage = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 // in system functionality
 export const getSystemInboxMessage = async (req: Request, res: Response) => {
