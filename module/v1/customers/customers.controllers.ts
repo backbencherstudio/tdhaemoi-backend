@@ -177,7 +177,7 @@ export const createCustomers = async (req: Request, res: Response) => {
           url: `/customers/screener-file/${screenerFileId}`,
           methord: "GET",
           eventId: newCustomer.id,
-          system_note: "Fußscan"
+          system_note: "Fußscan",
         },
       });
 
@@ -651,6 +651,8 @@ export const updateCustomer = async (req: Request, res: Response) => {
       kodexeMassschuhe,
       kodexeEinlagen,
       sonstiges,
+      einlagenversorgung,
+      fußanalyse,
     } = req.body;
 
     const updateData = {
@@ -679,6 +681,9 @@ export const updateCustomer = async (req: Request, res: Response) => {
       zehentyp2: zehentyp2 || existing.zehentyp2,
       archIndex1: archIndex1 || existing.archIndex1,
       archIndex2: archIndex2 || existing.archIndex2,
+
+      einlagenversorgung: einlagenversorgung || existing.einlagenversorgung,
+      fußanalyse: fußanalyse || existing.fußanalyse,
       updatedBy: req.user.id,
     };
 
@@ -1572,7 +1577,7 @@ export const addScreenerFile = async (req: Request, res: Response) => {
         url: `/customers/screener-file/${newScreener.id}`,
         methord: "GET",
         eventId: customerId,
-        system_note: "Fußscan"
+        system_note: "Fußscan",
       },
     });
 

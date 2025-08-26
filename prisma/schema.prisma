@@ -287,6 +287,9 @@ model customers {
   kodexeEinlagen    String? // Kodexe Einlagen
   sonstiges         String? // Sonstiges
 
+  fußanalyse        String? //ইনসোল $
+  einlagenversorgung String? //Foot analysis $
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -316,6 +319,7 @@ model screener_file {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   @@index([customerId])
   @@index([id])
   @@index([createdAt])
@@ -333,7 +337,7 @@ model customerHistorie {
   paymentIs String?
   eventId   String?
 
-  note String?
+  note        String?
   system_note String?
 
   createdAt DateTime @default(now())

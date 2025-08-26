@@ -54,6 +54,7 @@ export const createCustomerHistoryNote = async (
         category: true,
         note: true,
         date: true,
+        system_note: true,
         createdAt: true,
         updatedAt: true,
       },
