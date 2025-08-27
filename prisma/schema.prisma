@@ -426,7 +426,10 @@ model customerOrders {
   totalPrice         Float
 
   product   customerProduct? @relation(fields: [productId], references: [id])
-  productId String?         @unique
+  productId String?          @unique
+
+  orderStatus  OrderStatus @default(Einlage_vorbereiten)
+  statusUpdate DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -463,6 +466,15 @@ model customerProduct {
   @@index([artikelHersteller])
   @@index([createdAt])
   @@index([status, diagnosis_status])
+}
+
+enum OrderStatus {
+  Einlage_vorbereiten
+  Einlage_in_Fertigung
+  Einlage_verpacken
+  Einlage_Abholbereit
+  Einlage_versandt
+  Ausgeführte_Einlagen
 }
 
 // {
