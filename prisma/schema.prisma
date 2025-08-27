@@ -425,7 +425,7 @@ model customerOrders {
   einlagenversorgung Float?
   totalPrice         Float
 
-  product   orderedProduct? @relation(fields: [productId], references: [id])
+  product   customerProduct? @relation(fields: [productId], references: [id])
   productId String?         @unique
 
   createdAt DateTime @default(now())
@@ -439,7 +439,7 @@ model customerOrders {
   @@index([customerId, createdAt])
 }
 
-model orderedProduct {
+model customerProduct {
   id                String @id @default(uuid())
   name              String
   rohlingHersteller String
