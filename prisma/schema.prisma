@@ -23,6 +23,7 @@ model User {
   appointments           appointment[]
   improvementSuggestions ImprovementSuggestion[]
   messageVisibility      MessageVisibility[]
+  partnerOrders          customerOrders[]       @relation("PartnerOrders")
 
   @@map("users")
 }
@@ -280,6 +281,7 @@ model customers {
   einlagenAnswers       einlagenAnswers[]
   versorgungen          customer_versorgungen[] @relation("customerVersorgungen")
   ausfuhrliche_diagnose String?
+  customerOrders       customerOrders[]
 
   kundeSteuernummer String? // Kunde Steuernummer
   diagnose          String? // Diagnose
@@ -287,8 +289,8 @@ model customers {
   kodexeEinlagen    String? // Kodexe Einlagen
   sonstiges         String? // Sonstiges
 
-  fußanalyse        String? //ইনসোল $
-  einlagenversorgung String? //Foot analysis $
+  fußanalyse         Float? //ইনসোল $
+  einlagenversorgung  Float? //Foot analysis $
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -323,6 +325,26 @@ model screener_file {
   @@index([customerId])
   @@index([id])
   @@index([createdAt])
+}
+
+model einlagenAnswers {
+  id         String           @id @default(uuid())
+  customerId String
+  customer   customers        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  category   QuestionCategory
+  questionId String
+  answer     Json
+
+  @@unique([customerId, questionId])
+  @@index([customerId])
+  @@index([category])
+  @@index([questionId])
+}
+
+enum QuestionCategory {
+  BUSINESSEINLAGE
+  ALLTAGSEINLAGE
+  SPORTEINLAGE
 }
 
 model customerHistorie {
@@ -381,25 +403,46 @@ model customer_versorgungen {
   @@index([status])
 }
 
-model einlagenAnswers {
-  id         String           @id @default(uuid())
-  customerId String
-  customer   customers        @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  category   QuestionCategory
-  questionId String
-  answer     Json
+model customerOrders {
+  id String @id @default(uuid())
 
-  @@unique([customerId, questionId])
+  customerId String?
+  customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  partnnerId String?
+  partner    User?   @relation(fields: [partnnerId], references: [id], onDelete: SetNull, name: "PartnerOrders")
+
+  fußanalyse        String?
+  einlagenversorgung String?
+  totalPrice         Float
+
+  product   orderedProduct? @relation(fields: [productId], references: [id])
+  productId String?           @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([customerId])
-  @@index([category])
-  @@index([questionId])
 }
 
-enum QuestionCategory {
-  BUSINESSEINLAGE
-  ALLTAGSEINLAGE
-  SPORTEINLAGE
+model orderedProduct {
+  id                String @id @default(uuid())
+  name              String
+  rohlingHersteller String
+  artikelHersteller String
+  versorgung        String
+  material          String
+  langenempfehlung  Json
+
+  status           versorgungenStatus
+  diagnosis_status versorgungenDiagnosisStatus?
+
+  order customerOrders? @relation
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
 
 // {
 //   category: "BUSINESSEINLAGE",

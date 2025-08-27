@@ -5,7 +5,7 @@ export async function ensureCustomerNumberSequenceMinimum(prisma: PrismaClient) 
   await prisma.$executeRaw`
     SELECT setval(
       pg_get_serial_sequence('public.customers', 'customerNumber'),
-      GREATEST((SELECT COALESCE(MAX("customerNumber"), 0) FROM public.customers), 999),
+      GREATEST((SELECT COALESCE(MAX("customerNumber"), 0) FROM public.customers), 9999),
       true
     )
   `;
