@@ -412,8 +412,8 @@ model customerOrders {
   partnnerId String?
   partner    User?   @relation(fields: [partnnerId], references: [id], onDelete: SetNull, name: "PartnerOrders")
 
-  fußanalyse        String?
-  einlagenversorgung String?
+  fußanalyse        Float?
+  einlagenversorgung Float?
   totalPrice         Float
 
   product   orderedProduct? @relation(fields: [productId], references: [id])
