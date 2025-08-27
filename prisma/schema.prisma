@@ -169,6 +169,9 @@ model MessageVisibility {
   updatedAt  DateTime @updatedAt
 
   @@unique([messageId, userId])
+  @@index(messageId)
+  @@index(userId)
+  @@index([createdAt])
   @@map("message_visibilities")
 }
 
@@ -199,6 +202,8 @@ model Employees {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
 }
 
 model Versorgungen {
@@ -220,6 +225,7 @@ model Versorgungen {
   updatedAt DateTime @updatedAt
 
   @@index([id, name])
+  @@index([createdAt])
 }
 
 enum versorgungenStatus {
@@ -301,6 +307,7 @@ model customers {
   @@index([email])
   @@index([id, vorname])
   @@index([id, email])
+  @@index([createdAt])
 }
 
 model screener_file {
@@ -368,6 +375,7 @@ model customerHistorie {
   @@index([customerId])
   @@index([eventId])
   @@index([category])
+  @@index([createdAt])
 }
 
 enum EventCategory {
@@ -401,6 +409,7 @@ model customer_versorgungen {
   @@index([id, name])
   @@index([customerId])
   @@index([status])
+  @@index([createdAt])
 }
 
 model customerOrders {
