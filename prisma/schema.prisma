@@ -23,7 +23,7 @@ model User {
   appointments           appointment[]
   improvementSuggestions ImprovementSuggestion[]
   messageVisibility      MessageVisibility[]
-  partnerOrders          customerOrders[]       @relation("PartnerOrders")
+  partnerOrders          customerOrders[]        @relation("PartnerOrders")
 
   @@map("users")
 }
@@ -281,7 +281,7 @@ model customers {
   einlagenAnswers       einlagenAnswers[]
   versorgungen          customer_versorgungen[] @relation("customerVersorgungen")
   ausfuhrliche_diagnose String?
-  customerOrders       customerOrders[]
+  customerOrders        customerOrders[]
 
   kundeSteuernummer String? // Kunde Steuernummer
   diagnose          String? // Diagnose
@@ -289,8 +289,8 @@ model customers {
   kodexeEinlagen    String? // Kodexe Einlagen
   sonstiges         String? // Sonstiges
 
-  fußanalyse         Float? //ইনসোল $
-  einlagenversorgung  Float? //Foot analysis $
+  fußanalyse        Float? //ইনসোল $
+  einlagenversorgung Float? //Foot analysis $
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -417,12 +417,17 @@ model customerOrders {
   totalPrice         Float
 
   product   orderedProduct? @relation(fields: [productId], references: [id])
-  productId String?           @unique
+  productId String?         @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([customerId])
+  @@index([partnnerId])
+  @@index([createdAt])
+  @@index([totalPrice])
+  @@index([customerId, partnnerId])
+  @@index([customerId, createdAt])
 }
 
 model orderedProduct {
@@ -441,8 +446,15 @@ model orderedProduct {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
 
+  @@index([name])
+  @@index([status])
+  @@index([diagnosis_status])
+  @@index([rohlingHersteller])
+  @@index([artikelHersteller])
+  @@index([createdAt])
+  @@index([status, diagnosis_status])
+}
 
 // {
 //   category: "BUSINESSEINLAGE",
