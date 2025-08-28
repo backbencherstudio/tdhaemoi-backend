@@ -5,149 +5,152 @@ import iconv from "iconv-lite";
 import csvParser from "csv-parser";
 import { getImageUrl } from "../../../utils/base_utl";
 import path from "path";
-import { sendPdfToEmail, sendInvoiceEmail } from "../../../utils/emailService.utils";
+import {
+  sendPdfToEmail,
+  sendInvoiceEmail,
+} from "../../../utils/emailService.utils";
 
 const prisma = new PrismaClient();
 
-export const createOrder = async (req: Request, res: Response) => {
-  try {
-    const { customerId, versorgungId } = req.body;
-    const partnerId = req.user.id;
+// export const createOrder = async (req: Request, res: Response) => {
+//   try {
+//     const { customerId, versorgungId } = req.body;
+//     const partnerId = req.user.id;
 
-    if (!customerId || !versorgungId) {
-      return res.status(400).json({
-        success: false,
-        message: "Customer ID and Versorgung ID are required",
-      });
-    }
+//     if (!customerId || !versorgungId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Customer ID and Versorgung ID are required",
+//       });
+//     }
 
-    const [customer, versorgung] = await Promise.all([
-      prisma.customers.findUnique({
-        where: { id: customerId },
-        select: {
-          id: true,
-          vorname: true,
-          nachname: true,
-          fußanalyse: true,
-          einlagenversorgung: true,
-        },
-      }),
-      prisma.versorgungen.findUnique({
-        where: { id: versorgungId },
-      }),
-    ]);
+//     const [customer, versorgung] = await Promise.all([
+//       prisma.customers.findUnique({
+//         where: { id: customerId },
+//         select: {
+//           id: true,
+//           vorname: true,
+//           nachname: true,
+//           fußanalyse: true,
+//           einlagenversorgung: true,
+//         },
+//       }),
+//       prisma.versorgungen.findUnique({
+//         where: { id: versorgungId },
+//       }),
+//     ]);
 
-    if (!customer) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Customer not found" });
-    }
-    if (!versorgung) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Versorgung not found" });
-    }
+//     if (!customer) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Customer not found" });
+//     }
+//     if (!versorgung) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Versorgung not found" });
+//     }
 
-    if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "fußanalyse or einlagenversorgung price is not set for this customer",
-      });
-    }
+//     if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
+//       return res.status(400).json({
+//         success: false,
+//         message:
+//           "fußanalyse or einlagenversorgung price is not set for this customer",
+//       });
+//     }
 
-    const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
+//     const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
 
-    const order = await prisma.$transaction(async (tx) => {
-      const customerProduct = await tx.customerProduct.create({
-        data: {
-          name: versorgung.name,
-          rohlingHersteller: versorgung.rohlingHersteller,
-          artikelHersteller: versorgung.artikelHersteller,
-          versorgung: versorgung.versorgung,
-          material: versorgung.material,
-          langenempfehlung: versorgung.langenempfehlung,
-          status: versorgung.status,
-          diagnosis_status: versorgung.diagnosis_status,
-        },
-      });
+//     const order = await prisma.$transaction(async (tx) => {
+//       const customerProduct = await tx.customerProduct.create({
+//         data: {
+//           name: versorgung.name,
+//           rohlingHersteller: versorgung.rohlingHersteller,
+//           artikelHersteller: versorgung.artikelHersteller,
+//           versorgung: versorgung.versorgung,
+//           material: versorgung.material,
+//           langenempfehlung: versorgung.langenempfehlung,
+//           status: versorgung.status,
+//           diagnosis_status: versorgung.diagnosis_status,
+//         },
+//       });
 
-      const newOrder = await tx.customerOrders.create({
-        data: {
-          customerId,
-          partnerId,
-          fußanalyse: customer.fußanalyse,
-          einlagenversorgung: customer.einlagenversorgung,
-          totalPrice,
-          orderStatus: 'Sarted',
-          productId: customerProduct.id,
-          statusUpdate: new Date(),
-        },
-        include: {
-          product: true,
-          customer: {
-            select: {
-              id: true,
-              vorname: true,
-              nachname: true,
-              email: true,
-              telefonnummer: true,
-              customerNumber: true,
-            },
-          },
-          partner: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              role: true,
-            },
-          },
-        },
-      });
+//       const newOrder = await tx.customerOrders.create({
+//         data: {
+//           customerId,
+//           partnerId,
+//           fußanalyse: customer.fußanalyse,
+//           einlagenversorgung: customer.einlagenversorgung,
+//           totalPrice,
+//           orderStatus: 'Sarted',
+//           productId: customerProduct.id,
+//           statusUpdate: new Date(),
+//         },
+//         include: {
+//           product: true,
+//           customer: {
+//             select: {
+//               id: true,
+//               vorname: true,
+//               nachname: true,
+//               email: true,
+//               telefonnummer: true,
+//               customerNumber: true,
+//             },
+//           },
+//           partner: {
+//             select: {
+//               id: true,
+//               name: true,
+//               email: true,
+//               image: true,
+//               role: true,
+//             },
+//           },
+//         },
+//       });
 
-      await tx.customerHistorie.create({
-        data: {
-          customerId,
-          category: "Bestellungen",
-          eventId: newOrder.id,
-          note: "New order created",
-          system_note: "New order created",
-          paymentIs: totalPrice.toString(),
-        },
-      });
+//       await tx.customerHistorie.create({
+//         data: {
+//           customerId,
+//           category: "Bestellungen",
+//           eventId: newOrder.id,
+//           note: "New order created",
+//           system_note: "New order created",
+//           paymentIs: totalPrice.toString(),
+//         },
+//       });
 
-      return newOrder;
-    });
+//       return newOrder;
+//     });
 
-    const formattedOrder = {
-      ...order,
-      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
-      partner: order.partner
-        ? {
-            ...order.partner,
-            image: order.partner.image
-              ? getImageUrl(`/uploads/${order.partner.image}`)
-              : null,
-          }
-        : null,
-    };
+//     const formattedOrder = {
+//       ...order,
+//       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+//       partner: order.partner
+//         ? {
+//             ...order.partner,
+//             image: order.partner.image
+//               ? getImageUrl(`/uploads/${order.partner.image}`)
+//               : null,
+//           }
+//         : null,
+//     };
 
-    return res.status(201).json({
-      success: true,
-      message: "Order created successfully",
-      data: formattedOrder,
-    });
-  } catch (error: any) {
-    console.error("Create Order Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-      error: error.message,
-    });
-  }
-};
+//     return res.status(201).json({
+//       success: true,
+//       message: "Order created successfully",
+//       data: formattedOrder,
+//     });
+//   } catch (error: any) {
+//     console.error("Create Order Error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
 
 // export const createOrder = async (req: Request, res: Response) => {
 //   try {
@@ -364,6 +367,104 @@ export const createOrder = async (req: Request, res: Response) => {
 //     });
 //   }
 // };
+
+
+
+
+
+export const createOrder = async (req: Request, res: Response) => {
+  try {
+    const { customerId, versorgungId } = req.body;
+    const partnerId = req.user.id;
+
+    if (!customerId || !versorgungId) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer ID and Versorgung ID are required",
+      });
+    }
+
+    const [customer, versorgung] = await Promise.all([
+      prisma.customers.findUnique({
+        where: { id: customerId },
+        select: { fußanalyse: true, einlagenversorgung: true },
+      }),
+      prisma.versorgungen.findUnique({
+        where: { id: versorgungId },
+        select: {
+          name: true,
+          rohlingHersteller: true,
+          artikelHersteller: true,
+          versorgung: true,
+          material: true,
+          langenempfehlung: true,
+          status: true,
+          diagnosis_status: true,
+        },
+      }),
+    ]);
+
+    if (!customer || !versorgung) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer or Versorgung not found" });
+    }
+
+    if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
+      return res.status(400).json({
+        success: false,
+        message: "fußanalyse or einlagenversorgung price is not set for this customer",
+      });
+    }
+
+    const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
+
+    const order = await prisma.$transaction(async (tx) => {
+      const customerProduct = await tx.customerProduct.create({
+        data: { ...versorgung },
+      });
+
+      const newOrder = await tx.customerOrders.create({
+        data: {
+          customerId,
+          partnerId,
+          fußanalyse: customer.fußanalyse,
+          einlagenversorgung: customer.einlagenversorgung,
+          totalPrice,
+          productId: customerProduct.id,
+          statusUpdate: new Date(),
+        },
+        select: { id: true },
+      });
+
+      await tx.customerHistorie.create({
+        data: {
+          customerId,
+          category: "Bestellungen",
+          eventId: newOrder.id,
+          note: "New order created",
+          system_note: "New order created",
+          paymentIs: totalPrice.toString(),
+        },
+      });
+
+      return newOrder;
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Order created successfully",
+      orderId: order.id,
+    });
+  } catch (error) {
+    console.error("Create Order Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};
+
 
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
@@ -631,10 +732,8 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 export const uploadInvoice = async (req: Request, res: Response) => {
   const files = req.files as any;
 
-  const sendToClient = (req.query.sendToClient ?? (req.body as any)?.sendToClient) as
-    | string
-    | boolean
-    | undefined;
+  const sendToClient = (req.query.sendToClient ??
+    (req.body as any)?.sendToClient) as string | boolean | undefined;
 
   const cleanupFiles = () => {
     if (!files) return;
@@ -756,7 +855,8 @@ export const uploadInvoice = async (req: Request, res: Response) => {
     if (shouldSend && updatedOrder.customer?.email) {
       try {
         await sendInvoiceEmail(updatedOrder.customer.email, invoiceFile, {
-          customerName: `${updatedOrder.customer.vorname} ${updatedOrder.customer.nachname}`.trim(),
+          customerName:
+            `${updatedOrder.customer.vorname} ${updatedOrder.customer.nachname}`.trim(),
           total: updatedOrder.totalPrice as any,
         });
         emailSent = true;
