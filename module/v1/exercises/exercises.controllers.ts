@@ -16,8 +16,6 @@ export const getAllexercises = async (req: Request, res: Response) => {
 };
 
 
- 
-
 export const sendExercisesEmail = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
