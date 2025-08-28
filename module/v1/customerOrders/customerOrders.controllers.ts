@@ -121,6 +121,7 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const formattedOrder = {
       ...order,
+      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
       partner: order.partner
         ? {
             ...order.partner,
@@ -407,6 +408,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
           einlagenversorgung: true,
           orderStatus: true,
           statusUpdate: true,
+          invoice: true,
           createdAt: true,
           updatedAt: true,
           customer: {
@@ -441,6 +443,12 @@ export const getAllOrders = async (req: Request, res: Response) => {
       prisma.customerOrders.count({ where }),
     ]);
 
+    // Format orders with invoice URL
+    const formattedOrders = orders.map(order => ({
+      ...order,
+      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+    }));
+
     const totalPages = Math.ceil(totalCount / limit);
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
@@ -448,7 +456,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
     res.status(200).json({
       success: true,
       message: "Orders fetched successfully",
-      data: orders,
+      data: formattedOrders,
       pagination: {
         totalItems: totalCount,
         totalPages,
@@ -508,6 +516,7 @@ export const getOrderById = async (req: Request, res: Response) => {
 
     const formattedOrder = {
       ...order,
+      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
       partner: order.partner
         ? {
             ...order.partner,
@@ -607,26 +616,144 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       },
     });
 
-    // Format partner image URL
-    // const formattedOrder = {
-    //   ...updatedOrder,
-    //   partner: updatedOrder.partner
-    //     ? {
-    //         ...updatedOrder.partner,
-    //         image: updatedOrder.partner.image
-    //           ? getImageUrl(`/uploads/${updatedOrder.partner.image}`)
-    //           : null,
-    //       }
-    //     : null,
-    // };
+    // Format order with invoice URL
+    const formattedOrder = {
+      ...updatedOrder,
+      invoice: updatedOrder.invoice ? getImageUrl(`/uploads/${updatedOrder.invoice}`) : null,
+    };
 
     res.status(200).json({
       success: true,
       message: "Order status updated successfully",
-      data: updatedOrder,
+      data: formattedOrder,
     });
   } catch (error: any) {
     console.error("Update Order Status Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const uploadInvoice = async (req: Request, res: Response) => {
+  const files = req.files as any;
+
+  const cleanupFiles = () => {
+    if (!files) return;
+    Object.keys(files).forEach((key) => {
+      files[key].forEach((file: any) => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (err) {
+          console.error(`Failed to delete file ${file.path}`, err);
+        }
+      });
+    });
+  };
+
+  try {
+    const { orderId } = req.params;
+
+    if (!files || !files.invoice || !files.invoice[0]) {
+      return res.status(400).json({
+        success: false,
+        message: "Invoice PDF file is required",
+      });
+    }
+
+    const invoiceFile = files.invoice[0];
+    
+    // Check if file is PDF
+    if (!invoiceFile.mimetype.includes('pdf')) {
+      cleanupFiles();
+      return res.status(400).json({
+        success: false,
+        message: "Only PDF files are allowed for invoices",
+      });
+    }
+
+    // Check if order exists
+    const existingOrder = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: { id: true, invoice: true },
+    });
+
+    if (!existingOrder) {
+      cleanupFiles();
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Delete old invoice file if exists
+    if (existingOrder.invoice) {
+      const oldInvoicePath = path.join(process.cwd(), "uploads", existingOrder.invoice);
+      if (fs.existsSync(oldInvoicePath)) {
+        try {
+          fs.unlinkSync(oldInvoicePath);
+          console.log(`Deleted old invoice file: ${oldInvoicePath}`);
+        } catch (err) {
+          console.error(`Failed to delete old invoice file: ${oldInvoicePath}`, err);
+        }
+      }
+    }
+
+    // Update order with new invoice filename
+    const updatedOrder = await prisma.customerOrders.update({
+      where: { id: orderId },
+      data: {
+        invoice: invoiceFile.filename,
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            customerNumber: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+            telefonnummer: true,
+            wohnort: true,
+          },
+        },
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+        product: true,
+      },
+    });
+
+    // Format the response with image URLs
+    const formattedOrder = {
+      ...updatedOrder,
+      invoice: updatedOrder.invoice ? getImageUrl(`/uploads/${updatedOrder.invoice}`) : null,
+      partner: updatedOrder.partner
+        ? {
+            ...updatedOrder.partner,
+            image: updatedOrder.partner.image
+              ? getImageUrl(`/uploads/${updatedOrder.partner.image}`)
+              : null,
+          }
+        : null,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Invoice uploaded successfully",
+      data: formattedOrder,
+    });
+  } catch (error: any) {
+    console.error("Upload Invoice Error:", error);
+    cleanupFiles();
     res.status(500).json({
       success: false,
       message: "Something went wrong",
