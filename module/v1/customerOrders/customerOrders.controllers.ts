@@ -293,6 +293,15 @@ export const getOrderById = async (req: Request, res: Response) => {
             wohnort: true,
           },
         },
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
         product: true,
       },
     });
@@ -304,10 +313,22 @@ export const getOrderById = async (req: Request, res: Response) => {
       });
     }
 
+    const formattedOrder = {
+      ...order,
+      partner: order.partner
+        ? {
+            ...order.partner,
+            image: order.partner.image
+              ? getImageUrl(`/uploads/${order.partner.image}`)
+              : null,
+          }
+        : null,
+    };
+
     res.status(200).json({
       success: true,
       message: "Order fetched successfully",
-      data: order,
+      data: formattedOrder,
     });
   } catch (error: any) {
     console.error("Get Order By ID Error:", error);
