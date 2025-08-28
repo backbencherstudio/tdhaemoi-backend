@@ -8,8 +8,6 @@ import path from "path";
 
 const prisma = new PrismaClient();
 
-
-
 // model customerOrders {
 //   id String @id @default(uuid())
 
@@ -75,12 +73,137 @@ const prisma = new PrismaClient();
 //   Ausgeführte_Einlagen
 // }
 
-
 export const createOrder = async (req: Request, res: Response) => {
   try {
+    const {
+      customerId,
+      versorgungId,
+    } = req.body;
 
-  } catch (error) {
-    console.error(error);
+    const partnerid = req.user.id;
+
+    if (!customerId || !versorgungId) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer ID and Versorgung ID are required",
+      });
+    }
+
+    const [customer, versorgung] = await Promise.all([
+      prisma.customers.findUnique({
+        where: { id: customerId },
+        select: {
+          id: true,
+          vorname: true,
+          nachname: true,
+          fußanalyse: true,
+          einlagenversorgung: true,
+        },
+      }),
+      prisma.versorgungen.findUnique({
+        where: { id: versorgungId },
+      }),
+    ]);
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    if (!versorgung) {
+      return res.status(404).json({
+        success: false,
+        message: "Versorgung not found",
+      });
+    }
+
+    if (customer.fußanalyse == null) {
+      return res.status(400).json({
+        success: false,
+        message: "fußanalyse price is not set for this customer",
+      });
+    }
+
+    if (customer.einlagenversorgung == null) {
+      return res.status(400).json({
+        success: false,
+        message: "einlagenversorgung price is not set for this customer",
+      });
+    }
+
+    const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
+
+
+    const order = await prisma.$transaction(async (tx) => {
+      const customerProduct = await tx.customerProduct.create({
+        data: {
+          name: versorgung.name,
+          rohlingHersteller: versorgung.rohlingHersteller,
+          artikelHersteller: versorgung.artikelHersteller,
+          versorgung: versorgung.versorgung,
+          material: versorgung.material,
+          langenempfehlung: versorgung.langenempfehlung,
+          status: versorgung.status,
+          diagnosis_status: versorgung.diagnosis_status,
+        },
+      });
+
+  
+      const newOrder = await tx.customerOrders.create({
+        data: {
+          customerId,
+          partnerId: partnerid,
+          fußanalyse: customer.fußanalyse,
+          einlagenversorgung: customer.einlagenversorgung,
+          totalPrice,
+          productId: customerProduct.id,
+        //   orderStatus: "Einlage_vorbereiten",
+          statusUpdate: new Date(),
+        },
+        include: {
+        //   customer: {
+        //     select: {
+        //       id: true,
+        //       vorname: true,
+        //       nachname: true,
+        //       email: true,
+        //     },
+        //   },
+        //   partner: {
+        //     select: {
+        //       id: true,
+        //       name: true,
+        //       email: true,
+        //     },
+        //   },
+          product: true,
+        },
+      });
+
+      // Create order history
+      await tx.customerHistorie.create({
+        data: {
+          customerId,
+          category: "Bestellungen",
+          eventId: newOrder.id,
+          note: `New order created`,
+          system_note: `New order created`,
+          paymentIs: totalPrice.toString() 
+        },
+      });
+
+      return newOrder;
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Order created successfully",
+      data: order,
+    });
+  } catch (error: any) {
+    console.error("Create Order Error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",

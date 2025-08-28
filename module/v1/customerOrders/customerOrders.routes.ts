@@ -5,6 +5,6 @@ import { createOrder } from "./customerOrders.controllers";
 
 const router = express.Router();
 
-router.get("/create-order", verifyUser("ADMIN", "PARTNER"), createOrder );
+router.post("/create", verifyUser("ADMIN", "PARTNER"), createOrder );
 
 export default router;
