@@ -13,7 +13,6 @@ export const createOrder = async (req: Request, res: Response) => {
     const { customerId, versorgungId } = req.body;
     const partnerId = req.user.id;
 
-  
     if (!customerId || !versorgungId) {
       return res.status(400).json({
         success: false,
@@ -21,7 +20,6 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
- 
     const [customer, versorgung] = await Promise.all([
       prisma.customers.findUnique({
         where: { id: customerId },
@@ -147,6 +145,235 @@ export const createOrder = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// export const createOrder = async (req: Request, res: Response) => {
+//   try {
+//     const { customerId, versorgungId } = req.body;
+//     const partnerId = req.user.id;
+
+//     // Basic input validation
+//     if (!customerId || !versorgungId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Customer ID and Versorgung ID are required",
+//       });
+//     }
+
+//     // Parallel validation and data fetching
+//     const [customer, versorgung, partner] = await Promise.all([
+//       prisma.customers.findUnique({
+//         where: { id: customerId },
+//         select: {
+//           id: true,
+//           vorname: true,
+//           nachname: true,
+//           email: true,
+//           telefonnummer: true,
+//           customerNumber: true,
+//           fußanalyse: true,
+//           einlagenversorgung: true,
+//         },
+//       }),
+//       prisma.versorgungen.findUnique({
+//         where: { id: versorgungId },
+//         select: {
+//           id: true,
+//           name: true,
+//           rohlingHersteller: true,
+//           artikelHersteller: true,
+//           versorgung: true,
+//           material: true,
+//           langenempfehlung: true,
+//           status: true,
+//           diagnosis_status: true,
+//         },
+//       }),
+//       prisma.user.findUnique({
+//         where: { id: partnerId },
+//         select: {
+//           id: true,
+//           name: true,
+//           email: true,
+//           image: true,
+//           role: true,
+//         },
+//       }),
+//     ]);
+
+//     // Early validation returns
+//     if (!customer) {
+//       return res.status(404).json({ 
+//         success: false, 
+//         message: "Customer not found" 
+//       });
+//     }
+//     if (!versorgung) {
+//       return res.status(404).json({ 
+//         success: false, 
+//         message: "Versorgung not found" 
+//       });
+//     }
+//     if (!partner) {
+//       return res.status(404).json({ 
+//         success: false, 
+//         message: "Partner not found" 
+//       });
+//     }
+//     if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "fußanalyse or einlagenversorgung price is not set for this customer",
+//       });
+//     }
+
+//     const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
+
+//     // Single optimized transaction - include history creation INSIDE the transaction
+//     const order = await prisma.$transaction(async (tx) => {
+//       // Create customer product with only necessary fields
+//       const customerProduct = await tx.customerProduct.create({
+//         data: {
+//           name: versorgung.name,
+//           rohlingHersteller: versorgung.rohlingHersteller,
+//           artikelHersteller: versorgung.artikelHersteller,
+//           versorgung: versorgung.versorgung,
+//           material: versorgung.material,
+//           langenempfehlung: versorgung.langenempfehlung,
+//           status: versorgung.status,
+//           diagnosis_status: versorgung.diagnosis_status,
+//         },
+//         select: {
+//           id: true,
+//           name: true,
+//           createdAt: true,
+//           updatedAt: true,
+//         },
+//       });
+
+//       // Create order with minimal include
+//       const newOrder = await tx.customerOrders.create({
+//         data: {
+//           customerId,
+//           partnerId,
+//           fußanalyse: customer.fußanalyse,
+//           einlagenversorgung: customer.einlagenversorgung,
+//           totalPrice,
+//           productId: customerProduct.id,
+//           statusUpdate: new Date(),
+//         },
+//         select: {
+//           id: true,
+//           customerId: true,
+//           partnerId: true,
+//           fußanalyse: true,
+//           einlagenversorgung: true,
+//           totalPrice: true,
+//           productId: true,
+//           orderStatus: true,
+//           statusUpdate: true,
+//           createdAt: true,
+//           updatedAt: true,
+//         },
+//       });
+
+//       // Create history INSIDE the transaction (not after it)
+//       await tx.customerHistorie.create({
+//         data: {
+//           customerId,
+//           category: "Bestellungen",
+//           eventId: newOrder.id,
+//           note: "New order created",
+//           system_note: "New order created",
+//           paymentIs: totalPrice.toString(),
+//         },
+//       });
+
+//       return {
+//         ...newOrder,
+//         customer: {
+//           id: customer.id,
+//           vorname: customer.vorname,
+//           nachname: customer.nachname,
+//           email: customer.email,
+//           telefonnummer: customer.telefonnummer,
+//           customerNumber: customer.customerNumber,
+//         },
+//         product: {
+//           id: customerProduct.id,
+//           name: customerProduct.name,
+//           rohlingHersteller: versorgung.rohlingHersteller,
+//           artikelHersteller: versorgung.artikelHersteller,
+//           versorgung: versorgung.versorgung,
+//           material: versorgung.material,
+//           langenempfehlung: versorgung.langenempfehlung,
+//           status: versorgung.status,
+//           diagnosis_status: versorgung.diagnosis_status,
+//           createdAt: customerProduct.createdAt,
+//           updatedAt: customerProduct.updatedAt,
+//         },
+//         partner: {
+//           id: partner.id,
+//           name: partner.name,
+//           email: partner.email,
+//           image: partner.image,
+//           role: partner.role,
+//         },
+//       };
+//     });
+
+//     // Format image URL outside transaction for better performance
+//     const formattedOrder = {
+//       ...order,
+//       partner: {
+//         ...order.partner,
+//         image: order.partner.image ? getImageUrl(`/uploads/${order.partner.image}`) : null,
+//       },
+//     };
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Order created successfully",
+//       data: formattedOrder,
+//     });
+
+//   } catch (error: any) {
+//     console.error("Create Order Error:", error);
+    
+//     // Specific error handling
+//     if (error.code === 'P2002') {
+//       return res.status(409).json({
+//         success: false,
+//         message: "Order already exists for this product",
+//       });
+//     }
+    
+//     if (error.code === 'P2003') {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid reference ID provided",
+//       });
+//     }
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+//     });
+//   }
+// };
 
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
