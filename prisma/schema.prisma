@@ -428,7 +428,7 @@ model customerOrders {
   product   customerProduct? @relation(fields: [productId], references: [id])
   productId String?          @unique
 
-  orderStatus  OrderStatus @default(Einlage_vorbereiten)
+  orderStatus  OrderStatus @default(Sarted)
   statusUpdate DateTime?
   invoice      String?
 
@@ -470,6 +470,7 @@ model customerProduct {
 }
 
 enum OrderStatus {
+  Sarted
   Einlage_vorbereiten
   Einlage_in_Fertigung
   Einlage_verpacken

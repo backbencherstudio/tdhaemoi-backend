@@ -5,6 +5,7 @@ import iconv from "iconv-lite";
 import csvParser from "csv-parser";
 import { getImageUrl } from "../../../utils/base_utl";
 import path from "path";
+import { sendPdfToEmail, sendInvoiceEmail } from "../../../utils/emailService.utils";
 
 const prisma = new PrismaClient();
 
@@ -78,6 +79,7 @@ export const createOrder = async (req: Request, res: Response) => {
           fußanalyse: customer.fußanalyse,
           einlagenversorgung: customer.einlagenversorgung,
           totalPrice,
+          orderStatus: 'Sarted',
           productId: customerProduct.id,
           statusUpdate: new Date(),
         },
@@ -147,19 +149,6 @@ export const createOrder = async (req: Request, res: Response) => {
   }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 // export const createOrder = async (req: Request, res: Response) => {
 //   try {
 //     const { customerId, versorgungId } = req.body;
@@ -216,21 +205,21 @@ export const createOrder = async (req: Request, res: Response) => {
 
 //     // Early validation returns
 //     if (!customer) {
-//       return res.status(404).json({ 
-//         success: false, 
-//         message: "Customer not found" 
+//       return res.status(404).json({
+//         success: false,
+//         message: "Customer not found"
 //       });
 //     }
 //     if (!versorgung) {
-//       return res.status(404).json({ 
-//         success: false, 
-//         message: "Versorgung not found" 
+//       return res.status(404).json({
+//         success: false,
+//         message: "Versorgung not found"
 //       });
 //     }
 //     if (!partner) {
-//       return res.status(404).json({ 
-//         success: false, 
-//         message: "Partner not found" 
+//       return res.status(404).json({
+//         success: false,
+//         message: "Partner not found"
 //       });
 //     }
 //     if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
@@ -352,7 +341,7 @@ export const createOrder = async (req: Request, res: Response) => {
 
 //   } catch (error: any) {
 //     console.error("Create Order Error:", error);
-    
+
 //     // Specific error handling
 //     if (error.code === 'P2002') {
 //       return res.status(409).json({
@@ -360,7 +349,7 @@ export const createOrder = async (req: Request, res: Response) => {
 //         message: "Order already exists for this product",
 //       });
 //     }
-    
+
 //     if (error.code === 'P2003') {
 //       return res.status(400).json({
 //         success: false,
@@ -444,7 +433,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
     ]);
 
     // Format orders with invoice URL
-    const formattedOrders = orders.map(order => ({
+    const formattedOrders = orders.map((order) => ({
       ...order,
       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
     }));
@@ -619,7 +608,9 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     // Format order with invoice URL
     const formattedOrder = {
       ...updatedOrder,
-      invoice: updatedOrder.invoice ? getImageUrl(`/uploads/${updatedOrder.invoice}`) : null,
+      invoice: updatedOrder.invoice
+        ? getImageUrl(`/uploads/${updatedOrder.invoice}`)
+        : null,
     };
 
     res.status(200).json({
@@ -639,6 +630,11 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
 export const uploadInvoice = async (req: Request, res: Response) => {
   const files = req.files as any;
+
+  const sendToClient = (req.query.sendToClient ?? (req.body as any)?.sendToClient) as
+    | string
+    | boolean
+    | undefined;
 
   const cleanupFiles = () => {
     if (!files) return;
@@ -664,8 +660,8 @@ export const uploadInvoice = async (req: Request, res: Response) => {
     }
 
     const invoiceFile = files.invoice[0];
-    
-    if (!invoiceFile.mimetype.includes('pdf')) {
+
+    if (!invoiceFile.mimetype.includes("pdf")) {
       cleanupFiles();
       return res.status(400).json({
         success: false,
@@ -687,13 +683,20 @@ export const uploadInvoice = async (req: Request, res: Response) => {
     }
 
     if (existingOrder.invoice) {
-      const oldInvoicePath = path.join(process.cwd(), "uploads", existingOrder.invoice);
+      const oldInvoicePath = path.join(
+        process.cwd(),
+        "uploads",
+        existingOrder.invoice
+      );
       if (fs.existsSync(oldInvoicePath)) {
         try {
           fs.unlinkSync(oldInvoicePath);
           console.log(`Deleted old invoice file: ${oldInvoicePath}`);
         } catch (err) {
-          console.error(`Failed to delete old invoice file: ${oldInvoicePath}`, err);
+          console.error(
+            `Failed to delete old invoice file: ${oldInvoicePath}`,
+            err
+          );
         }
       }
     }
@@ -730,7 +733,9 @@ export const uploadInvoice = async (req: Request, res: Response) => {
 
     const formattedOrder = {
       ...updatedOrder,
-      invoice: updatedOrder.invoice ? getImageUrl(`/uploads/${updatedOrder.invoice}`) : null,
+      invoice: updatedOrder.invoice
+        ? getImageUrl(`/uploads/${updatedOrder.invoice}`)
+        : null,
       partner: updatedOrder.partner
         ? {
             ...updatedOrder.partner,
@@ -741,10 +746,29 @@ export const uploadInvoice = async (req: Request, res: Response) => {
         : null,
     };
 
+    // Optionally email invoice to the customer
+    const shouldSend =
+      typeof sendToClient === "string"
+        ? ["true", "1", "yes"].includes(sendToClient.toLowerCase())
+        : Boolean(sendToClient);
+
+    let emailSent = false;
+    if (shouldSend && updatedOrder.customer?.email) {
+      try {
+        await sendInvoiceEmail(updatedOrder.customer.email, invoiceFile, {
+          customerName: `${updatedOrder.customer.vorname} ${updatedOrder.customer.nachname}`.trim(),
+          total: updatedOrder.totalPrice as any,
+        });
+        emailSent = true;
+      } catch (emailErr) {
+        console.error("Failed to send invoice email:", emailErr);
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: "Invoice uploaded successfully",
-      data: formattedOrder,
+      data: { ...formattedOrder, emailSent },
     });
   } catch (error: any) {
     console.error("Upload Invoice Error:", error);

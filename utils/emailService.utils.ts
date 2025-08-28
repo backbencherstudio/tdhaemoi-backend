@@ -9,6 +9,7 @@ import {
   newImprovementEmail,
   sendPdfToEmailTamplate,
   excerciseEmail,
+  invoiceEmailTemplate,
 } from "../constants/email_message";
 import { partnershipWelcomeEmail } from "../constants/email_message";
 
@@ -127,15 +128,19 @@ export const sendAdminLoginNotification = async (
 
 export const sendPdfToEmail = async (email: string, pdf: any): Promise<void> => {
   try {
-    console.time('readFileSync');
+    // Basic size guard (Gmail ~25MB limit including encoding ~33%)
+    const { size } = fs.statSync(pdf.path);
+    if (size > 20 * 1024 * 1024) {
+      throw new Error('Invoice PDF is too large to email (>20MB).');
+    }
+
+    // Read the file buffer
     const pdfBuffer = fs.readFileSync(pdf.path);
-    const base64String = pdfBuffer.toString('base64');
-    console.timeEnd('readFileSync');
 
-    // Generate HTML with Base64 string and a fallback message
-    const htmlContent =  excerciseEmail(base64String);
+    // Lightweight HTML (no base64 embed) to avoid huge payloads/timeouts
+    const htmlContent = sendPdfToEmailTamplate(pdf);
 
-    console.time('createTransport');
+    // Create transporter similar to other emails + explicit timeouts
     const mailTransporter = nodemailer.createTransport({
       service: 'gmail',
       port: 587,
@@ -144,31 +149,83 @@ export const sendPdfToEmail = async (email: string, pdf: any): Promise<void> => 
         user: process.env.NODE_MAILER_USER || '',
         pass: process.env.NODE_MAILER_PASSWORD || '',
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
-    console.timeEnd('createTransport');
 
     const mailOptions = {
       from: `"TDHaemoi" <${process.env.NODE_MAILER_USER}>`,
       to: email,
-      subject: 'Your Exercise Program',
+      subject: 'Your Invoice',
       html: htmlContent,
       attachments: [
         {
-          filename: pdf.originalname,
+          filename: pdf.originalname || 'invoice.pdf',
           content: pdfBuffer,
           contentType: 'application/pdf',
         },
       ],
     };
 
-    console.time('sendMail');
     await mailTransporter.sendMail(mailOptions);
-    console.timeEnd('sendMail');
 
     console.log('Email with PDF sent successfully.');
   } catch (error) {
     console.error('Error in sendPdfToEmail:', error);
     throw new Error('Failed to send PDF email.');
+  }
+};
+
+export const sendInvoiceEmail = async (
+  toEmail: string,
+  pdf: any,
+  options?: { customerName?: string; total?: number }
+): Promise<void> => {
+  try {
+    const { size } = fs.statSync(pdf.path);
+    if (size > 20 * 1024 * 1024) {
+      throw new Error('Invoice PDF is too large to email (>20MB).');
+    }
+
+    const pdfBuffer = fs.readFileSync(pdf.path);
+
+    const htmlContent = invoiceEmailTemplate(
+      options?.customerName || 'Customer',
+      options?.total
+    );
+
+    const mailTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.NODE_MAILER_USER || '',
+        pass: process.env.NODE_MAILER_PASSWORD || '',
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+
+    const mailOptions = {
+      from: `"TDHaemoi" <${process.env.NODE_MAILER_USER}>`,
+      to: toEmail,
+      subject: 'Your TDHaemoi Invoice',
+      html: htmlContent,
+      attachments: [
+        {
+          filename: pdf.originalname || 'invoice.pdf',
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ],
+    } as any;
+
+    await mailTransporter.sendMail(mailOptions);
+  } catch (error) {
+    console.error('Error in sendInvoiceEmail:', error);
+    throw new Error('Failed to send invoice email.');
   }
 };
 

@@ -823,3 +823,43 @@ export const excerciseEmail = (base64String: string): string => {
     </html>
   `;
 };
+
+export const invoiceEmailTemplate = (
+  customerName: string,
+
+  total?: number
+): string => {
+  const formattedTotal = typeof total === "number" ? `${total.toFixed(2)} €` : undefined;
+  return `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your Invoice</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f6f8fa;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;margin:32px auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr>
+        <td style="background:#111827;padding:20px 28px;">
+          <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">TDHaemoi · Invoice</h1>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:28px;">
+          <p style="margin:0 0 12px;font-size:15px;">Hello <strong>${customerName || "Customer"}</strong>,</p>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">Please find your invoice attached as a PDF.</p>
+          ${formattedTotal ? `<p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Total:</strong> ${formattedTotal}</p>` : ""}
+          <p style="margin:12px 0 0;font-size:14px;color:#6b7280;">If you have questions about this invoice, reply to this email and we’ll be happy to help.</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:16px 28px;background:#f9fafb;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;text-align:center;">
+          © ${new Date().getFullYear()} TDHaemoi. All rights reserved.
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `;
+};
