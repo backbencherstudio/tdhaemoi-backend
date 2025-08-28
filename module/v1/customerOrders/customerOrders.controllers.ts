@@ -665,7 +665,6 @@ export const uploadInvoice = async (req: Request, res: Response) => {
 
     const invoiceFile = files.invoice[0];
     
-    // Check if file is PDF
     if (!invoiceFile.mimetype.includes('pdf')) {
       cleanupFiles();
       return res.status(400).json({
@@ -674,7 +673,6 @@ export const uploadInvoice = async (req: Request, res: Response) => {
       });
     }
 
-    // Check if order exists
     const existingOrder = await prisma.customerOrders.findUnique({
       where: { id: orderId },
       select: { id: true, invoice: true },
@@ -688,7 +686,6 @@ export const uploadInvoice = async (req: Request, res: Response) => {
       });
     }
 
-    // Delete old invoice file if exists
     if (existingOrder.invoice) {
       const oldInvoicePath = path.join(process.cwd(), "uploads", existingOrder.invoice);
       if (fs.existsSync(oldInvoicePath)) {
@@ -701,7 +698,6 @@ export const uploadInvoice = async (req: Request, res: Response) => {
       }
     }
 
-    // Update order with new invoice filename
     const updatedOrder = await prisma.customerOrders.update({
       where: { id: orderId },
       data: {
@@ -732,7 +728,6 @@ export const uploadInvoice = async (req: Request, res: Response) => {
       },
     });
 
-    // Format the response with image URLs
     const formattedOrder = {
       ...updatedOrder,
       invoice: updatedOrder.invoice ? getImageUrl(`/uploads/${updatedOrder.invoice}`) : null,
@@ -754,6 +749,62 @@ export const uploadInvoice = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("Upload Invoice Error:", error);
     cleanupFiles();
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteOrder = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const order = await prisma.customerOrders.findUnique({
+      where: { id },
+      include: {
+        product: true,
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    if (order.invoice) {
+      const invoicePath = path.join(process.cwd(), "uploads", order.invoice);
+      if (fs.existsSync(invoicePath)) {
+        try {
+          fs.unlinkSync(invoicePath);
+          console.log(`Deleted invoice file: ${invoicePath}`);
+        } catch (err) {
+          console.error(`Failed to delete invoice file: ${invoicePath}`, err);
+        }
+      }
+    }
+
+    // await prisma.$transaction(async (tx) => {
+    //   await tx.customerHistorie.deleteMany({
+    //     where: {
+    //       eventId: id,
+    //       category: "Bestellungen",
+    //     },
+    //   });
+    //   await tx.customerOrders.delete({
+    //     where: { id },
+    //   });
+    // });
+
+    res.status(200).json({
+      success: true,
+      message: "Order deleted successfully",
+    });
+  } catch (error: any) {
+    console.error("Delete Order Error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",

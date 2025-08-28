@@ -1,7 +1,7 @@
 import express from "express";
 import { verifyUser } from "../../../middleware/verifyUsers";
 
-import { createOrder, getAllOrders, getOrderById, updateOrderStatus, uploadInvoice } from "./customerOrders.controllers";
+import { createOrder, getAllOrders, getOrderById, updateOrderStatus, uploadInvoice, deleteOrder } from "./customerOrders.controllers";
 import upload from "../../../config/multer.config";
 
 const router = express.Router();
@@ -19,5 +19,8 @@ router.post(
   ]),
   uploadInvoice
 );
+
+ 
+router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteOrder);
 
 export default router;
