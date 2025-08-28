@@ -181,3 +181,96 @@ export const createOrder = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getAllOrders = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    if (req.query.customerId) {
+      where.customerId = req.query.customerId as string;
+    }
+
+    if (req.query.partnerId) {
+      where.partnnerId = req.query.partnerId as string;
+    }
+
+    if (req.query.orderStatus) {
+      where.orderStatus = req.query.orderStatus as string;
+    }
+
+    const [orders, totalCount] = await Promise.all([
+      prisma.customerOrders.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          fußanalyse: true,
+          einlagenversorgung: true,
+          orderStatus: true,
+          statusUpdate: true,
+          createdAt: true,
+          updatedAt: true,
+          customer: {
+            select: {
+              id: true,
+              vorname: true,
+              nachname: true,
+              email: true,
+              telefonnummer: true,
+              wohnort: true,
+              customerNumber: true,
+            },
+          },
+          //   partner: {
+          //     select: {
+          //       id: true,
+          //       name: true,
+          //       email: true,
+          //     },
+          //   },
+          //   product: {
+          //     select: {
+          //       id: true,
+          //       name: true,
+          //       status: true,
+          //       diagnosis_status: true,
+          //     },
+          //   },
+          product: true,
+        },
+      }),
+      prisma.customerOrders.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    res.status(200).json({
+      success: true,
+      message: "Orders fetched successfully",
+      data: orders,
+      pagination: {
+        totalItems: totalCount,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get All Orders Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
