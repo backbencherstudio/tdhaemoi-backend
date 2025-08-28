@@ -75,13 +75,10 @@ const prisma = new PrismaClient();
 
 export const createOrder = async (req: Request, res: Response) => {
   try {
-    const {
-      customerId,
-      versorgungId,
-    } = req.body;
+    const { customerId, versorgungId } = req.body;
+    const partnerId = req.user.id;
 
-    const partnerid = req.user.id;
-
+    // Basic input validation
     if (!customerId || !versorgungId) {
       return res.status(400).json({
         success: false,
@@ -89,6 +86,7 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
+    // Fetch customer & versorgung in parallel
     const [customer, versorgung] = await Promise.all([
       prisma.customers.findUnique({
         where: { id: customerId },
@@ -106,35 +104,25 @@ export const createOrder = async (req: Request, res: Response) => {
     ]);
 
     if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer not found" });
     }
-
     if (!versorgung) {
-      return res.status(404).json({
-        success: false,
-        message: "Versorgung not found",
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "Versorgung not found" });
     }
 
-    if (customer.fußanalyse == null) {
+    if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
       return res.status(400).json({
         success: false,
-        message: "fußanalyse price is not set for this customer",
-      });
-    }
-
-    if (customer.einlagenversorgung == null) {
-      return res.status(400).json({
-        success: false,
-        message: "einlagenversorgung price is not set for this customer",
+        message:
+          "fußanalyse or einlagenversorgung price is not set for this customer",
       });
     }
 
     const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
-
 
     const order = await prisma.$transaction(async (tx) => {
       const customerProduct = await tx.customerProduct.create({
@@ -150,61 +138,43 @@ export const createOrder = async (req: Request, res: Response) => {
         },
       });
 
-  
       const newOrder = await tx.customerOrders.create({
         data: {
           customerId,
-          partnerId: partnerid,
+          partnerId,
           fußanalyse: customer.fußanalyse,
           einlagenversorgung: customer.einlagenversorgung,
           totalPrice,
           productId: customerProduct.id,
-        //   orderStatus: "Einlage_vorbereiten",
           statusUpdate: new Date(),
         },
         include: {
-        //   customer: {
-        //     select: {
-        //       id: true,
-        //       vorname: true,
-        //       nachname: true,
-        //       email: true,
-        //     },
-        //   },
-        //   partner: {
-        //     select: {
-        //       id: true,
-        //       name: true,
-        //       email: true,
-        //     },
-        //   },
           product: true,
         },
       });
 
-      // Create order history
       await tx.customerHistorie.create({
         data: {
           customerId,
           category: "Bestellungen",
           eventId: newOrder.id,
-          note: `New order created`,
-          system_note: `New order created`,
-          paymentIs: totalPrice.toString() 
+          note: "New order created",
+          system_note: "New order created",
+          paymentIs: totalPrice.toString(),
         },
       });
 
       return newOrder;
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Order created successfully",
       data: order,
     });
   } catch (error: any) {
     console.error("Create Order Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Something went wrong",
       error: error.message,
