@@ -418,8 +418,8 @@ model customerOrders {
   customerId String?
   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
-  partnnerId String?
-  partner    User?   @relation(fields: [partnnerId], references: [id], onDelete: SetNull, name: "PartnerOrders")
+  partnerId  String?
+  partner    User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull, name: "PartnerOrders")
 
   fußanalyse        Float?
   einlagenversorgung Float?
@@ -435,10 +435,10 @@ model customerOrders {
   updatedAt DateTime @updatedAt
 
   @@index([customerId])
-  @@index([partnnerId])
+  @@index([partnerId])
   @@index([createdAt])
   @@index([totalPrice])
-  @@index([customerId, partnnerId])
+  @@index([customerId, partnerId])
   @@index([customerId, createdAt])
 }
 
