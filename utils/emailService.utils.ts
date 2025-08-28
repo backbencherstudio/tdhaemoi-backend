@@ -128,19 +128,15 @@ export const sendAdminLoginNotification = async (
 
 export const sendPdfToEmail = async (email: string, pdf: any): Promise<void> => {
   try {
-    // Basic size guard (Gmail ~25MB limit including encoding ~33%)
     const { size } = fs.statSync(pdf.path);
     if (size > 20 * 1024 * 1024) {
       throw new Error('Invoice PDF is too large to email (>20MB).');
     }
 
-    // Read the file buffer
     const pdfBuffer = fs.readFileSync(pdf.path);
 
-    // Lightweight HTML (no base64 embed) to avoid huge payloads/timeouts
     const htmlContent = sendPdfToEmailTamplate(pdf);
 
-    // Create transporter similar to other emails + explicit timeouts
     const mailTransporter = nodemailer.createTransport({
       service: 'gmail',
       port: 587,
@@ -203,9 +199,9 @@ export const sendInvoiceEmail = async (
         user: process.env.NODE_MAILER_USER || '',
         pass: process.env.NODE_MAILER_PASSWORD || '',
       },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
+      // connectionTimeout: 10000,
+      // greetingTimeout: 10000,
+      // socketTimeout: 15000,
     });
 
     const mailOptions = {
