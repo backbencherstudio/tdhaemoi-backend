@@ -8,70 +8,6 @@ import path from "path";
 
 const prisma = new PrismaClient();
 
-// model customerOrders {
-//   id String @id @default(uuid())
-
-//   customerId String?
-//   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-
-//   partnnerId String?
-//   partner    User?   @relation(fields: [partnnerId], references: [id], onDelete: SetNull, name: "PartnerOrders")
-
-//   fußanalyse        Float?
-//   einlagenversorgung Float?
-//   totalPrice         Float
-
-//   product   customerProduct? @relation(fields: [productId], references: [id])
-//   productId String?          @unique
-
-//   orderStatus  OrderStatus @default(Einlage_vorbereiten)
-//   statusUpdate DateTime?
-
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   @@index([customerId])
-//   @@index([partnnerId])
-//   @@index([createdAt])
-//   @@index([totalPrice])
-//   @@index([customerId, partnnerId])
-//   @@index([customerId, createdAt])
-// }
-
-// model customerProduct {
-//   id                String @id @default(uuid())
-//   name              String
-//   rohlingHersteller String
-//   artikelHersteller String
-//   versorgung        String
-//   material          String
-//   langenempfehlung  Json
-
-//   status           versorgungenStatus
-//   diagnosis_status versorgungenDiagnosisStatus?
-
-//   order customerOrders? @relation
-
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   @@index([name])
-//   @@index([status])
-//   @@index([diagnosis_status])
-//   @@index([rohlingHersteller])
-//   @@index([artikelHersteller])
-//   @@index([createdAt])
-//   @@index([status, diagnosis_status])
-// }
-
-// enum OrderStatus {
-//   Einlage_vorbereiten
-//   Einlage_in_Fertigung
-//   Einlage_verpacken
-//   Einlage_Abholbereit
-//   Einlage_versandt
-//   Ausgeführte_Einlagen
-// }
 
 export const createOrder = async (req: Request, res: Response) => {
   try {
@@ -332,6 +268,108 @@ export const getOrderById = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Get Order By ID Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const updateOrderStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { orderStatus } = req.body;
+
+    if (!orderStatus) {
+      return res.status(400).json({
+        success: false,
+        message: "Order status is required",
+      });
+    }
+
+    const validOrderStatuses = new Set([
+      "Einlage_vorbereiten",
+      "Einlage_in_Fertigung",
+      "Einlage_verpacken",
+      "Einlage_Abholbereit",
+      "Einlage_versandt",
+      "Ausgeführte_Einlagen",
+    ]);
+
+    if (!validOrderStatuses.has(orderStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order status",
+        error: `Order status must be one of: ${Array.from(
+          validOrderStatuses
+        ).join(", ")}`,
+        validStatuses: Array.from(validOrderStatuses),
+      });
+    }
+
+    const existingOrder = await prisma.customerOrders.findUnique({
+      where: { id },
+    });
+
+    if (!existingOrder) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    const updatedOrder = await prisma.customerOrders.update({
+      where: { id },
+      data: {
+        orderStatus,
+        statusUpdate: new Date(),
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            customerNumber: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+            telefonnummer: true,
+            wohnort: true,
+          },
+        },
+        // partner: {
+        //   select: {
+        //     id: true,
+        //     name: true,
+        //     email: true,
+        //     image: true,
+        //     role: true,
+        //   },
+        // },
+        product: true,
+      },
+    });
+
+    // Format partner image URL
+    // const formattedOrder = {
+    //   ...updatedOrder,
+    //   partner: updatedOrder.partner
+    //     ? {
+    //         ...updatedOrder.partner,
+    //         image: updatedOrder.partner.image
+    //           ? getImageUrl(`/uploads/${updatedOrder.partner.image}`)
+    //           : null,
+    //       }
+    //     : null,
+    // };
+
+    res.status(200).json({
+      success: true,
+      message: "Order status updated successfully",
+      data: updatedOrder,
+    });
+  } catch (error: any) {
+    console.error("Update Order Status Error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
