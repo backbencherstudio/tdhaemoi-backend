@@ -8,13 +8,12 @@ import path from "path";
 
 const prisma = new PrismaClient();
 
-
 export const createOrder = async (req: Request, res: Response) => {
   try {
     const { customerId, versorgungId } = req.body;
     const partnerId = req.user.id;
 
-    // Basic input validation
+  
     if (!customerId || !versorgungId) {
       return res.status(400).json({
         success: false,
@@ -22,7 +21,7 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    // Fetch customer & versorgung in parallel
+ 
     const [customer, versorgung] = await Promise.all([
       prisma.customers.findUnique({
         where: { id: customerId },
@@ -86,6 +85,25 @@ export const createOrder = async (req: Request, res: Response) => {
         },
         include: {
           product: true,
+          customer: {
+            select: {
+              id: true,
+              vorname: true,
+              nachname: true,
+              email: true,
+              telefonnummer: true,
+              customerNumber: true,
+            },
+          },
+          partner: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              role: true,
+            },
+          },
         },
       });
 
@@ -103,10 +121,22 @@ export const createOrder = async (req: Request, res: Response) => {
       return newOrder;
     });
 
+    const formattedOrder = {
+      ...order,
+      partner: order.partner
+        ? {
+            ...order.partner,
+            image: order.partner.image
+              ? getImageUrl(`/uploads/${order.partner.image}`)
+              : null,
+          }
+        : null,
+    };
+
     return res.status(201).json({
       success: true,
       message: "Order created successfully",
-      data: order,
+      data: formattedOrder,
     });
   } catch (error: any) {
     console.error("Create Order Error:", error);
