@@ -418,8 +418,8 @@ model customerOrders {
   customerId String?
   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
-  partnerId  String?
-  partner    User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull, name: "PartnerOrders")
+  partnerId String?
+  partner   User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull, name: "PartnerOrders")
 
   fußanalyse        Float?
   einlagenversorgung Float?
@@ -430,6 +430,7 @@ model customerOrders {
 
   orderStatus  OrderStatus @default(Einlage_vorbereiten)
   statusUpdate DateTime?
+  invoice      String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
