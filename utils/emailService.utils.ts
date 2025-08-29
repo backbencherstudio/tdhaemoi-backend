@@ -224,11 +224,3 @@ export const sendInvoiceEmail = async (
     throw new Error('Failed to send invoice email.');
   }
 };
-
-// DATABASE_URL="postgresql://postgres:FO2209BDC4188@localhost:5432/td_db?schema=public"
-// APP_URL="https://td.signalsmind.com"
-// FRONTEND_URL="http://192.168.4.3:3001"
-// JWT_SECRET=D7FG3J3hhh
-// PORT=8001
-// NODE_MAILER_USER=tqmhosain@gmail.com
-// NODE_MAILER_PASSWORD=qzao cpjt pitk iaxm
