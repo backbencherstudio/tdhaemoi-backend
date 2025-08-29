@@ -15,7 +15,6 @@ export const getAllexercises = async (req: Request, res: Response) => {
   }
 };
 
-
 export const sendExercisesEmail = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
@@ -46,23 +45,21 @@ export const sendExercisesEmail = async (req: Request, res: Response) => {
       });
     }
 
-    console.time('sendPdfToEmail');
-    await sendPdfToEmail(email, pdfFile);
-    console.timeEnd('sendPdfToEmail');
+    sendPdfToEmail(email, pdfFile);
 
     // Clean up file after email is sent
     if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
 
     return res.status(200).json({
       success: true,
-      message: 'Email with PDF sent successfully',
+      message: 'Foot exercise program sent successfully to your email',
     });
   } catch (error: any) {
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     console.error('Error in sendExercisesEmail:', error);
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to send email',
+      message: error.message || 'Failed to send exercise program email',
     });
   }
 };

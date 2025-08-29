@@ -783,13 +783,129 @@ export const adminLoginNotificationEmail = (
   `;
 };
 
-export const sendPdfToEmailTamplate = (pdf: any): any => `
+export const sendPdfToEmailTamplate = (pdf: any): string => `
   <!DOCTYPE html>
-  <html>
-  <body>
-    <h2>Your Exercise Program</h2>
-    <p>Please download the attached PDF document to view your exercise program.</p>
-    <p>If you can't see the attachment, <a href="#">download it here</a>.</p>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Personalized Foot Exercise Program</title>
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Arial', 'Helvetica', sans-serif;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width: 650px; margin: auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; margin-top: 40px; margin-bottom: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+      <tr>
+        <td style="padding: 0;">
+          <!-- Header with Gradient Background -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 40px 30px;">
+                <div style="text-align: center;">
+                  <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0 0 10px; letter-spacing: 0.5px;">TDHaemoi</h1>
+                  <p style="color: #ffffff; font-size: 16px; margin: 0; opacity: 0.9;">Professional Foot Care Solutions</p>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Main Content -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="padding: 40px 40px 30px;">
+                <h2 style="color: #2c3e50; font-size: 24px; font-weight: 600; margin: 0 0 20px; text-align: center;">Your Personalized Foot Exercise Program</h2>
+                
+                <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                  Thank you for choosing TDHaemoi for your foot care needs! We're excited to provide you with a comprehensive, personalized exercise program designed specifically for your foot health and recovery.
+                </p>
+
+                <!-- Feature Boxes -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 30px 0;">
+                  <tr>
+                    <td style="padding: 0 10px 0 0; width: 50%;">
+                      <div style="background-color: #f8f9fa; border-left: 4px solid #667eea; padding: 20px; border-radius: 4px;">
+                        <h3 style="color: #2c3e50; font-size: 16px; font-weight: 600; margin: 0 0 10px;">🎯 Personalized Plan</h3>
+                        <p style="color: #7f8c8d; font-size: 14px; line-height: 1.5; margin: 0;">Tailored exercises based on your specific foot condition and needs</p>
+                      </div>
+                    </td>
+                    <td style="padding: 0 0 0 10px; width: 50%;">
+                      <div style="background-color: #f8f9fa; border-left: 4px solid #764ba2; padding: 20px; border-radius: 4px;">
+                        <h3 style="color: #2c3e50; font-size: 16px; font-weight: 600; margin: 0 0 10px;">📋 Step-by-Step Guide</h3>
+                        <p style="color: #7f8c8d; font-size: 14px; line-height: 1.5; margin: 0;">Detailed instructions with illustrations for each exercise</p>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- PDF Attachment Notice -->
+                <div style="background-color: #e8f4fd; border: 1px solid #bee5eb; border-radius: 6px; padding: 25px; margin: 30px 0; text-align: center;">
+                  <div style="margin-bottom: 15px;">
+                    <span style="font-size: 48px;">📄</span>
+                  </div>
+                  <h3 style="color: #0c5460; font-size: 18px; font-weight: 600; margin: 0 0 10px;">Your Exercise Program is Ready!</h3>
+                  <p style="color: #0c5460; font-size: 15px; line-height: 1.5; margin: 0 0 15px;">
+                    We've attached your personalized foot exercise program as a PDF document. 
+                    This comprehensive guide includes all the exercises recommended for your specific condition.
+                  </p>
+                  <p style="color: #0c5460; font-size: 14px; margin: 0; font-weight: 500;">
+                    📎 <strong>Attachment:</strong> ${pdf.originalname || 'foot-exercise-program.pdf'}
+                  </p>
+                </div>
+
+                <!-- Instructions -->
+                <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 20px; margin: 30px 0;">
+                  <h3 style="color: #856404; font-size: 16px; font-weight: 600; margin: 0 0 15px;">📋 How to Use Your Exercise Program</h3>
+                  <ol style="color: #856404; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Download and save the attached PDF to your device</li>
+                    <li style="margin-bottom: 8px;">Review the exercise instructions carefully before starting</li>
+                    <li style="margin-bottom: 8px;">Follow the recommended frequency and duration for each exercise</li>
+                    <li style="margin-bottom: 8px;">Track your progress and note any improvements or concerns</li>
+                    <li>Contact us if you experience any discomfort or have questions</li>
+                  </ol>
+                </div>
+
+                <!-- Benefits Section -->
+                <div style="margin: 30px 0;">
+                  <h3 style="color: #2c3e50; font-size: 18px; font-weight: 600; margin: 0 0 15px;">✨ Benefits of Your Exercise Program</h3>
+                  <ul style="color: #34495e; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 6px;">Strengthens foot muscles and improves flexibility</li>
+                    <li style="margin-bottom: 6px;">Reduces pain and discomfort</li>
+                    <li style="margin-bottom: 6px;">Improves balance and stability</li>
+                    <li style="margin-bottom: 6px;">Enhances overall foot function</li>
+                    <li>Prevents future foot problems</li>
+                  </ul>
+                </div>
+
+                <!-- Contact Information -->
+                <div style="background-color: #f8f9fa; border-radius: 6px; padding: 25px; margin: 30px 0; text-align: center;">
+                  <h3 style="color: #2c3e50; font-size: 16px; font-weight: 600; margin: 0 0 15px;">Need Help?</h3>
+                  <p style="color: #7f8c8d; font-size: 14px; line-height: 1.5; margin: 0 0 15px;">
+                    Our team of foot care specialists is here to support you throughout your recovery journey.
+                  </p>
+                  <p style="color: #2c3e50; font-size: 14px; margin: 0;">
+                    📧 <strong>Email:</strong> support@tdhaemoi.com<br>
+                    📞 <strong>Phone:</strong> +1 (555) 123-4567
+                  </p>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Footer -->
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="background-color: #2c3e50; padding: 25px 40px; text-align: center;">
+                <p style="color: #bdc3c7; font-size: 13px; line-height: 1.5; margin: 0 0 10px;">
+                  This email was sent to you as part of your TDHaemoi foot care treatment plan.
+                </p>
+                <p style="color: #95a5a6; font-size: 12px; margin: 0;">
+                  © ${new Date().getFullYear()} TDHaemoi Corporation. All rights reserved.<br>
+                  Professional foot care solutions for a healthier tomorrow.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
   </html>
 `;

@@ -1,6 +1,5 @@
 import nodemailer from "nodemailer";
 import fs from "fs";
-
 import dotenv from "dotenv";
 import {
   adminLoginNotificationEmail,
@@ -34,7 +33,7 @@ export const sendEmail = async (
   });
 
   const mailOptions = {
-    from: `"TDHaemoi" <tqmhosain@gmail.com>`,
+    from: `"TDHaemoi" <${process.env.NODE_MAILER_USER}>`,
     to,
     subject,
     html: htmlContent,
@@ -42,8 +41,7 @@ export const sendEmail = async (
 
   await mailTransporter.sendMail(mailOptions);
 };
-console.log(sendEmail);
-//--------------------------------------------------
+
 export const sendForgotPasswordOTP = async (
   email: string,
   otp: string
@@ -125,39 +123,33 @@ export const sendAdminLoginNotification = async (
   await sendEmail(adminEmail, "New admin panel login detected", htmlContent);
 };
 
-
 export const sendPdfToEmail = async (email: string, pdf: any): Promise<void> => {
   try {
     const { size } = fs.statSync(pdf.path);
     if (size > 20 * 1024 * 1024) {
-      throw new Error('Invoice PDF is too large to email (>20MB).');
+      throw new Error('PDF is too large to email (>20MB).');
     }
 
     const pdfBuffer = fs.readFileSync(pdf.path);
-
     const htmlContent = sendPdfToEmailTamplate(pdf);
 
     const mailTransporter = nodemailer.createTransport({
       service: 'gmail',
       port: 587,
-      secure: false,
       auth: {
         user: process.env.NODE_MAILER_USER || '',
         pass: process.env.NODE_MAILER_PASSWORD || '',
       },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
     });
 
     const mailOptions = {
       from: `"TDHaemoi" <${process.env.NODE_MAILER_USER}>`,
       to: email,
-      subject: 'Your Invoice',
+      subject: 'Your Foot Exercise Program - TDHaemoi',
       html: htmlContent,
       attachments: [
         {
-          filename: pdf.originalname || 'invoice.pdf',
+          filename: pdf.originalname || 'foot-exercise-program.pdf',
           content: pdfBuffer,
           contentType: 'application/pdf',
         },
@@ -165,8 +157,7 @@ export const sendPdfToEmail = async (email: string, pdf: any): Promise<void> => 
     };
 
     await mailTransporter.sendMail(mailOptions);
-
-    console.log('Email with PDF sent successfully.');
+    console.log('Exercise PDF email sent successfully.');
   } catch (error) {
     console.error('Error in sendPdfToEmail:', error);
     throw new Error('Failed to send PDF email.');
@@ -194,14 +185,10 @@ export const sendInvoiceEmail = async (
     const mailTransporter = nodemailer.createTransport({
       service: 'gmail',
       port: 587,
-      secure: false,
       auth: {
         user: process.env.NODE_MAILER_USER || '',
         pass: process.env.NODE_MAILER_PASSWORD || '',
       },
-      // connectionTimeout: 10000,
-      // greetingTimeout: 10000,
-      // socketTimeout: 15000,
     });
 
     const mailOptions = {
@@ -216,7 +203,7 @@ export const sendInvoiceEmail = async (
           contentType: 'application/pdf',
         },
       ],
-    } as any;
+    };
 
     await mailTransporter.sendMail(mailOptions);
   } catch (error) {

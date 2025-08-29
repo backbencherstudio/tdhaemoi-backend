@@ -1,6 +1,4 @@
 import express from "express";
-
-
 import { verifyUser } from "../../../middleware/verifyUsers";
 import { getAllexercises, sendExercisesEmail } from "./exercises.controllers";
 import upload from "../../../config/multer.config";

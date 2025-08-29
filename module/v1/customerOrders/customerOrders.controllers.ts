@@ -854,7 +854,7 @@ export const uploadInvoice = async (req: Request, res: Response) => {
     let emailSent = false;
     if (shouldSend && updatedOrder.customer?.email) {
       try {
-        await sendInvoiceEmail(updatedOrder.customer.email, invoiceFile, {
+        sendInvoiceEmail(updatedOrder.customer.email, invoiceFile, {
           customerName:
             `${updatedOrder.customer.vorname} ${updatedOrder.customer.nachname}`.trim(),
           total: updatedOrder.totalPrice as any,
