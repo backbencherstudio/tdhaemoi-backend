@@ -632,6 +632,95 @@ export const getOrderById = async (req: Request, res: Response) => {
   }
 };
 
+
+export const getOrdersByCustomerId = async (req: Request, res: Response) => {
+  try {
+    const { customerId } = req.params;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const customer = await prisma.customers.findUnique({
+      where: { id: customerId },
+      select: { id: true }
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found"
+      });
+    }
+
+    const [orders, totalCount] = await Promise.all([
+      prisma.customerOrders.findMany({
+        where: { customerId },
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              vorname: true,
+              nachname: true,
+              email: true,
+              telefonnummer: true,
+              wohnort: true,
+              customerNumber: true,
+            },
+          },
+          // partner: {
+          //   select: {
+          //     id: true,
+          //     name: true,
+          //     email: true,
+          //     image: true,
+          //   },
+          // },
+          product: true,
+        },
+      }),
+      prisma.customerOrders.count({ where: { customerId } })
+    ]);
+
+    const formattedOrders = orders.map(order => ({
+      ...order,
+      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+      // partner: order.partner ? {
+      //   ...order.partner,
+      //   image: order.partner.image ? getImageUrl(`/uploads/${order.partner.image}`) : null
+      // } : null
+    }));
+
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    res.status(200).json({
+      success: true,
+      message: "Customer orders fetched successfully",
+      data: formattedOrders,
+      pagination: {
+        totalItems: totalCount,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get Orders By Customer ID Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+
 export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

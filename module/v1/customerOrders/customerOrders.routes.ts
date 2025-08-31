@@ -1,7 +1,7 @@
 import express from "express";
 import { verifyUser } from "../../../middleware/verifyUsers";
 
-import { createOrder, getAllOrders, getOrderById, updateOrderStatus, uploadInvoice, deleteOrder } from "./customerOrders.controllers";
+import { createOrder, getAllOrders, getOrderById, updateOrderStatus, uploadInvoice, deleteOrder, getOrdersByCustomerId } from "./customerOrders.controllers";
 import upload from "../../../config/multer.config";
 
 const router = express.Router();
@@ -9,6 +9,7 @@ const router = express.Router();
 router.post("/create", verifyUser("ADMIN", "PARTNER"), createOrder );
 router.get("/", verifyUser("ADMIN", "PARTNER"), getAllOrders);
 router.get("/:id", verifyUser("ADMIN", "PARTNER"), getOrderById);
+router.get("/customer/:customerId", verifyUser("ADMIN", "PARTNER"), getOrdersByCustomerId);
 router.patch("/status/:id", verifyUser("ADMIN", "PARTNER"), updateOrderStatus);
 
 router.post(
