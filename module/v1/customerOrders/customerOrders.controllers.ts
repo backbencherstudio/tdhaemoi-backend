@@ -368,10 +368,6 @@ const prisma = new PrismaClient();
 //   }
 // };
 
-
-
-
-
 export const createOrder = async (req: Request, res: Response) => {
   try {
     const { customerId, versorgungId } = req.body;
@@ -413,7 +409,8 @@ export const createOrder = async (req: Request, res: Response) => {
     if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
       return res.status(400).json({
         success: false,
-        message: "fußanalyse or einlagenversorgung price is not set for this customer",
+        message:
+          "fußanalyse or einlagenversorgung price is not set for this customer",
       });
     }
 
@@ -464,7 +461,6 @@ export const createOrder = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 // export const getAllOrders = async (req: Request, res: Response) => {
 //   try {
@@ -566,8 +562,6 @@ export const createOrder = async (req: Request, res: Response) => {
 //   }
 // };
 
-
-
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
@@ -582,7 +576,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       where.createdAt = {
-        gte: startDate
+        gte: startDate,
       };
     }
 
@@ -652,7 +646,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
         itemsPerPage: limit,
         hasNextPage,
         hasPrevPage,
-        filter: days ? `Last ${days} days` : 'All time'
+        filter: days ? `Last ${days} days` : "All time",
       },
     });
   } catch (error: any) {
@@ -731,7 +725,6 @@ export const getOrderById = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getOrdersByCustomerId = async (req: Request, res: Response) => {
   try {
     const { customerId } = req.params;
@@ -741,13 +734,13 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
 
     const customer = await prisma.customers.findUnique({
       where: { id: customerId },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!customer) {
       return res.status(404).json({
         success: false,
-        message: "Customer not found"
+        message: "Customer not found",
       });
     }
 
@@ -780,10 +773,10 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
           product: true,
         },
       }),
-      prisma.customerOrders.count({ where: { customerId } })
+      prisma.customerOrders.count({ where: { customerId } }),
     ]);
 
-    const formattedOrders = orders.map(order => ({
+    const formattedOrders = orders.map((order) => ({
       ...order,
       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
       // partner: order.partner ? {
@@ -818,7 +811,6 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
@@ -1128,7 +1120,6 @@ export const uploadInvoice = async (req: Request, res: Response) => {
 //   }
 // };
 
-
 export const deleteOrder = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -1155,7 +1146,7 @@ export const deleteOrder = async (req: Request, res: Response) => {
         }
       }
     }
-    
+
     await prisma.customerOrders.delete({
       where: { id },
     });
@@ -1172,4 +1163,134 @@ export const deleteOrder = async (req: Request, res: Response) => {
       error: error.message,
     });
   }
+};
+
+export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
+  try {
+    const fortyDaysAgo = new Date();
+    fortyDaysAgo.setDate(fortyDaysAgo.getDate() - 40);
+
+    const { status, includeAll } = req.query;
+
+    let statusFilter: any = {};
+
+    if (status && typeof status === "string") {
+      statusFilter.orderStatus = status;
+    } else if (includeAll === "false") {
+      statusFilter.orderStatus = {
+        in: ["Ausgeführte_Einlagen", "Einlage_versandt", "Einlage_Abholbereit"],
+      };
+    }
+
+    const allOrders = await prisma.customerOrders.findMany({
+      where: {
+        createdAt: {
+          gte: fortyDaysAgo,
+        },
+        ...statusFilter,
+      },
+      select: {
+        totalPrice: true,
+        createdAt: true,
+      },
+    });
+
+    console.log("Filter applied:", statusFilter);
+    console.log("All orders found:", allOrders.length);
+    console.log("Sample orders:", allOrders.slice(0, 3));
+
+    const dateRange = Array.from({ length: 40 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (39 - i));
+      return date.toISOString().split("T")[0];
+    });
+
+    const revenueMap = new Map();
+
+    allOrders.forEach((order) => {
+      const dateKey = order.createdAt.toISOString().split("T")[0];
+      const existing = revenueMap.get(dateKey) || { revenue: 0, count: 0 };
+      revenueMap.set(dateKey, {
+        revenue: existing.revenue + (order.totalPrice || 0),
+        count: existing.count + 1,
+      });
+    });
+
+    console.log("Revenue map:", Object.fromEntries(revenueMap));
+
+    const chartData = dateRange.map((dateKey) => {
+      const dayData = revenueMap.get(dateKey) || { revenue: 0, count: 0 };
+      return {
+        date: formatChartDate(dateKey),
+        value: Math.round(dayData.revenue),
+      };
+    });
+
+    let totalRevenue = 0;
+    let maxRevenue = 0;
+    let minRevenue = Infinity;
+    let totalOrders = 0;
+
+    for (const dayData of revenueMap.values()) {
+      const revenue = dayData.revenue;
+      totalRevenue += revenue;
+      totalOrders += dayData.count;
+      if (revenue > maxRevenue) maxRevenue = revenue;
+      if (revenue < minRevenue) minRevenue = revenue;
+    }
+
+    if (minRevenue === Infinity) minRevenue = 0;
+
+    const averageDailyRevenue = Math.round(totalRevenue / 40);
+    const maxRevenueDay =
+      chartData.find((day) => Math.round(maxRevenue) === day.value) ||
+      chartData[0];
+    const minRevenueDay =
+      chartData.find((day) => Math.round(minRevenue) === day.value) ||
+      chartData[0];
+
+    const statusBreakdown = await prisma.customerOrders.groupBy({
+      by: ["orderStatus"],
+      where: {
+        createdAt: {
+          gte: fortyDaysAgo,
+        },
+      },
+      _count: {
+        id: true,
+      },
+      _sum: {
+        totalPrice: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Last 40 days order statistics fetched successfully",
+      data: {
+        chartData,
+        statistics: {
+          totalRevenue: Math.round(totalRevenue),
+          averageDailyRevenue,
+          maxRevenueDay,
+          minRevenueDay,
+          totalOrders,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("Get Last 40 Days Stats Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+const formatChartDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const month = date.toLocaleString("en-US", { month: "short" });
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${month} ${day}`;
 };
