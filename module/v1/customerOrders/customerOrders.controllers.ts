@@ -466,20 +466,132 @@ export const createOrder = async (req: Request, res: Response) => {
 };
 
 
+// export const getAllOrders = async (req: Request, res: Response) => {
+//   try {
+//     const page = parseInt(req.query.page as string) || 1;
+//     const limit = parseInt(req.query.limit as string) || 10;
+//     const skip = (page - 1) * limit;
+
+//     const where: any = {};
+
+//     if (req.query.customerId) {
+//       where.customerId = req.query.customerId as string;
+//     }
+
+//     if (req.query.partnerId) {
+//       where.partnnerId = req.query.partnerId as string;
+//     }
+
+//     if (req.query.orderStatus) {
+//       where.orderStatus = req.query.orderStatus as string;
+//     }
+
+//     const [orders, totalCount] = await Promise.all([
+//       prisma.customerOrders.findMany({
+//         where,
+//         skip,
+//         take: limit,
+//         orderBy: { createdAt: "desc" },
+//         select: {
+//           id: true,
+//           fußanalyse: true,
+//           einlagenversorgung: true,
+//           orderStatus: true,
+//           statusUpdate: true,
+//           invoice: true,
+//           createdAt: true,
+//           updatedAt: true,
+//           customer: {
+//             select: {
+//               id: true,
+//               vorname: true,
+//               nachname: true,
+//               email: true,
+//               telefonnummer: true,
+//               wohnort: true,
+//               customerNumber: true,
+//             },
+//           },
+//           //   partner: {
+//           //     select: {
+//           //       id: true,
+//           //       name: true,
+//           //       email: true,
+//           //     },
+//           //   },
+//           //   product: {
+//           //     select: {
+//           //       id: true,
+//           //       name: true,
+//           //       status: true,
+//           //       diagnosis_status: true,
+//           //     },
+//           //   },
+//           product: true,
+//         },
+//       }),
+//       prisma.customerOrders.count({ where }),
+//     ]);
+
+//     // Format orders with invoice URL
+//     const formattedOrders = orders.map((order) => ({
+//       ...order,
+//       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+//     }));
+
+//     const totalPages = Math.ceil(totalCount / limit);
+//     const hasNextPage = page < totalPages;
+//     const hasPrevPage = page > 1;
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Orders fetched successfully",
+//       data: formattedOrders,
+//       pagination: {
+//         totalItems: totalCount,
+//         totalPages,
+//         currentPage: page,
+//         itemsPerPage: limit,
+//         hasNextPage,
+//         hasPrevPage,
+//       },
+//     });
+//   } catch (error: any) {
+//     console.error("Get All Orders Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
+
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
+    const days = parseInt(req.query.days as string);
     const skip = (page - 1) * limit;
 
     const where: any = {};
+
+    // Add date filter based on days parameter
+    if (days && !isNaN(days)) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      where.createdAt = {
+        gte: startDate
+      };
+    }
 
     if (req.query.customerId) {
       where.customerId = req.query.customerId as string;
     }
 
     if (req.query.partnerId) {
-      where.partnnerId = req.query.partnerId as string;
+      where.partnerId = req.query.partnerId as string;
     }
 
     if (req.query.orderStatus) {
@@ -496,6 +608,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
           id: true,
           fußanalyse: true,
           einlagenversorgung: true,
+          totalPrice: true,
           orderStatus: true,
           statusUpdate: true,
           invoice: true,
@@ -512,21 +625,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
               customerNumber: true,
             },
           },
-          //   partner: {
-          //     select: {
-          //       id: true,
-          //       name: true,
-          //       email: true,
-          //     },
-          //   },
-          //   product: {
-          //     select: {
-          //       id: true,
-          //       name: true,
-          //       status: true,
-          //       diagnosis_status: true,
-          //     },
-          //   },
           product: true,
         },
       }),
@@ -554,6 +652,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
         itemsPerPage: limit,
         hasNextPage,
         hasPrevPage,
+        filter: days ? `Last ${days} days` : 'All time'
       },
     });
   } catch (error: any) {
@@ -970,15 +1069,72 @@ export const uploadInvoice = async (req: Request, res: Response) => {
   }
 };
 
+// export const deleteOrder = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params;
+//     console.log(id)
+
+//     const order = await prisma.customerOrders.findUnique({
+//       where: { id },
+//       include: {
+//         product: true,
+//       },
+//     });
+
+//     console.log(order)
+
+//     if (!order) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Order not found",
+//       });
+//     }
+
+//     if (order.invoice) {
+//       const invoicePath = path.join(process.cwd(), "uploads", order.invoice);
+//       if (fs.existsSync(invoicePath)) {
+//         try {
+//           fs.unlinkSync(invoicePath);
+//           console.log(`Deleted invoice file: ${invoicePath}`);
+//         } catch (err) {
+//           console.error(`Failed to delete invoice file: ${invoicePath}`, err);
+//         }
+//       }
+//     }
+
+//     // await prisma.$transaction(async (tx) => {
+//     //   await tx.customerHistorie.deleteMany({
+//     //     where: {
+//     //       eventId: id,
+//     //       category: "Bestellungen",
+//     //     },
+//     //   });
+//     //   await tx.customerOrders.delete({
+//     //     where: { id },
+//     //   });
+//     // });
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Order deleted successfully",
+//     });
+//   } catch (error: any) {
+//     console.error("Delete Order Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 export const deleteOrder = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
     const order = await prisma.customerOrders.findUnique({
       where: { id },
-      include: {
-        product: true,
-      },
     });
 
     if (!order) {
@@ -999,18 +1155,10 @@ export const deleteOrder = async (req: Request, res: Response) => {
         }
       }
     }
-
-    // await prisma.$transaction(async (tx) => {
-    //   await tx.customerHistorie.deleteMany({
-    //     where: {
-    //       eventId: id,
-    //       category: "Bestellungen",
-    //     },
-    //   });
-    //   await tx.customerOrders.delete({
-    //     where: { id },
-    //   });
-    // });
+    
+    await prisma.customerOrders.delete({
+      where: { id },
+    });
 
     res.status(200).json({
       success: true,
