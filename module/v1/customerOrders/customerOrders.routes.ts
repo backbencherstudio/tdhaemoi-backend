@@ -1,7 +1,7 @@
 import express from "express";
 import { verifyUser } from "../../../middleware/verifyUsers";
 
-import { createOrder, getAllOrders, getOrderById, updateOrderStatus, uploadInvoice, deleteOrder, getOrdersByCustomerId, getLast40DaysOrderStats } from "./customerOrders.controllers";
+import { createOrder, getAllOrders, getOrderById, updateOrderStatus, uploadInvoice, uploadInvoiceOnly, sendInvoiceToCustomer, deleteOrder, getOrdersByCustomerId, getLast40DaysOrderStats } from "./customerOrders.controllers";
 import upload from "../../../config/multer.config";
 
 const router = express.Router();
@@ -20,7 +20,23 @@ router.post(
   ]),
   uploadInvoice
 );
-router.get("/stats/retio", getLast40DaysOrderStats);
+
+router.post(
+  "/upload-invoice-only/:orderId",
+  verifyUser("ADMIN", "PARTNER"),
+  upload.fields([
+    { name: "invoice", maxCount: 1 },
+  ]),
+  uploadInvoiceOnly
+);
+
+router.post(
+  "/send-invoice/:orderId",
+  verifyUser("ADMIN", "PARTNER"),
+  sendInvoiceToCustomer
+);
+
+router.get("/stats/retio",  verifyUser("ADMIN", "PARTNER"), getLast40DaysOrderStats);
  
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteOrder);
 

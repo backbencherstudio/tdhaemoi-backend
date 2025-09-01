@@ -1061,6 +1061,256 @@ export const uploadInvoice = async (req: Request, res: Response) => {
   }
 };
 
+export const uploadInvoiceOnly = async (req: Request, res: Response) => {
+  const files = req.files as any;
+
+  const cleanupFiles = () => {
+    if (!files) return;
+    Object.keys(files).forEach((key) => {
+      files[key].forEach((file: any) => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (err) {
+          console.error(`Failed to delete file ${file.path}`, err);
+        }
+      });
+    });
+  };
+
+  try {
+    const { orderId } = req.params;
+
+    if (!files || !files.invoice || !files.invoice[0]) {
+      return res.status(400).json({
+        success: false,
+        message: "Invoice PDF file is required",
+      });
+    }
+
+    const invoiceFile = files.invoice[0];
+
+    if (!invoiceFile.mimetype.includes("pdf")) {
+      cleanupFiles();
+      return res.status(400).json({
+        success: false,
+        message: "Only PDF files are allowed for invoices",
+      });
+    }
+
+    const existingOrder = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: { id: true, invoice: true },
+    });
+
+    if (!existingOrder) {
+      cleanupFiles();
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Delete old invoice if exists
+    if (existingOrder.invoice) {
+      const oldInvoicePath = path.join(
+        process.cwd(),
+        "uploads",
+        existingOrder.invoice
+      );
+      if (fs.existsSync(oldInvoicePath)) {
+        try {
+          fs.unlinkSync(oldInvoicePath);
+          console.log(`Deleted old invoice file: ${oldInvoicePath}`);
+        } catch (err) {
+          console.error(
+            `Failed to delete old invoice file: ${oldInvoicePath}`,
+            err
+          );
+        }
+      }
+    }
+
+    const updatedOrder = await prisma.customerOrders.update({
+      where: { id: orderId },
+      data: {
+        invoice: invoiceFile.filename,
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            customerNumber: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+            telefonnummer: true,
+            wohnort: true,
+          },
+        },
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+        product: true,
+      },
+    });
+
+    const formattedOrder = {
+      ...updatedOrder,
+      invoice: updatedOrder.invoice
+        ? getImageUrl(`/uploads/${updatedOrder.invoice}`)
+        : null,
+      partner: updatedOrder.partner
+        ? {
+            ...updatedOrder.partner,
+            image: updatedOrder.partner.image
+              ? getImageUrl(`/uploads/${updatedOrder.partner.image}`)
+              : null,
+          }
+        : null,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Invoice uploaded successfully",
+      data: formattedOrder,
+    });
+  } catch (error: any) {
+    console.error("Upload Invoice Only Error:", error);
+    cleanupFiles();
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    const { email } = req.body; // Optional: override customer email
+
+    const order = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            customerNumber: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+            telefonnummer: true,
+            wohnort: true,
+          },
+        },
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+        product: true,
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    if (!order.invoice) {
+      return res.status(400).json({
+        success: false,
+        message: "No invoice found for this order. Please upload an invoice first.",
+      });
+    }
+
+    // Determine which email to use
+    const targetEmail = email || order.customer?.email;
+    
+    if (!targetEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "No email address found for customer",
+      });
+    }
+
+    // Get the invoice file
+    const invoicePath = path.join(process.cwd(), "uploads", order.invoice);
+    
+    if (!fs.existsSync(invoicePath)) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice file not found on server",
+      });
+    }
+
+    const invoiceFile = {
+      path: invoicePath,
+      filename: order.invoice,
+      mimetype: 'application/pdf'
+    };
+
+    // Send invoice email
+    try {
+       sendInvoiceEmail(targetEmail, invoiceFile, {
+        customerName:
+          `${order.customer?.vorname} ${order.customer?.nachname}`.trim(),
+        total: order.totalPrice as any,
+      });
+
+      const formattedOrder = {
+        ...order,
+        invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+        partner: order.partner
+          ? {
+              ...order.partner,
+              image: order.partner.image
+                ? getImageUrl(`/uploads/${order.partner.image}`)
+                : null,
+            }
+          : null,
+      };
+
+      res.status(200).json({
+        success: true,
+        message: "Invoice sent successfully to customer",
+        data: {
+          ...formattedOrder,
+          emailSent: true,
+          sentTo: targetEmail
+        },
+      });
+    } catch (emailErr) {
+      console.error("Failed to send invoice email:", emailErr);
+      res.status(500).json({
+        success: false,
+        message: "Failed to send invoice email",
+        error: emailErr.message,
+      });
+    }
+  } catch (error: any) {
+    console.error("Send Invoice Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
 // export const deleteOrder = async (req: Request, res: Response) => {
 //   try {
 //     const { id } = req.params;
@@ -1195,9 +1445,9 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
       },
     });
 
-    console.log("Filter applied:", statusFilter);
-    console.log("All orders found:", allOrders.length);
-    console.log("Sample orders:", allOrders.slice(0, 3));
+    // console.log("Filter applied:", statusFilter);
+    // console.log("All orders found:", allOrders.length);
+    // console.log("Sample orders:", allOrders.slice(0, 3));
 
     const dateRange = Array.from({ length: 40 }, (_, i) => {
       const date = new Date();

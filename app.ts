@@ -51,7 +51,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(morgan("dev"));
 
-app.use("/assets", express.static(path.join(__dirname, "../assets")));
+// app.use("/assets", express.static(path.join(__dirname, "../assets"))); //production
+app.use("/assets", express.static(path.join(__dirname, "./assets")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/", v1);
