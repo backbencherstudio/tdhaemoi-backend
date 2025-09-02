@@ -41,3 +41,4 @@ router.get("/stats/retio",  verifyUser("ADMIN", "PARTNER"), getLast40DaysOrderSt
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteOrder);
 
 export default router;
+
