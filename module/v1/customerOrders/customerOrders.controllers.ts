@@ -373,6 +373,8 @@ export const createOrder = async (req: Request, res: Response) => {
     const { customerId, versorgungId } = req.body;
     const partnerId = req.user.id;
 
+    console.log(customerId, versorgungId, partnerId);
+
     if (!customerId || !versorgungId) {
       return res.status(400).json({
         success: false,

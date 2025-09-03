@@ -126,9 +126,9 @@ export const sendAdminLoginNotification = async (
 export const sendPdfToEmail = async (email: string, pdf: any): Promise<void> => {
   try {
     const { size } = fs.statSync(pdf.path);
-    if (size > 20 * 1024 * 1024) {
-      throw new Error('PDF is too large to email (>20MB).');
-    }
+    // if (size > 20 * 1024 * 1024) {
+    //   throw new Error('PDF is too large to email (>20MB).');
+    // }
 
     const pdfBuffer = fs.readFileSync(pdf.path);
     const htmlContent = sendPdfToEmailTamplate(pdf);

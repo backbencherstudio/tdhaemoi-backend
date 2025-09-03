@@ -20,6 +20,8 @@ export const sendExercisesEmail = async (req: Request, res: Response) => {
     const { email } = req.body;
     const pdfFile = req.file;
 
+    console.log(email, pdfFile)
+
     if (!email || !pdfFile) {
       if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
       return res.status(400).json({
@@ -47,7 +49,6 @@ export const sendExercisesEmail = async (req: Request, res: Response) => {
 
     sendPdfToEmail(email, pdfFile);
 
-    // Clean up file after email is sent
     if (pdfFile && fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
 
     return res.status(200).json({
