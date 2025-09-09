@@ -686,6 +686,11 @@ export const getOrderById = async (req: Request, res: Response) => {
             email: true,
             image: true,
             role: true,
+            phone: true,
+            absenderEmail: true,
+            bankName: true,
+            bankNumber: true,
+            busnessName: true
           },
         },
         product: true,

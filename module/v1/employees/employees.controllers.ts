@@ -20,6 +20,18 @@ export const createEmployee = async (req: Request, res: Response) => {
         .json({ success: false, message: `${missingField} is required!` });
     }
 
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Email already registered!",
+        });
+    }
+
     const existingEmployee = await prisma.employees.findUnique({
       where: { email },
     });
@@ -36,7 +48,7 @@ export const createEmployee = async (req: Request, res: Response) => {
       email,
       password,
       financialAccess,
-      createdBy: req.user.id,
+      partnerId: req.user.id,
     };
 
     const newEmployee = await prisma.employees.create({
@@ -50,13 +62,11 @@ export const createEmployee = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Create Employee error:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Something went wrong",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
   }
 };
 
@@ -122,7 +132,6 @@ export const updateEmployee = async (req: Request, res: Response) => {
 
     const updatedData = {
       ...req.body,
-      updatedBy: req.user.id,
     };
 
     const updatedEmployee = await prisma.employees.update({

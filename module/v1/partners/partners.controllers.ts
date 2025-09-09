@@ -70,7 +70,7 @@ export const createPartnership = async (req: Request, res: Response) => {
 export const updatePartnerProfile = async (req: Request, res: Response) => {
   try {
     const { id } = req.user;
-    const { name } = req.body;
+    const { name, phone, absenderEmail, bankName, bankNumber, busnessName } = req.body;
     const newImage = req.file;
 
     const existingUser = await prisma.user.findUnique({
@@ -78,6 +78,7 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
     });
 
     if (!existingUser) {
+      // cleanup uploaded image if user doesn't exist
       if (newImage) {
         const imagePath = path.join(
           __dirname,
@@ -88,12 +89,10 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
           fs.unlinkSync(imagePath);
         }
       }
-      res.status(404).json({
-        message: "User not found",
-      });
-      return;
+      return res.status(404).json({ message: "User not found" });
     }
 
+    // remove old image if new one is uploaded
     if (newImage && existingUser.image) {
       const oldImagePath = path.join(
         __dirname,
@@ -110,23 +109,33 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
       data: {
         name: name || existingUser.name,
         image: newImage ? newImage.filename : existingUser.image,
+        phone: phone || existingUser.phone,
+        absenderEmail: absenderEmail || existingUser.absenderEmail,
+        bankName: bankName || existingUser.bankName,
+        bankNumber: bankNumber || existingUser.bankNumber,
+        busnessName: busnessName || existingUser.busnessName,
       },
     });
 
     const imageUrl = user.image ? getImageUrl(`/uploads/${user.image}`) : null;
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Partner profile updated successfully",
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
+        absenderEmail: user.absenderEmail,
+        bankName: user.bankName,
+        bankNumber: user.bankNumber,
         image: imageUrl,
         role: user.role,
       },
     });
   } catch (error) {
+    // cleanup uploaded image if error occurs
     if (req.file) {
       const imagePath = path.join(
         __dirname,
@@ -138,10 +147,10 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
       }
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error,
+      error: error instanceof Error ? error.message : error,
     });
   }
 };
@@ -150,7 +159,7 @@ export const getAllPartners = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const search = (req.query.search as string) || '';
+    const search = (req.query.search as string) || "";
     const skip = (page - 1) * limit;
 
     const whereCondition = {
@@ -158,29 +167,31 @@ export const getAllPartners = async (req: Request, res: Response) => {
       ...(search && {
         OR: [
           { name: { contains: search, mode: "insensitive" } },
-          { email: { contains: search, mode: "insensitive" } }
-        ]
-      })
+          { email: { contains: search, mode: "insensitive" } },
+        ],
+      }),
     };
 
     const [partners, totalCount] = await Promise.all([
       prisma.user.findMany({
         where: {
           role: "PARTNER",
-          OR: search ? [
-            {
-              name: {
-                contains: search,
-                mode: "insensitive" as const
-              }
-            },
-            {
-              email: {
-                contains: search,
-                mode: "insensitive" as const
-              }
-            }
-          ] : undefined
+          OR: search
+            ? [
+                {
+                  name: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  email: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ]
+            : undefined,
         },
         skip,
         take: limit,
@@ -197,21 +208,23 @@ export const getAllPartners = async (req: Request, res: Response) => {
       prisma.user.count({
         where: {
           role: "PARTNER",
-          OR: search ? [
-            {
-              name: {
-                contains: search,
-                mode: "insensitive" as const
-              }
-            },
-            {
-              email: {
-                contains: search,
-                mode: "insensitive" as const
-              }
-            }
-          ] : undefined
-        }
+          OR: search
+            ? [
+                {
+                  name: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  email: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ]
+            : undefined,
+        },
       }),
     ]);
 
@@ -278,7 +291,10 @@ export const getPartnerById = async (req: Request, res: Response) => {
   }
 };
 
-export const updatePartnerByAdmin = async (req: Request, res: Response): Promise<void> => {
+export const updatePartnerByAdmin = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const { id } = req.params;
   const { name, email, password } = req.body;
   const newImage = req.file;
@@ -305,13 +321,17 @@ export const updatePartnerByAdmin = async (req: Request, res: Response): Promise
 
     if (email && email !== user.email) {
       if (!validator.isEmail(email)) {
-        res.status(400).json({ success: false, message: "Invalid email format" });
+        res
+          .status(400)
+          .json({ success: false, message: "Invalid email format" });
         return;
       }
 
       const existingEmail = await prisma.user.findUnique({ where: { email } });
       if (existingEmail) {
-        res.status(400).json({ success: false, message: "Email already in use" });
+        res
+          .status(400)
+          .json({ success: false, message: "Email already in use" });
         return;
       }
     }
@@ -468,7 +488,7 @@ export const forgotPasswordSendOtp = async (
     res.status(400).json({ error: "Email is required" });
     return;
   }
- 
+
   try {
     const user = await prisma.user.findUnique({ where: { email } });
 
@@ -574,7 +594,6 @@ export const resetPassword = async (
   }
 };
 
-
 export const changePassword = async (req: Request, res: Response) => {
   try {
     const { id } = req.user;
@@ -583,29 +602,32 @@ export const changePassword = async (req: Request, res: Response) => {
     if (!currentPassword || !newPassword) {
       res.status(400).json({
         success: false,
-        message: "Current password and new password are required"
+        message: "Current password and new password are required",
       });
       return;
     }
 
     const user = await prisma.user.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!user) {
       res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
       return;
     }
 
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
 
     if (!isPasswordValid) {
       res.status(401).json({
         success: false,
-        message: "Current password is incorrect"
+        message: "Current password is incorrect",
       });
       return;
     }
@@ -613,7 +635,7 @@ export const changePassword = async (req: Request, res: Response) => {
     if (newPassword.length < 6) {
       res.status(400).json({
         success: false,
-        message: "New password must be at least 6 characters long"
+        message: "New password must be at least 6 characters long",
       });
       return;
     }
@@ -622,20 +644,19 @@ export const changePassword = async (req: Request, res: Response) => {
 
     await prisma.user.update({
       where: { id },
-      data: { password: hashedPassword }
+      data: { password: hashedPassword },
     });
 
     res.status(200).json({
       success: true,
-      message: "Password changed successfully"
+      message: "Password changed successfully",
     });
   } catch (error) {
     console.error("Change password error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message
+      error: error.message,
     });
   }
 };
-

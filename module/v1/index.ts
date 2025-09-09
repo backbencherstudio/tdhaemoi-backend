@@ -34,6 +34,7 @@ const moduleRoutes = [
   { path: '/exercises', route: exercises },
   { path: "/customers-history", route: customerHistory },
   { path: "/customer-orders", route: customerOrders},
+  
 ];
 
 moduleRoutes.forEach(({ path, route }) => {
