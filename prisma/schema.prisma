@@ -33,6 +33,9 @@ model User {
   employees              Employees[]
   customer_price         customer_price[]
 
+  // Mandatory one-to-one relationship
+  workshopNote WorkshopNote?
+
   @@map("users")
 }
 
@@ -208,9 +211,36 @@ model Employees {
   partnerId String
   user      User   @relation(fields: [partnerId], references: [id])
 
+  WorkshopNote WorkshopNote?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([createdAt])
+}
+
+model WorkshopNote {
+  id String @id @default(uuid())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+
+  employeeId String?    @unique
+  employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  employeeName   String?
+  completionDays String  @default("5 Werktage")
+  pickupLocation String?
+  sameAsBusiness Boolean @default(true)
+
+  showCompanyLogo    Boolean @default(true)
+  autoShowAfterPrint Boolean @default(true)
+  autoApplySupply    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
   @@index([createdAt])
 }
 
@@ -262,7 +292,7 @@ enum versorgungenDiagnosisStatus {
 
 model customer_price {
   id                 String @id @default(uuid())
-  fußanalyse         Float?
+  fußanalyse        Float?
   einlagenversorgung Float?
 
   partnerId String
