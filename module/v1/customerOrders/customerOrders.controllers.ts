@@ -690,7 +690,20 @@ export const getOrderById = async (req: Request, res: Response) => {
             absenderEmail: true,
             bankName: true,
             bankNumber: true,
-            busnessName: true
+            busnessName: true,
+            workshopNote: {
+              select: {
+                id: true,
+                employeeId: true,
+                employeeName: true,
+                completionDays: true,
+                pickupLocation: true,
+                sameAsBusiness: true,
+                showCompanyLogo: true,
+                autoShowAfterPrint: true,
+                autoApplySupply: true,
+              },
+            },
           },
         },
         product: true,
@@ -1240,13 +1253,14 @@ export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
     if (!order.invoice) {
       return res.status(400).json({
         success: false,
-        message: "No invoice found for this order. Please upload an invoice first.",
+        message:
+          "No invoice found for this order. Please upload an invoice first.",
       });
     }
 
     // Determine which email to use
     const targetEmail = email || order.customer?.email;
-    
+
     if (!targetEmail) {
       return res.status(400).json({
         success: false,
@@ -1256,7 +1270,7 @@ export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
 
     // Get the invoice file
     const invoicePath = path.join(process.cwd(), "uploads", order.invoice);
-    
+
     if (!fs.existsSync(invoicePath)) {
       return res.status(404).json({
         success: false,
@@ -1267,12 +1281,12 @@ export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
     const invoiceFile = {
       path: invoicePath,
       filename: order.invoice,
-      mimetype: 'application/pdf'
+      mimetype: "application/pdf",
     };
 
     // Send invoice email
     try {
-       sendInvoiceEmail(targetEmail, invoiceFile, {
+      sendInvoiceEmail(targetEmail, invoiceFile, {
         customerName:
           `${order.customer?.vorname} ${order.customer?.nachname}`.trim(),
         total: order.totalPrice as any,
@@ -1280,7 +1294,9 @@ export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
 
       const formattedOrder = {
         ...order,
-        invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+        invoice: order.invoice
+          ? getImageUrl(`/uploads/${order.invoice}`)
+          : null,
         partner: order.partner
           ? {
               ...order.partner,
@@ -1297,7 +1313,7 @@ export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
         data: {
           ...formattedOrder,
           emailSent: true,
-          sentTo: targetEmail
+          sentTo: targetEmail,
         },
       });
     } catch (emailErr) {
