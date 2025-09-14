@@ -15,11 +15,14 @@ model User {
   image    String?
   role     Role    @default(ADMIN)
 
-  phone                  String?
-  absenderEmail          String?
-  bankName               String?
-  bankNumber             String?
-  busnessName            String?
+  phone            String?
+  absenderEmail    String?
+  bankName         String?
+  bankNumber       String?
+  busnessName      String? // Geschäftspartner Name / Account Name
+  hauptstandort    String? // Hauptstandort
+  weitereStandorte String? // Other locations
+
   createdAt              DateTime                @default(now()) @map("created_at")
   updatedAt              DateTime                @updatedAt
   suggestions            SuggestionFeetf1rst[]
@@ -338,6 +341,7 @@ model customers {
   versorgungen          customer_versorgungen[] @relation("customerVersorgungen")
   ausfuhrliche_diagnose String?
   customerOrders        customerOrders[]
+  werkstattzettel       Werkstattzettel[]
 
   kundeSteuernummer String? // Kunde Steuernummer
   diagnose          String? // Diagnose
@@ -485,12 +489,44 @@ model customerOrders {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  werkstattzettel   Werkstattzettel? @relation(fields: [werkstattzettelId], references: [id], onDelete: SetNull)
+  werkstattzettelId String?          @unique
+
   @@index([customerId])
   @@index([partnerId])
   @@index([createdAt])
   @@index([totalPrice])
   @@index([customerId, partnerId])
   @@index([customerId, createdAt])
+}
+
+model Werkstattzettel {
+  id String @id @default(uuid())
+
+  kundenName         String? // Name Kunde - ghfghfghfg
+  auftragsDatum      DateTime? // Datum des Auftrags - mm/dd/yyyy
+  wohnort            String? // Wohnort - fdgdf
+  telefon            String? // Telefon - 01777577371
+  email              String? // E-Mail - brugger.thertrewaV@gmail.com
+  geschaeftsstandort String? // Geschäftstandort - Bremen
+  mitarbeiter        String? // Mitarbeiter - Johannes
+  fertigstellungBis  DateTime? // Fertigstellung bis - mm/dd/yyyy
+  versorgung         String? // Versorgung - Rohling 339821769, mit Pelotte
+  bezahlt            Boolean? // Bezahlt - Ja (true/false)
+
+  // Preise section
+  fussanalysePreis        Float? // Fußanalyse - 100€
+  einlagenversorgungPreis Float? // Einlagenversorgung - 50€
+
+  customerId String?
+  customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  order customerOrders?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("werkstattzettel")
 }
 
 model customerProduct {
@@ -505,7 +541,7 @@ model customerProduct {
   status           versorgungenStatus
   diagnosis_status versorgungenDiagnosisStatus?
 
-  order customerOrders? @relation
+  order customerOrders?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

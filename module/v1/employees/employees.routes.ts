@@ -5,6 +5,7 @@ import {
   getAllEmployees,
   updateEmployee,
   deleteEmployee,
+  searchEmployees,
 } from "./employees.controllers";
 
 const router = express.Router();
@@ -13,5 +14,6 @@ router.get("/", verifyUser("PARTNER"), getAllEmployees);
 router.post("/", verifyUser("PARTNER"), createEmployee);
 router.patch("/:id", verifyUser("PARTNER"), updateEmployee);
 router.delete("/:id", verifyUser("PARTNER"), deleteEmployee);
-
+router.get("/search", verifyUser("PARTNER"), searchEmployees);
 export default router;
+

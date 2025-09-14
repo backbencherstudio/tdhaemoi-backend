@@ -185,3 +185,94 @@ export const deleteEmployee = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const searchEmployees = async (req: Request, res: Response) => {
+  try {
+    const { 
+      search, 
+      page = 1, 
+      limit = 10,
+      field = "all" 
+    } = req.query;
+
+    if (!search || typeof search !== 'string' || search.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: "Search search is required",
+      });
+    }
+
+    const pageNumber = parseInt(page as string, 10);
+    const limitNumber = parseInt(limit as string, 10);
+    const searchQuery = search.toString().trim();
+
+    if (isNaN(pageNumber) || isNaN(limitNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid page or limit parameter",
+      });
+    }
+
+    let whereCondition: any = {
+      partnerId: req.user.id,
+    };
+
+    if (field === "all" || !field) {
+      whereCondition.OR = [
+        { employeeName: { contains: searchQuery, mode: 'insensitive' } },
+        { email: { contains: searchQuery, mode: 'insensitive' } },
+        { accountName: { contains: searchQuery, mode: 'insensitive' } },
+      ];
+    } else {
+      const fieldMap: { [key: string]: string } = {
+        name: "employeeName",
+        email: "email",
+        account: "accountName"
+      };
+
+      const prismaField = fieldMap[field as string] || "employeeName";
+      whereCondition[prismaField] = { contains: searchQuery, mode: 'insensitive' };
+    }
+
+    const [employees, totalCount] = await Promise.all([
+      prisma.employees.findMany({
+        where: whereCondition,
+        skip: (pageNumber - 1) * limitNumber,
+        take: limitNumber,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.employees.count({ where: whereCondition })
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limitNumber);
+
+    res.status(200).json({
+      success: true,
+      message: employees.length > 0 
+        ? "Employees found successfully" 
+        : "No employees found matching your search",
+      data: employees,
+      pagination: {
+        totalItems: totalCount,
+        totalPages,
+        currentPage: pageNumber,
+        itemsPerPage: limitNumber,
+        hasNextPage: pageNumber < totalPages,
+        hasPrevPage: pageNumber > 1
+      },
+      search: {
+        query: searchQuery,
+        field: field || "all",
+        resultsCount: employees.length
+      }
+    });
+
+  } catch (error: any) {
+    console.error("Search Employees error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while searching employees",
+      error: error.message,
+    });
+  }
+};

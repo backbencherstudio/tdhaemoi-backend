@@ -70,7 +70,16 @@ export const createPartnership = async (req: Request, res: Response) => {
 export const updatePartnerProfile = async (req: Request, res: Response) => {
   try {
     const { id } = req.user;
-    const { name, phone, absenderEmail, bankName, bankNumber, busnessName } = req.body;
+    const {
+      name,
+      phone,
+      absenderEmail,
+      bankName,
+      bankNumber,
+      busnessName,
+      hauptstandort,
+      weitereStandorte,
+    } = req.body;
     const newImage = req.file;
 
     const existingUser = await prisma.user.findUnique({
@@ -114,6 +123,8 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
         bankName: bankName || existingUser.bankName,
         bankNumber: bankNumber || existingUser.bankNumber,
         busnessName: busnessName || existingUser.busnessName,
+        hauptstandort: hauptstandort || existingUser.hauptstandort,
+        weitereStandorte: weitereStandorte || existingUser.weitereStandorte,
       },
     });
 
@@ -123,15 +134,8 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
       success: true,
       message: "Partner profile updated successfully",
       user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        absenderEmail: user.absenderEmail,
-        bankName: user.bankName,
-        bankNumber: user.bankNumber,
+        ...user,
         image: imageUrl,
-        role: user.role,
       },
     });
   } catch (error) {
@@ -196,14 +200,6 @@ export const getAllPartners = async (req: Request, res: Response) => {
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          role: true,
-          createdAt: true,
-        },
       }),
       prisma.user.count({
         where: {
@@ -258,14 +254,6 @@ export const getPartnerById = async (req: Request, res: Response) => {
 
     const partner = await prisma.user.findUnique({
       where: { id, role: "PARTNER" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        role: true,
-        createdAt: true,
-      },
     });
 
     if (!partner) {

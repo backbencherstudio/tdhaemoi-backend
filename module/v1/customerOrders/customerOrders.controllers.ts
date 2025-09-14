@@ -370,10 +370,10 @@ const prisma = new PrismaClient();
 
 export const createOrder = async (req: Request, res: Response) => {
   try {
-    const { customerId, versorgungId } = req.body;
+    const { customerId, versorgungId, werkstattzettelId } = req.body;
     const partnerId = req.user.id;
 
-    console.log(customerId, versorgungId, partnerId);
+    console.log(customerId, versorgungId, partnerId, werkstattzettelId);
 
     if (!customerId || !versorgungId) {
       return res.status(400).json({
@@ -382,7 +382,7 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    const [customer, versorgung] = await Promise.all([
+    const [customer, versorgung, werkstattzettel] = await Promise.all([
       prisma.customers.findUnique({
         where: { id: customerId },
         select: { fußanalyse: true, einlagenversorgung: true },
@@ -400,6 +400,9 @@ export const createOrder = async (req: Request, res: Response) => {
           diagnosis_status: true,
         },
       }),
+      prisma.werkstattzettel.findUnique({
+        where: { id: werkstattzettelId },
+      }),
     ]);
 
     if (!customer || !versorgung) {
@@ -416,6 +419,13 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
+    if (!werkstattzettel) {
+      res.status(400).json({
+        success: false,
+        message: "werkstattzettel id not found",
+      });
+    }
+
     const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
 
     const order = await prisma.$transaction(async (tx) => {
@@ -427,6 +437,7 @@ export const createOrder = async (req: Request, res: Response) => {
         data: {
           customerId,
           partnerId,
+          werkstattzettelId,
           fußanalyse: customer.fußanalyse,
           einlagenversorgung: customer.einlagenversorgung,
           totalPrice,
@@ -668,6 +679,7 @@ export const getOrderById = async (req: Request, res: Response) => {
     const order = await prisma.customerOrders.findUnique({
       where: { id },
       include: {
+        werkstattzettel: true,
         customer: {
           select: {
             id: true,
@@ -691,6 +703,8 @@ export const getOrderById = async (req: Request, res: Response) => {
             bankName: true,
             bankNumber: true,
             busnessName: true,
+            hauptstandort: true,
+            weitereStandorte: true,
             workshopNote: {
               select: {
                 id: true,
@@ -725,6 +739,9 @@ export const getOrderById = async (req: Request, res: Response) => {
             ...order.partner,
             image: order.partner.image
               ? getImageUrl(`/uploads/${order.partner.image}`)
+              : null,
+            hauptstandort: order.partner.workshopNote?.sameAsBusiness
+              ? order.partner.hauptstandort
               : null,
           }
         : null,
@@ -1566,4 +1583,149 @@ const formatChartDate = (dateString: string): string => {
   const month = date.toLocaleString("en-US", { month: "short" });
   const day = date.getDate().toString().padStart(2, "0");
   return `${month} ${day}`;
+};
+
+export const createWerkstattzettel = async (req: Request, res: Response) => {
+  try {
+    const { customerId } = req.params;
+
+    console.log("Received customerId:", customerId);
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer ID is required in URL parameters",
+      });
+    }
+
+    const {
+      kundenName,
+      auftragsDatum,
+      wohnort,
+      telefon,
+      email,
+      geschaeftsstandort,
+      mitarbeiter,
+      fertigstellungBis,
+      versorgung,
+      bezahlt,
+      fussanalysePreis,
+      einlagenversorgungPreis,
+      // orderId
+    } = req.body;
+
+    const requiredFields = [
+      "kundenName",
+      "auftragsDatum",
+      "wohnort",
+      "telefon",
+      "email",
+      "geschaeftsstandort",
+      "mitarbeiter",
+      "fertigstellungBis",
+      "versorgung",
+    ];
+
+    const missingField = requiredFields.find((field) => !req.body[field]);
+    if (missingField) {
+      return res.status(400).json({
+        success: false,
+        message: `${missingField} is required`,
+      });
+    }
+
+    const customer = await prisma.customers.findUnique({
+      where: { id: customerId },
+      select: { id: true, vorname: true, nachname: true },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const werkstattzettel = await prisma.werkstattzettel.create({
+      data: {
+        kundenName,
+        auftragsDatum: new Date(auftragsDatum),
+        wohnort,
+        telefon,
+        email,
+        geschaeftsstandort,
+        mitarbeiter,
+        fertigstellungBis: fertigstellungBis
+          ? new Date(fertigstellungBis)
+          : null,
+        versorgung,
+        bezahlt: Boolean(bezahlt),
+        fussanalysePreis: fussanalysePreis
+          ? parseFloat(fussanalysePreis)
+          : null,
+        einlagenversorgungPreis: einlagenversorgungPreis
+          ? parseFloat(einlagenversorgungPreis)
+          : null,
+        customerId,
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            customerNumber: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+            telefonnummer: true,
+            wohnort: true,
+          },
+        },
+      },
+    });
+
+    // // If orderId is provided, link the order to this Werkstattzettel
+    // if (orderId) {
+    //   // Check if order exists and belongs to this customer
+    //   const order = await prisma.customerOrders.findFirst({
+    //     where: {
+    //       id: orderId,
+    //       customerId: customerId
+    //     }
+    //   });
+
+    //   if (order) {
+    //     await prisma.customerOrders.update({
+    //       where: { id: orderId },
+    //       data: {
+    //         werkstattzettelId: werkstattzettel.id
+    //       }
+    //     });
+
+    //     // Update history for the order link
+    //     await prisma.customerHistorie.create({
+    //       data: {
+    //         customerId,
+    //         category: "Bestellungen",
+    //         date: new Date(),
+    //         note: `Werkstattzettel linked to order ${orderId}`,
+    //         system_note: `Werkstattzettel ${werkstattzettel.id} linked to order ${orderId}`,
+    //         eventId: orderId
+    //       }
+    //     });
+    //   }
+    // }
+
+    res.status(201).json({
+      success: true,
+      message: "Werkstattzettel created successfully",
+      data: werkstattzettel,
+    });
+  } catch (error: any) {
+    console.error("Create Werkstattzettel Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
 };
