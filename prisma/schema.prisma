@@ -35,7 +35,6 @@ model User {
   partnerOrders          customerOrders[]        @relation("PartnerOrders")
   employees              Employees[]
   customer_price         customer_price[]
-  
 
   // Mandatory one-to-one relationship
   workshopNote WorkshopNote?
@@ -490,8 +489,8 @@ model customerOrders {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  werkstattzettel   Werkstattzettel? @relation(fields: [werkstattzettelId], references: [id], onDelete: SetNull)
-  werkstattzettelId String?          @unique
+  werkstattzettel   Werkstattzettel? @relation(fields: [werkstattzettelId], references: [id], onDelete: SetNull, name: "WerkstattzettelOrdersRelation")
+  werkstattzettelId String?
 
   @@index([customerId])
   @@index([partnerId])
@@ -522,7 +521,7 @@ model Werkstattzettel {
   customerId String     @unique
   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
-  order customerOrders?
+  orders customerOrders[] @relation(name: "WerkstattzettelOrdersRelation")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
