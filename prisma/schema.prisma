@@ -35,6 +35,7 @@ model User {
   partnerOrders          customerOrders[]        @relation("PartnerOrders")
   employees              Employees[]
   customer_price         customer_price[]
+  
 
   // Mandatory one-to-one relationship
   workshopNote WorkshopNote?
@@ -341,7 +342,7 @@ model customers {
   versorgungen          customer_versorgungen[] @relation("customerVersorgungen")
   ausfuhrliche_diagnose String?
   customerOrders        customerOrders[]
-  werkstattzettel       Werkstattzettel[]
+  werkstattzettel       Werkstattzettel?
 
   kundeSteuernummer String? // Kunde Steuernummer
   diagnose          String? // Diagnose
@@ -518,7 +519,7 @@ model Werkstattzettel {
   fussanalysePreis        Float? // Fußanalyse - 100€
   einlagenversorgungPreis Float? // Einlagenversorgung - 50€
 
-  customerId String?
+  customerId String     @unique
   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   order customerOrders?

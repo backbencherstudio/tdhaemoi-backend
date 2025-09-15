@@ -878,15 +878,29 @@ export const updateCustomerSpecialFields = async (
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+      const userId = req.user.id;
+    console.log(222222222222222222, userId)
 
+    // 1. Fetch customer first
+    const customer = await prisma.customers.findUnique({ where: { id } });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    // 2. Fetch related data in parallel
     const [
-      customer,
       versorgungen,
       einlagenAnswers,
       screenerFiles,
       customerHistories,
+      werkstattzettel,
+      partner,
+      workshopNote,
     ] = await Promise.all([
-      prisma.customers.findUnique({ where: { id } }),
       prisma.customer_versorgungen.findMany({ where: { customerId: id } }),
       prisma.einlagenAnswers.findMany({
         where: { customerId: id },
@@ -897,15 +911,12 @@ export const getCustomerById = async (req: Request, res: Response) => {
         orderBy: { createdAt: "desc" },
       }),
       prisma.customerHistorie.findMany({ where: { customerId: id } }),
+      prisma.werkstattzettel.findUnique({ where: { customerId: id } }),
+      prisma.user.findUnique({ where: { id: customer.createdBy } }),
+      prisma.workshopNote.findUnique({ where: { userId: userId } }),
     ]);
 
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-      });
-    }
-
+    // 3. Group einlagenAnswers by category
     const einlagenAnswersByCategory = new Map();
     einlagenAnswers.forEach((answer) => {
       if (!einlagenAnswersByCategory.has(answer.category)) {
@@ -914,13 +925,13 @@ export const getCustomerById = async (req: Request, res: Response) => {
           answers: [],
         });
       }
-
       einlagenAnswersByCategory.get(answer.category).answers.push({
         questionId: parseInt(answer.questionId),
         selected: answer.answer,
       });
     });
 
+    // 4. Process screenerFiles images
     const processedScreenerFiles = screenerFiles.map((screener) => {
       const result = { ...screener };
       const imageFields = [
@@ -944,6 +955,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
       return result;
     });
 
+    // 5. Process customer histories images
     const processedHistories = customerHistories.map((history) => ({
       ...history,
       url: history.url ? getImageUrl(history.url) : null,
@@ -955,6 +967,9 @@ export const getCustomerById = async (req: Request, res: Response) => {
       einlagenAnswers: Array.from(einlagenAnswersByCategory.values()),
       screenerFile: processedScreenerFiles,
       customerHistorie: processedHistories,
+      werkstattzettel,
+      partner,
+      workshopNote, // included fetched user
     };
 
     res.status(200).json({
@@ -971,6 +986,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
     });
   }
 };
+
 //----------------------------------------end getCustomerById--------------------------------------------------
 
 export const assignVersorgungToCustomer = async (

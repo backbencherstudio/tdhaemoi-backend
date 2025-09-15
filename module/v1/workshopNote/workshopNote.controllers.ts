@@ -9,7 +9,6 @@ export const manageWorkshopNote = async (req, res) => {
     const {
       employeeId,
       completionDays,
-      pickupLocation,
       sameAsBusiness,
       showCompanyLogo,
       autoShowAfterPrint,
@@ -25,12 +24,17 @@ export const manageWorkshopNote = async (req, res) => {
         where: { id: employeeId },
         select: { employeeName: true },
       });
-     console.log(employee)
+      console.log(employee);
       if (employee) {
         validEmployeeId = employeeId;
         employeeName = employee.employeeName;
       }
     }
+
+    const partner = await prisma.user.findFirst({
+      where: { id: userId },
+      select: { hauptstandort: true },
+    });
 
     const workshopNote = await prisma.workshopNote.upsert({
       where: { userId },
@@ -39,7 +43,7 @@ export const manageWorkshopNote = async (req, res) => {
         employeeId: validEmployeeId,
         employeeName,
         completionDays: completionDays || "5 Werktage",
-        pickupLocation: pickupLocation || null,
+        pickupLocation: sameAsBusiness ? partner?.hauptstandort : null,
         sameAsBusiness: sameAsBusiness ?? true,
         showCompanyLogo: showCompanyLogo ?? true,
         autoShowAfterPrint: autoShowAfterPrint ?? true,
@@ -49,7 +53,7 @@ export const manageWorkshopNote = async (req, res) => {
         employeeId: validEmployeeId,
         employeeName,
         completionDays: completionDays || "5 Werktage",
-        pickupLocation: pickupLocation || null,
+        pickupLocation: sameAsBusiness ? partner?.hauptstandort : null,
         sameAsBusiness: sameAsBusiness ?? true,
         showCompanyLogo: showCompanyLogo ?? true,
         autoShowAfterPrint: autoShowAfterPrint ?? true,
@@ -64,6 +68,36 @@ export const manageWorkshopNote = async (req, res) => {
     });
   } catch (error: any) {
     console.error("manageWorkshopNote error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error?.message,
+    });
+  }
+};
+
+export const getWorkshopNote = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+
+    const workshopNote = await prisma.workshopNote.findUnique({
+      where: { userId },
+    });
+
+    if (!workshopNote) {
+      return res.status(404).json({
+        success: false,
+        message: "Workshop note not found for this user",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Workshop note fetched successfully",
+      data: workshopNote,
+    });
+  } catch (error: any) {
+    console.error("getWorkshopNote error:", error);
     return res.status(500).json({
       success: false,
       message: "Something went wrong",

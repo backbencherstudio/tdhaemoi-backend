@@ -1646,8 +1646,29 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
       });
     }
 
-    const werkstattzettel = await prisma.werkstattzettel.create({
-      data: {
+    const werkstattzettel = await prisma.werkstattzettel.upsert({
+      where: { customerId },
+      update: {
+        kundenName,
+        auftragsDatum: new Date(auftragsDatum),
+        wohnort,
+        telefon,
+        email,
+        geschaeftsstandort,
+        mitarbeiter,
+        fertigstellungBis: fertigstellungBis
+          ? new Date(fertigstellungBis)
+          : null,
+        versorgung,
+        bezahlt: Boolean(bezahlt),
+        fussanalysePreis: fussanalysePreis
+          ? parseFloat(fussanalysePreis)
+          : null,
+        einlagenversorgungPreis: einlagenversorgungPreis
+          ? parseFloat(einlagenversorgungPreis)
+          : null,
+      },
+      create: {
         kundenName,
         auftragsDatum: new Date(auftragsDatum),
         wohnort,
