@@ -878,8 +878,8 @@ export const updateCustomerSpecialFields = async (
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-      const userId = req.user.id;
-    console.log(222222222222222222, userId)
+    const userId = req.user.id;
+    console.log(222222222222222222, userId);
 
     // 1. Fetch customer first
     const customer = await prisma.customers.findUnique({ where: { id } });
@@ -961,6 +961,15 @@ export const getCustomerById = async (req: Request, res: Response) => {
       url: history.url ? getImageUrl(history.url) : null,
     }));
 
+    const processedPartner = partner
+      ? {
+          ...partner,
+          image: partner.image
+            ? getImageUrl(`/uploads/${partner.image}`)
+            : null,
+        }
+      : null;
+
     const customerWithImages = {
       ...customer,
       versorgungen,
@@ -968,7 +977,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
       screenerFile: processedScreenerFiles,
       customerHistorie: processedHistories,
       werkstattzettel,
-      partner,
+      partner: processedPartner,
       workshopNote, // included fetched user
     };
 

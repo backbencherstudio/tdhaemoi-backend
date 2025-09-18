@@ -689,6 +689,14 @@ export const getOrderById = async (req: Request, res: Response) => {
             email: true,
             telefonnummer: true,
             wohnort: true,
+            screenerFile: {
+              orderBy: { updatedAt: "desc" },
+              take: 1,
+              select: {
+                id: true,
+                createdAt: true,
+              },
+            },
           },
         },
         partner: {
