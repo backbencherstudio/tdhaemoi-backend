@@ -13,6 +13,7 @@ export const manageWorkshopNote = async (req, res) => {
       showCompanyLogo,
       autoShowAfterPrint,
       autoApplySupply,
+      
     } = req.body;
 
     let employeeName: string | null = null;

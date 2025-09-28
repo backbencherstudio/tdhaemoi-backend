@@ -672,7 +672,10 @@ export const getAllOrders = async (req: Request, res: Response) => {
   }
 };
 
-export const getOrderById = async (req: Request, res: Response) => {
+
+
+
+export const getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -689,6 +692,8 @@ export const getOrderById = async (req: Request, res: Response) => {
             email: true,
             telefonnummer: true,
             wohnort: true,
+            fusslange1: true,
+            fusslange2: true,
             screenerFile: {
               orderBy: { updatedAt: "desc" },
               take: 1,
@@ -739,20 +744,64 @@ export const getOrderById = async (req: Request, res: Response) => {
       });
     }
 
+    // Get the larger value between the two fusslange values (after adding 5)
+    const getLargerFusslange = (): number | null => {
+      if (order.customer?.fusslange1 === null || order.customer?.fusslange2 === null) {
+        return null;
+      }
+      
+      const fusslange1 = Number(order.customer.fusslange1) + 5;
+      const fusslange2 = Number(order.customer.fusslange2) + 5;
+      
+      // Return the larger value
+      return Math.max(fusslange1, fusslange2);
+    };
+
+    // Find nearest size from langenempfehlung with both size and value
+    const findNearestSize = (value: number | null): { size: string | null; value: number | null } => {
+      if (value === null || !order.product?.langenempfehlung) {
+        return { size: null, value: null };
+      }
+
+      const langenempfehlung = order.product.langenempfehlung;
+      let nearestSize = null;
+      let nearestValue = null;
+      let smallestDifference = Infinity;
+
+      for (const [size, sizeValue] of Object.entries(langenempfehlung)) {
+        const numericValue = Number(sizeValue);
+        const difference = Math.abs(value - numericValue);
+        
+        if (difference < smallestDifference) {
+          smallestDifference = difference;
+          nearestSize = size;
+          nearestValue = numericValue;
+        }
+      }
+
+      return { size: nearestSize, value: nearestValue };
+    };
+
+    const largerFusslange = getLargerFusslange();
+    const nearestSize = findNearestSize(largerFusslange);
+
     const formattedOrder = {
       ...order,
       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
-      partner: order.partner
-        ? {
-            ...order.partner,
-            image: order.partner.image
-              ? getImageUrl(`/uploads/${order.partner.image}`)
-              : null,
-            hauptstandort: order.partner.workshopNote?.sameAsBusiness
-              ? order.partner.hauptstandort
-              : null,
-          }
-        : null,
+      customer: order.customer ? {
+        ...order.customer,
+        // Keep original values
+        fusslange1: order.customer.fusslange1,
+        fusslange2: order.customer.fusslange2,
+        // Add calculated values
+        largerFusslange, // This is the larger value after adding 5
+        recommendedSize: nearestSize
+      } : null,
+      partner: order.partner ? {
+        ...order.partner,
+        image: order.partner.image ? getImageUrl(`/uploads/${order.partner.image}`) : null,
+        hauptstandort: order.partner.workshopNote?.sameAsBusiness ? order.partner.hauptstandort : null,
+      } : null,
     };
 
     res.status(200).json({
@@ -760,7 +809,8 @@ export const getOrderById = async (req: Request, res: Response) => {
       message: "Order fetched successfully",
       data: formattedOrder,
     });
-  } catch (error: any) {
+
+  } catch (error) {
     console.error("Get Order By ID Error:", error);
     res.status(500).json({
       success: false,
@@ -769,6 +819,9 @@ export const getOrderById = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
 
 export const getOrdersByCustomerId = async (req: Request, res: Response) => {
   try {

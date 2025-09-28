@@ -82,6 +82,8 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
     } = req.body;
     const newImage = req.file;
 
+    console.log(weitereStandorte)
+
     const existingUser = await prisma.user.findUnique({
       where: { id: String(id) },
     });

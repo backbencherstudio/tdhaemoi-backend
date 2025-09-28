@@ -20,8 +20,8 @@ model User {
   bankName         String?
   bankNumber       String?
   busnessName      String? // Geschäftspartner Name / Account Name
-  hauptstandort    String? // Hauptstandort
-  weitereStandorte String? // Other locations
+  hauptstandort    String? // Hauptstandort, main location
+  weitereStandorte String[] // Other locations
 
   createdAt              DateTime                @default(now()) @map("created_at")
   updatedAt              DateTime                @updatedAt
@@ -264,6 +264,9 @@ model Versorgungen {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  storeId String?
+  store   Stores? @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([id, name])
   @@index([createdAt])
@@ -563,6 +566,28 @@ enum OrderStatus {
   Einlage_Abholbereit
   Einlage_versandt
   Ausgeführte_Einlagen
+}
+
+model Stores {
+  id             String @id @default(uuid()) // Unique identifier for each store item
+  produktname    String // Product name
+  hersteller     String // Manufacturer
+  artikelnummer  String // Article number / SKU
+  lagerort       String // Storage location / warehouse location
+  mindestbestand Int // Minimum stock level
+  historie       String // History of stock changes
+  groessenMengen Json // Sizes & quantities (e.g., {"S": 10, "M": 20, "L": 15})
+  purchase_price Int // Purchase price
+  selling_price  Int // Selling price
+  Status         String // Status (e.g., "In Stock", "Out of Stock", "Discontinued")
+
+  versorgungen Versorgungen[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([id, produktname])
+  @@map("stores")
 }
 
 // {
