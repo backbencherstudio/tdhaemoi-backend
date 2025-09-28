@@ -17,6 +17,8 @@ import customerHistory from "./customers-history/customersHistory.routes";
 import customerOrders from "./customerOrders/customerOrders.routes";
 import customerPrice from "./customerPrice/customerPrice.routes";
 import workeshopNote from "./workshopNote/workshopNote.routes";
+import storage from "./storage/storage.routes";
+
 import path from "path";
 
 const router = express.Router();
@@ -39,6 +41,7 @@ const moduleRoutes = [
   { path: "/customer-orders", route: customerOrders },
   { path: "/customer-price", route: customerPrice },
   { path: "/workshop-note", route: workeshopNote },
+  { path: "/store", route: storage },
 ];
 
 moduleRoutes.forEach(({ path, route }) => {

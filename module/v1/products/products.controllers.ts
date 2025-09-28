@@ -444,7 +444,11 @@ export const updateProduct = async (req: Request, res: Response) => {
       // Add new images
       if (color.images) {
         for (const image of color.images) {
-          if (image.isNew && files && fileIndex < files.length) {
+          if (
+            image.isNew &&
+            Array.isArray(files) && //change naw
+            fileIndex < files.length
+          ) {
             colorImages.push(files[fileIndex].filename);
             fileIndex++;
           } else if (!image.isNew && image.filename) {
