@@ -209,5 +209,3 @@ curl -X POST http://localhost:3001/customers \
 ```
 
 If anything appears missing or unclear, check the corresponding controller files in `module/v1/*/*.controllers.ts` and `module/v2/*/*.controllers.ts` for payload details.
-
-83
