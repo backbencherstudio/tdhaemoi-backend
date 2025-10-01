@@ -609,8 +609,8 @@ model StoresHistory {
   newStock   Int
   reason     String?
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partnerId String
+  user      User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
   customerId String? // Optional: Link to customer if applicable
   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
@@ -622,7 +622,7 @@ model StoresHistory {
   updatedAt DateTime @updatedAt
 
   @@index([storeId])
-  @@index([userId])
+  @@index([partnerId])
   @@index([createdAt])
   @@index([customerId])
   @@index([orderId])
@@ -630,10 +630,12 @@ model StoresHistory {
 }
 
 enum ChangeType {
-  INCOMING // e.g., deliveries
-  OUTGOING // e.g., sales, reservations
-  CORRECTION // manual adjustments
-  TRANSFER // between storage locations 
+  // INCOMING // e.g., deliveries
+  // OUTGOING // e.g., sales, reservations
+  // CORRECTION // manual adjustments
+  // TRANSFER // between storage locations 
+  sales
+  createStock
 }
 
 // {

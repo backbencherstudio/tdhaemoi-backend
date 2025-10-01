@@ -3,6 +3,78 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+/* VERY IMPORTANT ALSO SHOW CUSTOMER FOR WHICH ONE IN THE HISTORY WE USED THE SIZE FOR4. 🧾 Inventory Movement History (Stock Log)Each product has its own history log showing every stock change:Incoming (e.g. deliveries)Outgoing (e.g. sales, reservations)Corrections (manual adjustments)Transfers (between storage locations)Each entry should include:Date & timeQuantity change (+X or –X)New stock levelUser or system actionOptional: Comment or reason
+
+*/
+
+/*
+model Stores {
+  id             String @id @default(uuid()) // Unique identifier for each store item
+  produktname    String // Product name
+  hersteller     String // Manufacturer
+  artikelnummer  String // Article number / SKU
+  lagerort       String // Storage location / warehouse location
+  mindestbestand Int // Minimum stock level
+
+  groessenMengen Json // Sizes & quantities (e.g., {"S": 10, "M": 20, "L": 15})
+  purchase_price Int // Purchase price
+  selling_price  Int // Selling price
+  Status         String // Status (e.g., "In Stock", "Out of Stock", "Discontinued")
+
+  versorgungen Versorgungen[]
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  storesHistory StoresHistory[] // History of stock changes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([id, produktname])
+  @@map("stores")
+}
+
+model StoresHistory {
+  id      String @id @default(uuid())
+  storeId String
+  store   Stores @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  changeType ChangeType
+  quantity   Int
+  newStock   Int
+  reason     String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  customerId String? // Optional: Link to customer if applicable
+  customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  orderId String? // Optional: Link to order if applicable
+  order   customerOrders? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([customerId])
+  @@index([orderId])
+  @@map("storeshistory")
+}
+
+enum ChangeType {
+  INCOMING // e.g., deliveries
+  OUTGOING // e.g., sales, reservations
+  CORRECTION // manual adjustments
+  TRANSFER // between storage locations 
+}
+
+
+*/
+
 export const createStorage = async (req: Request, res: Response) => {
   try {
     const {
@@ -11,15 +83,14 @@ export const createStorage = async (req: Request, res: Response) => {
       artikelnummer,
       lagerort,
       mindestbestand,
-      historie,
       groessenMengen,
       purchase_price,
       selling_price,
       Status,
     } = req.body;
 
-    const { userId } = req.user;
-
+    const userId = req.user.id;
+    console.log(userId);
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -30,7 +101,6 @@ export const createStorage = async (req: Request, res: Response) => {
       "artikelnummer",
       "lagerort",
       "mindestbestand",
-      "historie",
       "groessenMengen",
       "purchase_price",
       "selling_price",
@@ -51,7 +121,6 @@ export const createStorage = async (req: Request, res: Response) => {
         artikelnummer,
         lagerort,
         mindestbestand,
-        historie,
         groessenMengen,
         purchase_price,
         selling_price,
@@ -67,6 +136,31 @@ export const createStorage = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const getAllMyStorage = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    console.log(userId);
+
+    const allStorage = await prisma.stores.findMany({
+      where: {
+        userId: userId,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "All storage fetched successfully",
+      data: allStorage,
+    });
+  } catch (error) {
     res.status(500).json({
       success: false,
       message: "Something went wrong",

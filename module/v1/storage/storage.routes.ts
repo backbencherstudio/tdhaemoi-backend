@@ -1,9 +1,10 @@
 import express from "express";
-import { createStorage } from "./storage.controllers";
+import { createStorage, getAllMyStorage } from "./storage.controllers";
 import { verifyUser } from "../../../middleware/verifyUsers";
 
 const router = express.Router();
 
-router.get("/create", verifyUser("PARTNER", "ADMIN"), createStorage);
+router.post("/create", verifyUser("PARTNER", "ADMIN"), createStorage);
+router.get("/my/get", verifyUser("PARTNER", "ADMIN"), getAllMyStorage);
 
 export default router;

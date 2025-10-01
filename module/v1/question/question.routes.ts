@@ -5,6 +5,6 @@ import { getQuestionsFlow } from "./question.controllers";
 const router = express.Router();
 
 
-router.get("/:categoryTitle?/:subCategoryTitle?", getQuestionsFlow);
-
+// router.get("/:categoryTitle?/:subCategoryTitle?", getQuestionsFlow);
+router.get("/:categoryTitle/:subCategoryTitle", getQuestionsFlow);
 export default router;
