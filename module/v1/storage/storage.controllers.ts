@@ -149,16 +149,34 @@ export const getAllMyStorage = async (req: Request, res: Response) => {
     const userId = req.user.id;
     console.log(userId);
 
-    const allStorage = await prisma.stores.findMany({
-      where: {
-        userId: userId,
-      },
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalItems = await prisma.stores.count({
+      where: { userId },
     });
+
+    const allStorage = await prisma.stores.findMany({
+      where: { userId },
+      skip,
+      take: limit,
+    });
+
+    const totalPages = Math.ceil(totalItems / limit);
 
     res.status(200).json({
       success: true,
       message: "All storage fetched successfully",
       data: allStorage,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     });
   } catch (error) {
     res.status(500).json({
