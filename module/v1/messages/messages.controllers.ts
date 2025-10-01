@@ -1163,7 +1163,7 @@ export const getSystemInboxMessage = async (req: Request, res: Response) => {
     console.error("Get system inbox message error:", error);
     res.status(500).json({
       success: false,
-      message: "Something went wrong",
+      message: "Something went wrong", 
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }

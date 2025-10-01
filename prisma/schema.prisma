@@ -37,7 +37,9 @@ model User {
   customer_price         customer_price[]
 
   // Mandatory one-to-one relationship
-  workshopNote WorkshopNote?
+  workshopNote  WorkshopNote?
+  stores        Stores[]
+  StoresHistory StoresHistory[]
 
   @@map("users")
 }
@@ -355,8 +357,9 @@ model customers {
   fußanalyse        Float? //ইনসোল $
   einlagenversorgung Float? //Foot analysis $
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  StoresHistory StoresHistory[]
 
   @@index([vorname, nachname])
   @@index([telefonnummer])
@@ -494,6 +497,7 @@ model customerOrders {
 
   werkstattzettel   Werkstattzettel? @relation(fields: [werkstattzettelId], references: [id], onDelete: SetNull, name: "WerkstattzettelOrdersRelation")
   werkstattzettelId String?
+  StoresHistory     StoresHistory[]
 
   @@index([customerId])
   @@index([partnerId])
@@ -575,7 +579,7 @@ model Stores {
   artikelnummer  String // Article number / SKU
   lagerort       String // Storage location / warehouse location
   mindestbestand Int // Minimum stock level
-  historie       String // History of stock changes
+
   groessenMengen Json // Sizes & quantities (e.g., {"S": 10, "M": 20, "L": 15})
   purchase_price Int // Purchase price
   selling_price  Int // Selling price
@@ -583,11 +587,53 @@ model Stores {
 
   versorgungen Versorgungen[]
 
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  storesHistory StoresHistory[] // History of stock changes
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([id, produktname])
   @@map("stores")
+}
+
+model StoresHistory {
+  id      String @id @default(uuid())
+  storeId String
+  store   Stores @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  changeType ChangeType
+  quantity   Int
+  newStock   Int
+  reason     String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  customerId String? // Optional: Link to customer if applicable
+  customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  orderId String? // Optional: Link to order if applicable
+  order   customerOrders? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([customerId])
+  @@index([orderId])
+  @@map("storeshistory")
+}
+
+enum ChangeType {
+  INCOMING // e.g., deliveries
+  OUTGOING // e.g., sales, reservations
+  CORRECTION // manual adjustments
+  TRANSFER // between storage locations 
 }
 
 // {
