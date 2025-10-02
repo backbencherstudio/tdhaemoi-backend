@@ -675,7 +675,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
 
 
 
-export const getOrderById = async (req, res) => {
+export const getOrderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -717,7 +717,6 @@ export const getOrderById = async (req, res) => {
             bankNumber: true,
             busnessName: true,
             hauptstandort: true,
-            weitereStandorte: true,
             workshopNote: {
               select: {
                 id: true,
@@ -735,7 +734,7 @@ export const getOrderById = async (req, res) => {
         },
         product: true,
       },
-    });
+    }) as any;
 
     if (!order) {
       return res.status(404).json({
@@ -800,7 +799,7 @@ export const getOrderById = async (req, res) => {
       partner: order.partner ? {
         ...order.partner,
         image: order.partner.image ? getImageUrl(`/uploads/${order.partner.image}`) : null,
-        hauptstandort: order.partner.workshopNote?.sameAsBusiness ? order.partner.hauptstandort : null,
+        hauptstandort: order.partner.workshopNote?.sameAsBusiness ? order.partner.hauptstandort[0] : null,
       } : null,
     };
 
@@ -1715,7 +1714,7 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
         wohnort,
         telefon,
         email,
-        geschaeftsstandort,
+        geschaeftsstandort: Array.isArray(geschaeftsstandort) ? geschaeftsstandort.join(', ') : geschaeftsstandort,
         mitarbeiter,
         fertigstellungBis: fertigstellungBis
           ? new Date(fertigstellungBis)
@@ -1735,7 +1734,7 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
         wohnort,
         telefon,
         email,
-        geschaeftsstandort,
+        geschaeftsstandort: Array.isArray(geschaeftsstandort) ? geschaeftsstandort.join(', ') : geschaeftsstandort,
         mitarbeiter,
         fertigstellungBis: fertigstellungBis
           ? new Date(fertigstellungBis)

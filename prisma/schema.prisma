@@ -15,13 +15,13 @@ model User {
   image    String?
   role     Role    @default(ADMIN)
 
-  phone            String?
-  absenderEmail    String?
-  bankName         String?
-  bankNumber       String?
-  busnessName      String? // Geschäftspartner Name / Account Name
-  hauptstandort    String? // Hauptstandort, main location
-  weitereStandorte String[] // Other locations
+  phone         String?
+  absenderEmail String?
+  bankName      String?
+  bankNumber    String?
+  busnessName   String? // Geschäftspartner Name / Account Name
+  hauptstandort String[] // Hauptstandort, main location
+  // weitereStandorte String[] // Other locations
 
   createdAt              DateTime                @default(now()) @map("created_at")
   updatedAt              DateTime                @updatedAt
@@ -573,18 +573,33 @@ enum OrderStatus {
 }
 
 model Stores {
-  id             String @id @default(uuid()) // Unique identifier for each store item
-  produktname    String // Product name
-  hersteller     String // Manufacturer
-  artikelnummer  String // Article number / SKU
-  lagerort       String // Storage location / warehouse location
-  mindestbestand Int // Minimum stock level
+  id String @id @default(uuid())
 
-  groessenMengen Json // Sizes & quantities (e.g., {"S": 10, "M": 20, "L": 15})
-  purchase_price Int // Purchase price
-  selling_price  Int // Selling price
-  Status         String // Status (e.g., "In Stock", "Out of Stock", "Discontinued")
+  /// Product name
+  produktname String
 
+  ///  প্রোডাক্টের প্রস্তুতকারক Manufacturer 
+  hersteller String
+
+  /// Article number / SKU
+  artikelnummer String
+
+  /// Storage location / warehouse location এটা আসবে ইউজার মডেলের hauptstandort[] এই অ্যাারে অফ স্ট্রিং থেকে
+  lagerort String
+
+  /// Minimum stock level এটা দিয়ে স্টক ওইয়ারনিং দিবে যদি groessenMengen json এর কোন ভেলু এই int এর নিচে নামে তাহলে এটা স্টকে "Niedriger Bestand" এই wormning দবে যদি এই int এর উপরে নামে তাহলে এটা স্টকে "Voller Bestand" এই wormning দবে
+  mindestbestand Int
+
+  /// Sizes & quantities (e.g., {"S": 10, "M": 20, "L": 15})
+  groessenMengen Json
+
+  purchase_price Int
+  selling_price  Int
+
+  /// এই স্টাটাস ডিপেন্ড করে mindestbestand এর উপর যদি mindestbestand এর উপরে থাকে তাহলে এটা "Voller Bestand" এই স্ট্রিং দিবে যদি mindestbestand এর নিচে থাকে তাহলে এটা "Niedriger Bestand" এই স্ট্রিং দিবে
+  Status String
+
+  /// versorgungen এর সাথে রিলেশন হচ্ছে ID,  Artikelhersteller = hersteller, Rohling Hersteller = Artikelbezeichnung (balance)
   versorgungen Versorgungen[]
 
   userId String

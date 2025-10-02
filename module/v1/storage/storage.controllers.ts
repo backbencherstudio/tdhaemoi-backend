@@ -186,3 +186,69 @@ export const getAllMyStorage = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const updateStorage = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const updatedStorageData = Object.fromEntries(
+      Object.entries(req.body).filter(([_, value]) => value !== undefined)
+    );
+
+    const updatedStorage = await prisma.stores.update({
+      where: { id },
+      data: updatedStorageData,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Storage updated successfully",
+      data: updatedStorage,
+    });
+  } catch (error: any) {
+    console.error("updateStorage error:", error);
+
+    if (error.code === "P2025") {
+      return res.status(404).json({
+        success: false,
+        message: "Storage not found",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const deleteStorage = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const deletedStorage = await prisma.stores.delete({
+      where: { id },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Storage deleted successfully",
+    });
+  } catch (error: any) {
+    if (error.code === "P2025") {
+      res.status(404).json({
+        success: false,
+        message: "Storage not found",
+      });
+      return;
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+

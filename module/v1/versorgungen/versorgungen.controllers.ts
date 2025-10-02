@@ -79,7 +79,7 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       material,
       langenempfehlung,
       status,
-      diagnosis_status,
+      diagnosis_status
     } = req.body;
 
     const missingField = [

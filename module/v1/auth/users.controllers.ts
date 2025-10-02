@@ -264,7 +264,6 @@ export const updateUser = async (req: Request, res: Response) => {
       where: { id: String(id) },
     });
 
-    // await prisma.account.upsert();
     if (!existingUser) {
       if (newImage) {
         fs.unlinkSync(path.join(__dirname, "../../uploads", newImage.filename));
@@ -275,7 +274,6 @@ export const updateUser = async (req: Request, res: Response) => {
       return;
     }
 
-    // Handle file replacement: delete old image if a new one is uploaded
     if (newImage && existingUser.image) {
       const oldImagePath = path.join(
         __dirname,
