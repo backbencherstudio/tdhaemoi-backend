@@ -79,7 +79,8 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       material,
       langenempfehlung,
       status,
-      diagnosis_status
+      diagnosis_status,
+      storeId
     } = req.body;
 
     const missingField = [
@@ -90,6 +91,7 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       "material",
       "langenempfehlung",
       "status",
+      "storeId"
     ].find((field) => !req.body[field]);
 
     if (missingField) {
@@ -141,6 +143,7 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       status,
       diagnosis_status: diagnosis_status || null,
       createdBy: req.user.id,
+      storeId
     };
 
     const newVersorgungen = await prisma.versorgungen.create({

@@ -385,7 +385,7 @@ export const createOrder = async (req: Request, res: Response) => {
     const [customer, versorgung, werkstattzettel] = await Promise.all([
       prisma.customers.findUnique({
         where: { id: customerId },
-        select: { fußanalyse: true, einlagenversorgung: true },
+        select: { fußanalyse: true, einlagenversorgung: true, fusslange1: true, fusslange2: true },
       }),
       prisma.versorgungen.findUnique({
         where: { id: versorgungId },
@@ -398,6 +398,7 @@ export const createOrder = async (req: Request, res: Response) => {
           langenempfehlung: true,
           status: true,
           diagnosis_status: true,
+          storeId: true,
         },
       }),
       prisma.werkstattzettel.findUnique({
@@ -428,10 +429,80 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
 
+    // Compute larger fuss length (+5) and match nearest size from langenempfehlung
+    if (customer.fusslange1 == null || customer.fusslange2 == null) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer fusslange1 or fusslange2 not found",
+      });
+    }
+
+    const largerFusslange = Math.max(Number(customer.fusslange1) + 5, Number(customer.fusslange2) + 5);
+
+    let matchedSizeKey: string | null = null;
+    if (versorgung.langenempfehlung && typeof versorgung.langenempfehlung === "object") {
+      let smallestDiff = Infinity;
+      for (const [sizeKey, sizeVal] of Object.entries(versorgung.langenempfehlung as any)) {
+        const numericVal = Number(sizeVal as any);
+        const diff = Math.abs(largerFusslange - numericVal);
+        if (diff < smallestDiff) {
+          smallestDiff = diff;
+          matchedSizeKey = sizeKey;
+        }
+      }
+    }
+
+    if (!matchedSizeKey) {
+      return res.status(400).json({
+        success: false,
+        message: "Unable to determine nearest size from langenempfehlung",
+      });
+    }
+
     const order = await prisma.$transaction(async (tx) => {
       const customerProduct = await tx.customerProduct.create({
-        data: { ...versorgung },
+        data: {
+          name: versorgung.name,
+          rohlingHersteller: versorgung.rohlingHersteller,
+          artikelHersteller: versorgung.artikelHersteller,
+          versorgung: versorgung.versorgung,
+          material: versorgung.material,
+          langenempfehlung: versorgung.langenempfehlung,
+          status: versorgung.status,
+          diagnosis_status: versorgung.diagnosis_status,
+        },
       });
+
+      // Decrement store stock for the matched size (if storeId present)
+      if (versorgung.storeId) {
+        const store = await tx.stores.findUnique({
+          where: { id: versorgung.storeId },
+          select: { id: true, groessenMengen: true, userId: true },
+        });
+
+        if (store && store.groessenMengen && typeof store.groessenMengen === "object") {
+          const sizes = { ...(store.groessenMengen as any) } as Record<string, number>;
+          const currentQty = Number(sizes[matchedSizeKey] ?? 0);
+          const newQty = currentQty > 0 ? currentQty - 1 : 0;
+          sizes[matchedSizeKey] = newQty;
+
+          await tx.stores.update({
+            where: { id: store.id },
+            data: { groessenMengen: sizes },
+          });
+
+          await tx.storesHistory.create({
+            data: {
+              storeId: store.id,
+              changeType: 'sales',
+              quantity: currentQty > 0 ? 1 : 0,
+              newStock: newQty,
+              reason: `Order size ${matchedSizeKey}`,
+              partnerId: store.userId,
+            },
+          });
+        }
+      }
 
       const newOrder = await tx.customerOrders.create({
         data: {
@@ -458,19 +529,21 @@ export const createOrder = async (req: Request, res: Response) => {
         },
       });
 
-      return newOrder;
+      return { ...newOrder, matchedSizeKey } as any;
     });
 
     return res.status(201).json({
       success: true,
       message: "Order created successfully",
       orderId: order.id,
+      matchedSize: order.matchedSizeKey,
     });
   } catch (error) {
     console.error("Create Order Error:", error);
     return res.status(500).json({
       success: false,
       message: "Something went wrong",
+      error: error.message
     });
   }
 };
@@ -743,7 +816,8 @@ export const getOrderById = async (req: Request, res: Response) => {
       });
     }
 
-    // Get the larger value between the two fusslange values (after adding 5)
+    // পিডিএফ এর লাই লাগে এইডা
+ 
     const getLargerFusslange = (): number | null => {
       if (order.customer?.fusslange1 === null || order.customer?.fusslange2 === null) {
         return null;
@@ -756,7 +830,7 @@ export const getOrderById = async (req: Request, res: Response) => {
       return Math.max(fusslange1, fusslange2);
     };
 
-    // Find nearest size from langenempfehlung with both size and value
+ 
     const findNearestSize = (value: number | null): { size: string | null; value: number | null } => {
       if (value === null || !order.product?.langenempfehlung) {
         return { size: null, value: null };
