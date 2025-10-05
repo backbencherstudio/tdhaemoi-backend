@@ -279,3 +279,99 @@ export const deleteStorage = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getStorageChartData = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+
+    // Optional filters: fromYear, toYear
+    const fromYearParam = req.query.fromYear as string | undefined;
+    const toYearParam = req.query.toYear as string | undefined;
+    const yearParam = req.query.year as string | undefined; // when provided, return monthly breakdown
+    const fromYear = fromYearParam ? parseInt(fromYearParam, 10) : undefined;
+    const toYear = toYearParam ? parseInt(toYearParam, 10) : undefined;
+    const specificYear = yearParam ? parseInt(yearParam, 10) : undefined;
+
+    const stores = await prisma.stores.findMany({
+      where: { userId },
+      select: { purchase_price: true, selling_price: true, createdAt: true },
+    });
+
+    // If a specific year is requested, return monthly data for that year
+    if (specificYear && !isNaN(specificYear)) {
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+
+      const monthToSums = new Array(12).fill(null).map(() => ({ einkauf: 0, verkauf: 0 }));
+
+      for (const s of stores) {
+        const d = new Date(s.createdAt);
+        const y = d.getFullYear();
+        if (y !== specificYear) continue;
+        const m = d.getMonth(); // 0-11
+        monthToSums[m].einkauf += Number(s.purchase_price || 0);
+        monthToSums[m].verkauf += Number(s.selling_price || 0);
+      }
+
+      const data = monthToSums.map((sums, idx) => ({
+        month: monthNames[idx],
+        Einkaufspreis: Math.round(sums.einkauf),
+        Verkaufspreis: Math.round(sums.verkauf),
+        Gewinn: Math.round(sums.verkauf - sums.einkauf),
+      }));
+
+      return res.status(200).json({
+        success: true,
+        message: "Storage chart data (monthly) fetched successfully",
+        year: specificYear,
+        data,
+      });
+    }
+
+    // Default: yearly aggregation (optionally filtered by fromYear/toYear)
+    const yearToSums = new Map<string, { einkauf: number; verkauf: number }>();
+
+    for (const s of stores) {
+      const year = new Date(s.createdAt).getFullYear();
+      if ((fromYear && year < fromYear) || (toYear && year > toYear)) continue;
+      const key = String(year);
+      const entry = yearToSums.get(key) || { einkauf: 0, verkauf: 0 };
+      entry.einkauf += Number(s.purchase_price || 0);
+      entry.verkauf += Number(s.selling_price || 0);
+      yearToSums.set(key, entry);
+    }
+
+    const data = Array.from(yearToSums.entries())
+      .map(([year, sums]) => ({
+        year,
+        Einkaufspreis: Math.round(sums.einkauf),
+        Verkaufspreis: Math.round(sums.verkauf),
+        Gewinn: Math.round(sums.verkauf - sums.einkauf),
+      }))
+      .sort((a, b) => Number(a.year) - Number(b.year));
+
+    res.status(200).json({
+      success: true,
+      message: "Storage chart data fetched successfully",
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
