@@ -648,6 +648,7 @@ export const createOrder = async (req: Request, res: Response) => {
 //   }
 // };
 
+
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
@@ -744,8 +745,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
     });
   }
 };
-
-
 
 
 export const getOrderById = async (req: Request, res: Response) => {
@@ -894,8 +893,6 @@ export const getOrderById = async (req: Request, res: Response) => {
 };
 
 
-
-
 export const getOrdersByCustomerId = async (req: Request, res: Response) => {
   try {
     const { customerId } = req.params;
@@ -982,6 +979,7 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
     });
   }
 };
+
 
 export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
@@ -1589,6 +1587,7 @@ export const deleteOrder = async (req: Request, res: Response) => {
   }
 };
 
+
 export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
   try {
     const fortyDaysAgo = new Date();
@@ -1884,3 +1883,5 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
     });
   }
 };
+
+

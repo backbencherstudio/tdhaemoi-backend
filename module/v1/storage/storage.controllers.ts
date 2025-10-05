@@ -187,6 +187,34 @@ export const getAllMyStorage = async (req: Request, res: Response) => {
   }
 };
 
+export const getSingleStorage = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const storeId = req.params.id;
+
+    const totalItems = await prisma.stores.count({
+      where: { userId },
+    });
+
+    const data = await prisma.stores.findFirst({
+      where: { userId, id: storeId },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "storage fetched successfully",
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+
 export const updateStorage = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -251,4 +279,3 @@ export const deleteStorage = async (req: Request, res: Response) => {
     });
   }
 };
-
