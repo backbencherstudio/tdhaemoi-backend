@@ -114,12 +114,12 @@ model appointment {
   employeId     String?
   duration      Float?
 
-  details       String
-  isClient      Boolean?
-  userId        String
-  customerId    String?
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt     DateTime @default(now())
+  details    String
+  isClient   Boolean?
+  userId     String
+  customerId String?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 
   @@map("appointment")
 }
@@ -254,8 +254,8 @@ model WorkshopNote {
 }
 
 model Versorgungen {
-  id                String @id @default(uuid())
-  name              String
+  id   String @id @default(uuid())
+  name String
 
   /// Rohling Hersteller is come form "Stores in  produktname" field
   rohlingHersteller String
@@ -326,6 +326,13 @@ model customers {
   email          String  @unique
   telefonnummer  String?
   wohnort        String?
+
+  gender       Gender?
+  geburtsdatum String?
+  straße      String?
+  land         String?
+  ort          String?
+  telefon      String?
 
   screenerFile screener_file[]
 
@@ -428,7 +435,7 @@ model customerHistorie {
   customer   customers     @relation(fields: [customerId], references: [id], onDelete: Cascade)
   category   EventCategory
 
-  date       DateTime?
+  date DateTime?
 
   url       String?
   methord   String?

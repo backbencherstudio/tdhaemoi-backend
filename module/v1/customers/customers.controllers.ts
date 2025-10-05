@@ -653,6 +653,12 @@ export const updateCustomer = async (req: Request, res: Response) => {
       sonstiges,
       einlagenversorgung,
       fußanalyse,
+      gender,
+      geburtsdatum,
+      straße,
+      land,
+      ort,
+      telefon,
     } = req.body;
 
     const updateData = {
@@ -684,7 +690,18 @@ export const updateCustomer = async (req: Request, res: Response) => {
 
       einlagenversorgung: einlagenversorgung || existing.einlagenversorgung,
       fußanalyse: fußanalyse || existing.fußanalyse,
+
+      gender: gender ?? existing.gender,
+      geburtsdatum: geburtsdatum ?? existing.geburtsdatum,
+      straße: straße ?? existing.straße,
+      land: land ?? existing.land,
+      ort: ort ?? existing.ort,
+      telefon: telefon ?? existing.telefon,
+
+
       updatedBy: req.user.id,
+
+      
     };
 
     const updatedCustomer = await prisma.customers.update({
