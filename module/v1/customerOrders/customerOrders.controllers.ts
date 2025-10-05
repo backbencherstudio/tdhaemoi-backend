@@ -385,7 +385,12 @@ export const createOrder = async (req: Request, res: Response) => {
     const [customer, versorgung, werkstattzettel] = await Promise.all([
       prisma.customers.findUnique({
         where: { id: customerId },
-        select: { fußanalyse: true, einlagenversorgung: true, fusslange1: true, fusslange2: true },
+        select: {
+          fußanalyse: true,
+          einlagenversorgung: true,
+          fusslange1: true,
+          fusslange2: true,
+        },
       }),
       prisma.versorgungen.findUnique({
         where: { id: versorgungId },
@@ -437,12 +442,20 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    const largerFusslange = Math.max(Number(customer.fusslange1) + 5, Number(customer.fusslange2) + 5);
+    const largerFusslange = Math.max(
+      Number(customer.fusslange1) + 5,
+      Number(customer.fusslange2) + 5
+    );
 
     let matchedSizeKey: string | null = null;
-    if (versorgung.langenempfehlung && typeof versorgung.langenempfehlung === "object") {
+    if (
+      versorgung.langenempfehlung &&
+      typeof versorgung.langenempfehlung === "object"
+    ) {
       let smallestDiff = Infinity;
-      for (const [sizeKey, sizeVal] of Object.entries(versorgung.langenempfehlung as any)) {
+      for (const [sizeKey, sizeVal] of Object.entries(
+        versorgung.langenempfehlung as any
+      )) {
         const numericVal = Number(sizeVal as any);
         const diff = Math.abs(largerFusslange - numericVal);
         if (diff < smallestDiff) {
@@ -480,8 +493,15 @@ export const createOrder = async (req: Request, res: Response) => {
           select: { id: true, groessenMengen: true, userId: true },
         });
 
-        if (store && store.groessenMengen && typeof store.groessenMengen === "object") {
-          const sizes = { ...(store.groessenMengen as any) } as Record<string, number>;
+        if (
+          store &&
+          store.groessenMengen &&
+          typeof store.groessenMengen === "object"
+        ) {
+          const sizes = { ...(store.groessenMengen as any) } as Record<
+            string,
+            number
+          >;
           const currentQty = Number(sizes[matchedSizeKey] ?? 0);
           const newQty = currentQty > 0 ? currentQty - 1 : 0;
           sizes[matchedSizeKey] = newQty;
@@ -494,7 +514,7 @@ export const createOrder = async (req: Request, res: Response) => {
           await tx.storesHistory.create({
             data: {
               storeId: store.id,
-              changeType: 'sales',
+              changeType: "sales",
               quantity: currentQty > 0 ? 1 : 0,
               newStock: newQty,
               reason: `Order size ${matchedSizeKey}`,
@@ -543,7 +563,7 @@ export const createOrder = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -648,7 +668,6 @@ export const createOrder = async (req: Request, res: Response) => {
 //   }
 // };
 
-
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
@@ -746,12 +765,11 @@ export const getAllOrders = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getOrderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const order = await prisma.customerOrders.findUnique({
+    const order = (await prisma.customerOrders.findUnique({
       where: { id },
       include: {
         werkstattzettel: true,
@@ -766,6 +784,9 @@ export const getOrderById = async (req: Request, res: Response) => {
             wohnort: true,
             fusslange1: true,
             fusslange2: true,
+            gender: true,
+            geburtsdatum: true,
+            
             screenerFile: {
               orderBy: { updatedAt: "desc" },
               take: 1,
@@ -806,7 +827,7 @@ export const getOrderById = async (req: Request, res: Response) => {
         },
         product: true,
       },
-    }) as any;
+    })) as any;
 
     if (!order) {
       return res.status(404).json({
@@ -816,21 +837,25 @@ export const getOrderById = async (req: Request, res: Response) => {
     }
 
     // পিডিএফ এর লাই লাগে এইডা
- 
+
     const getLargerFusslange = (): number | null => {
-      if (order.customer?.fusslange1 === null || order.customer?.fusslange2 === null) {
+      if (
+        order.customer?.fusslange1 === null ||
+        order.customer?.fusslange2 === null
+      ) {
         return null;
       }
-      
+
       const fusslange1 = Number(order.customer.fusslange1) + 5;
       const fusslange2 = Number(order.customer.fusslange2) + 5;
-      
+
       // Return the larger value
       return Math.max(fusslange1, fusslange2);
     };
 
- 
-    const findNearestSize = (value: number | null): { size: string | null; value: number | null } => {
+    const findNearestSize = (
+      value: number | null
+    ): { size: string | null; value: number | null } => {
       if (value === null || !order.product?.langenempfehlung) {
         return { size: null, value: null };
       }
@@ -843,7 +868,7 @@ export const getOrderById = async (req: Request, res: Response) => {
       for (const [size, sizeValue] of Object.entries(langenempfehlung)) {
         const numericValue = Number(sizeValue);
         const difference = Math.abs(value - numericValue);
-        
+
         if (difference < smallestDifference) {
           smallestDifference = difference;
           nearestSize = size;
@@ -860,20 +885,28 @@ export const getOrderById = async (req: Request, res: Response) => {
     const formattedOrder = {
       ...order,
       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
-      customer: order.customer ? {
-        ...order.customer,
-        // Keep original values
-        fusslange1: order.customer.fusslange1,
-        fusslange2: order.customer.fusslange2,
-        // Add calculated values
-        largerFusslange, // This is the larger value after adding 5
-        recommendedSize: nearestSize
-      } : null,
-      partner: order.partner ? {
-        ...order.partner,
-        image: order.partner.image ? getImageUrl(`/uploads/${order.partner.image}`) : null,
-        hauptstandort: order.partner.workshopNote?.sameAsBusiness ? order.partner.hauptstandort[0] : null,
-      } : null,
+      customer: order.customer
+        ? {
+            ...order.customer,
+            // Keep original values
+            fusslange1: order.customer.fusslange1,
+            fusslange2: order.customer.fusslange2,
+            // Add calculated values
+            largerFusslange, // This is the larger value after adding 5
+            recommendedSize: nearestSize,
+          }
+        : null,
+      partner: order.partner
+        ? {
+            ...order.partner,
+            image: order.partner.image
+              ? getImageUrl(`/uploads/${order.partner.image}`)
+              : null,
+            hauptstandort: order.partner.workshopNote?.sameAsBusiness
+              ? order.partner.hauptstandort[0]
+              : null,
+          }
+        : null,
     };
 
     res.status(200).json({
@@ -881,7 +914,6 @@ export const getOrderById = async (req: Request, res: Response) => {
       message: "Order fetched successfully",
       data: formattedOrder,
     });
-
   } catch (error) {
     console.error("Get Order By ID Error:", error);
     res.status(500).json({
@@ -891,7 +923,6 @@ export const getOrderById = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 export const getOrdersByCustomerId = async (req: Request, res: Response) => {
   try {
@@ -979,7 +1010,6 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
@@ -1587,7 +1617,6 @@ export const deleteOrder = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
   try {
     const fortyDaysAgo = new Date();
@@ -1787,7 +1816,9 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
         wohnort,
         telefon,
         email,
-        geschaeftsstandort: Array.isArray(geschaeftsstandort) ? geschaeftsstandort.join(', ') : geschaeftsstandort,
+        geschaeftsstandort: Array.isArray(geschaeftsstandort)
+          ? geschaeftsstandort.join(", ")
+          : geschaeftsstandort,
         mitarbeiter,
         fertigstellungBis: fertigstellungBis
           ? new Date(fertigstellungBis)
@@ -1807,7 +1838,9 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
         wohnort,
         telefon,
         email,
-        geschaeftsstandort: Array.isArray(geschaeftsstandort) ? geschaeftsstandort.join(', ') : geschaeftsstandort,
+        geschaeftsstandort: Array.isArray(geschaeftsstandort)
+          ? geschaeftsstandort.join(", ")
+          : geschaeftsstandort,
         mitarbeiter,
         fertigstellungBis: fertigstellungBis
           ? new Date(fertigstellungBis)
@@ -1883,5 +1916,3 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
     });
   }
 };
-
-
