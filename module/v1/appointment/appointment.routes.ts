@@ -6,7 +6,8 @@ import {
   updateAppointment,
   deleteAppointment,
   getMyAppointments,
-  getSystemAppointment
+  getSystemAppointment,
+  getAvailableTimeSlots
 } from "./appointment.controllers";
 
 import { verifyUser } from "../../../middleware/verifyUsers";
@@ -19,6 +20,8 @@ router.get(
   "/system-appointment/:customerId/:appointmentId",
   getSystemAppointment
 );
+
+router.get("/available-slots", verifyUser("PARTNER", "ADMIN"), getAvailableTimeSlots);
 
 router.get("/", verifyUser("ADMIN"), getAllAppointments);
 

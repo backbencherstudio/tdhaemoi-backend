@@ -3,22 +3,162 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// model appointment {
-//   id            String   @id @default(uuid())
-//   customer_name String
-//   time          String
-//   date          DateTime
-//   reason        String
-//   assignedTo    String
-//   details       String
-//   isClient      Boolean?
-//   userId        String
-//   customerId    String?
-//   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   createdAt     DateTime @default(now())
 
-//   @@map("appointment")
-// }
+///using ai------------------------------------------------------------------------------------
+// Helper function to check for overlapping appointments
+const checkAppointmentOverlap = async (
+  employeeId: string,
+  date: Date,
+  time: string,
+  duration: number,
+  excludeAppointmentId?: string
+) => {
+  // Parse the time string (assuming format like "14:30" or "2:30 PM")
+  const [timeStr, period] = time.includes(' ') ? time.split(' ') : [time, ''];
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  
+  let startHour = hours;
+  if (period.toLowerCase() === 'pm' && hours !== 12) {
+    startHour += 12;
+  } else if (period.toLowerCase() === 'am' && hours === 12) {
+    startHour = 0;
+  }
+  
+  const startTime = new Date(date);
+  startTime.setHours(startHour, minutes, 0, 0);
+  
+  const endTime = new Date(startTime);
+  endTime.setHours(startTime.getHours() + duration);
+  
+  // Check for overlapping appointments
+  const overlappingAppointments = await prisma.appointment.findMany({
+    where: {
+      employeId: employeeId,
+      date: {
+        gte: new Date(date.getFullYear(), date.getMonth(), date.getDate()),
+        lt: new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1),
+      },
+      ...(excludeAppointmentId && { id: { not: excludeAppointmentId } }),
+    },
+  });
+  
+  for (const appointment of overlappingAppointments) {
+    const [existingTimeStr, existingPeriod] = appointment.time.includes(' ') 
+      ? appointment.time.split(' ') 
+      : [appointment.time, ''];
+    const [existingHours, existingMinutes] = existingTimeStr.split(':').map(Number);
+    
+    let existingStartHour = existingHours;
+    if (existingPeriod.toLowerCase() === 'pm' && existingHours !== 12) {
+      existingStartHour += 12;
+    } else if (existingPeriod.toLowerCase() === 'am' && existingHours === 12) {
+      existingStartHour = 0;
+    }
+    
+    const existingStartTime = new Date(appointment.date);
+    existingStartTime.setHours(existingStartHour, existingMinutes, 0, 0);
+    
+    const existingEndTime = new Date(existingStartTime);
+    existingEndTime.setHours(existingStartTime.getHours() + (appointment.duration || 1));
+    
+    // Check if appointments overlap
+    if (
+      (startTime < existingEndTime && endTime > existingStartTime) ||
+      (startTime.getTime() === existingStartTime.getTime())
+    ) {
+      return {
+        hasOverlap: true,
+        conflictingAppointment: appointment,
+        message: `Employee ${appointment.assignedTo} already has an appointment from ${appointment.time} to ${existingEndTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} on this date.`
+      };
+    }
+  }
+  
+  return { hasOverlap: false };
+};
+
+// Helper function to get available time slots for an employee on a specific date
+export const getAvailableTimeSlots = async (req: Request, res: Response) => {
+  try {
+    const { employeId, date } = req.query;
+    
+    if (!employeId || !date) {
+      res.status(400).json({
+        success: false,
+        message: "employeId and date are required",
+      });
+      return;
+    }
+
+    const appointmentDate = new Date(date as string);
+    
+    // Get all appointments for the employee on the specified date
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        employeId: employeId as string,
+        date: {
+          gte: new Date(appointmentDate.getFullYear(), appointmentDate.getMonth(), appointmentDate.getDate()),
+          lt: new Date(appointmentDate.getFullYear(), appointmentDate.getMonth(), appointmentDate.getDate() + 1),
+        },
+      },
+      orderBy: {
+        time: 'asc',
+      },
+    });
+
+    // Generate available time slots (assuming 8 AM to 6 PM working hours)
+    const workingHours = 8; // 8 AM
+    const workingEndHours = 18; // 6 PM
+    const slotDuration = 0.5; // 30 minutes slots
+    const availableSlots = [];
+
+    for (let hour = workingHours; hour < workingEndHours; hour += slotDuration) {
+      const slotTime = `${Math.floor(hour).toString().padStart(2, '0')}:${hour % 1 === 0 ? '00' : '30'}`;
+      
+      // Check if this slot conflicts with existing appointments
+      const hasConflict = appointments.some(appointment => {
+        const [appTimeStr, appPeriod] = appointment.time.includes(' ') 
+          ? appointment.time.split(' ') 
+          : [appointment.time, ''];
+        const [appHours, appMinutes] = appTimeStr.split(':').map(Number);
+        
+        let appStartHour = appHours;
+        if (appPeriod.toLowerCase() === 'pm' && appHours !== 12) {
+          appStartHour += 12;
+        } else if (appPeriod.toLowerCase() === 'am' && appHours === 12) {
+          appStartHour = 0;
+        }
+        
+        const appEndHour = appStartHour + (appointment.duration || 1);
+        
+        return hour >= appStartHour && hour < appEndHour;
+      });
+
+      if (!hasConflict) {
+        availableSlots.push(slotTime);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      availableSlots,
+      existingAppointments: appointments.map(app => ({
+        id: app.id,
+        time: app.time,
+        duration: app.duration || 1,
+        customer_name: app.customer_name,
+        reason: app.reason,
+      })),
+    });
+  } catch (error) {
+    console.error("Get available time slots error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
 
 // Create appointment
 export const createAppointment = async (req: Request, res: Response) => {
@@ -30,6 +170,8 @@ export const createAppointment = async (req: Request, res: Response) => {
       date,
       reason,
       assignedTo,
+      employeId,
+      duration,
       details,
       isClient,
     } = req.body;
@@ -52,6 +194,35 @@ export const createAppointment = async (req: Request, res: Response) => {
       return;
     }
 
+    // Validate duration
+    const appointmentDuration = duration || 1; // Default to 1 hour if not provided
+    if (appointmentDuration <= 0) {
+      res.status(400).json({
+        success: false,
+        message: "Duration must be greater than 0",
+      });
+      return;
+    }
+
+    // Check for overlapping appointments if employeId is provided
+    if (employeId) {
+      const overlapCheck = await checkAppointmentOverlap(
+        employeId,
+        new Date(date),
+        time,
+        appointmentDuration
+      );
+
+      if (overlapCheck.hasOverlap) {
+        res.status(409).json({
+          success: false,
+          message: overlapCheck.message,
+          data: overlapCheck.conflictingAppointment,
+        });
+        return;
+      }
+    }
+
     const appointmentData: any = {
       customer_name,
       time,
@@ -61,7 +232,12 @@ export const createAppointment = async (req: Request, res: Response) => {
       details,
       userId: id,
       customerId,
+      duration: appointmentDuration,
     };
+
+    if (employeId) {
+      appointmentData.employeId = employeId;
+    }
 
     if (typeof isClient !== "undefined") {
       appointmentData.isClient = isClient;
@@ -72,23 +248,33 @@ export const createAppointment = async (req: Request, res: Response) => {
     });
 
     if (isClient && customerId) {
-      const formattedDate = new Date(date).toLocaleDateString("de-DE", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-
-      console.log("heat");
-      await prisma.customerHistorie.create({
-        data: {
-          customerId,
-          category: "Termin",
-          url: `/appointment/system-appointment/${customerId}/${appointment.id}`,
-          methord: "GET",
-          system_note: `Termin zur Laufanalyse am ${formattedDate}`,
-        },
+      const customerExists = await prisma.customers.findUnique({
+        where: { id: customerId },
         select: { id: true },
       });
+
+      if (!customerExists) {
+        console.warn(
+          `Customer with ID ${customerId} not found. Skipping history creation.`
+        );
+      } else {
+        const formattedDate = new Date(date).toLocaleDateString("de-DE", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+
+        await prisma.customerHistorie.create({
+          data: {
+            customerId,
+            category: "Termin",
+            url: `/appointment/system-appointment/${customerId}/${appointment.id}`,
+            methord: "GET",
+            system_note: `Termin zur Laufanalyse am ${formattedDate}`,
+          },
+          select: { id: true },
+        });
+      }
     }
 
     res.status(201).json({
@@ -105,6 +291,7 @@ export const createAppointment = async (req: Request, res: Response) => {
     });
   }
 };
+///------------------------------------------------------------------------------------
 
 // controllers/appointment.ts
 
@@ -223,8 +410,17 @@ export const getAppointmentById = async (req: Request, res: Response) => {
 export const updateAppointment = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { customer_name, time, date, reason, assignedTo, details, isClient } =
-      req.body;
+    const { 
+      customer_name, 
+      time, 
+      date, 
+      reason, 
+      assignedTo, 
+      employeId,
+      duration,
+      details, 
+      isClient 
+    } = req.body;
 
     const existingAppointment = await prisma.appointment.findUnique({
       where: { id },
@@ -238,14 +434,56 @@ export const updateAppointment = async (req: Request, res: Response) => {
       return;
     }
 
+    // Use provided values or fall back to existing values
+    const updatedTime = time || existingAppointment.time;
+    const updatedDate = date ? new Date(date) : existingAppointment.date;
+    const updatedEmployeId = employeId || existingAppointment.employeId;
+    const updatedDuration = duration !== undefined ? duration : (existingAppointment.duration || 1);
+
+    // Validate duration
+    if (updatedDuration <= 0) {
+      res.status(400).json({
+        success: false,
+        message: "Duration must be greater than 0",
+      });
+      return;
+    }
+
+    // Check for overlapping appointments if employeId is provided and time/date/duration changed
+    if (updatedEmployeId && (
+      time !== undefined || 
+      date !== undefined || 
+      duration !== undefined ||
+      employeId !== undefined
+    )) {
+      const overlapCheck = await checkAppointmentOverlap(
+        updatedEmployeId,
+        updatedDate,
+        updatedTime,
+        updatedDuration,
+        id // Exclude current appointment from overlap check
+      );
+
+      if (overlapCheck.hasOverlap) {
+        res.status(409).json({
+          success: false,
+          message: overlapCheck.message,
+          conflictingAppointment: overlapCheck.conflictingAppointment,
+        });
+        return;
+      }
+    }
+
     const updatedAppointment = await prisma.appointment.update({
       where: { id },
       data: {
         customer_name: customer_name || existingAppointment.customer_name,
-        time: time || existingAppointment.time,
-        date: date ? new Date(date) : existingAppointment.date,
+        time: updatedTime,
+        date: updatedDate,
         reason: reason || existingAppointment.reason,
         assignedTo: assignedTo || existingAppointment.assignedTo,
+        employeId: updatedEmployeId,
+        duration: updatedDuration,
         details: details || existingAppointment.details,
         isClient:
           isClient !== undefined ? isClient : existingAppointment.isClient,
