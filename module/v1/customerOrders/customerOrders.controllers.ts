@@ -1393,7 +1393,14 @@ export const uploadInvoiceOnly = async (req: Request, res: Response) => {
 export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
-    const { email } = req.body; // Optional: override customer email
+    
+    // Check if req.body exists and has email property
+    const email = req.body?.email; // Optional: override customer email
+
+    // console.log("Request body:", req.body);
+    // console.log("Email from body:", email);
+    // console.log("Request headers:", req.headers);
+    // console.log("Content-Type:", req.headers['content-type']);
 
     const order = await prisma.customerOrders.findUnique({
       where: { id: orderId },
