@@ -43,7 +43,9 @@ app.use(
       "https://indie-granted-charlotte-televisions.trycloudflare.com",
       "https://available-recommends-programmer-spiritual.trycloudflare.com",
       "https://tdhaemoi-partner-dashbaord.vercel.app",
-      'https://flux-genius-std-treatments.trycloudflare.com'
+      'https://flux-genius-std-treatments.trycloudflare.com',
+      'https://tdhaemoi-landing-page.vercel.app',
+      'https://regarded-dictionaries-worlds-restricted.trycloudflare.com'
     ],
   })
 );

@@ -16,7 +16,7 @@ import upload from "../../../config/multer.config";
 
 const router = express.Router();
 
-router.post("/create", verifyUser("ADMIN"), createPartnership);
+router.post("/create", verifyUser("ADMIN"), upload.single("image"), createPartnership);
 
 router.patch(
   "/update-partner-profile",

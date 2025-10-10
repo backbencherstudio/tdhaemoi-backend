@@ -16,19 +16,7 @@ const prisma = new PrismaClient();
 
 export const createPartnership = async (req: Request, res: Response) => {
   try {
-    const {
-      email,
-      password,
-      name,
-      phone,
-      absenderEmail,
-      bankName,
-      bankNumber,
-      busnessName,
-      hauptstandort,
-    } = req.body;
-
-    const newImage = req.file;
+    const { email, password } = req.body;
 
     const missingField = ["email", "password"].find(
       (field) => !req.body[field]
@@ -53,27 +41,11 @@ export const createPartnership = async (req: Request, res: Response) => {
     }
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const parsedHauptstandort: string[] | undefined = Array.isArray(
-      hauptstandort
-    )
-      ? (hauptstandort as string[])
-      : typeof hauptstandort === "string" && hauptstandort.trim().length > 0
-      ? hauptstandort.split(",").map((s: string) => s.trim()).filter(Boolean)
-      : undefined;
-
     const partnership = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         role: "PARTNER",
-        name: name ?? undefined,
-        phone: phone ?? undefined,
-        absenderEmail: absenderEmail ?? undefined,
-        bankName: bankName ?? undefined,
-        bankNumber: bankNumber ?? undefined,
-        busnessName: busnessName ?? undefined,
-        hauptstandort: parsedHauptstandort ?? [],
-        image: newImage ? newImage.filename : undefined,
       },
     });
 
@@ -83,12 +55,7 @@ export const createPartnership = async (req: Request, res: Response) => {
     res.status(201).json({
       success: true,
       message: "Partnership created successfully",
-      partnership: {
-        ...partnership,
-        image: partnership.image
-          ? getImageUrl(`/uploads/${partnership.image}`)
-          : null,
-      },
+      partnership,
     });
   } catch (error) {
     console.error("Partnership creation error:", error);
@@ -99,6 +66,8 @@ export const createPartnership = async (req: Request, res: Response) => {
     });
   }
 };
+
+
 
 export const updatePartnerProfile = async (req: Request, res: Response) => {
   try {
@@ -317,18 +286,7 @@ export const updatePartnerByAdmin = async (
   res: Response
 ): Promise<void> => {
   const { id } = req.params;
-  const {
-    name,
-    email,
-    password,
-    phone,
-    absenderEmail,
-    bankName,
-    bankNumber,
-    busnessName,
-    hauptstandort,
-    role,
-  } = req.body;
+  const { name, email, password } = req.body;
   const newImage = req.file;
 
   try {
@@ -385,33 +343,13 @@ export const updatePartnerByAdmin = async (
       if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
     }
 
-    // Parse hauptstandort from string or array
-    const parsedHauptstandort: string[] | undefined = Array.isArray(
-      hauptstandort
-    )
-      ? (hauptstandort as string[])
-      : typeof hauptstandort === "string" && hauptstandort.trim().length > 0
-      ? hauptstandort.split(",").map((s: string) => s.trim()).filter(Boolean)
-      : undefined;
-
-    // Validate role if provided
-    const allowedRoles = new Set(["ADMIN", "USER", "PARTNER"]);
-    const nextRole = role && allowedRoles.has(role) ? (role as any) : undefined;
-
     const updated = await prisma.user.update({
       where: { id },
       data: {
-        name: name ?? user.name,
-        email: email ?? user.email,
+        name: name || user.name,
+        email: email || user.email,
         password: updatedPassword,
         image: newImage ? newImage.filename : user.image,
-        phone: phone ?? user.phone,
-        absenderEmail: absenderEmail ?? user.absenderEmail,
-        bankName: bankName ?? user.bankName,
-        bankNumber: bankNumber ?? user.bankNumber,
-        busnessName: busnessName ?? user.busnessName,
-        hauptstandort: parsedHauptstandort ?? user.hauptstandort,
-        role: nextRole ?? user.role,
       },
     });
 
@@ -422,14 +360,9 @@ export const updatePartnerByAdmin = async (
         id: updated.id,
         name: updated.name,
         email: updated.email,
+        password,
         role: updated.role,
         image: updated.image ? getImageUrl(`/uploads/${updated.image}`) : null,
-        phone: updated.phone,
-        absenderEmail: updated.absenderEmail,
-        bankName: updated.bankName,
-        bankNumber: updated.bankNumber,
-        busnessName: updated.busnessName,
-        hauptstandort: updated.hauptstandort,
       },
     });
   } catch (error) {
