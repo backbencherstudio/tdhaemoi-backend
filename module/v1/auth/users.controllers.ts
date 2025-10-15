@@ -175,6 +175,8 @@ export const loginUser = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
+
+
     const missingField = ["email", "password"].find(
       (field) => !req.body[field]
     );

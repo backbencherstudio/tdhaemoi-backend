@@ -1624,15 +1624,156 @@ export const deleteOrder = async (req: Request, res: Response) => {
   }
 };
 
+
+// export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
+//   try {
+//     // today
+//     const today = new Date();
+
+//     // start: 70 days ago
+//     const seventyDaysAgo = new Date();
+//     seventyDaysAgo.setDate(today.getDate() - 70);
+
+//     // end: 40 days ago
+//     const fortyDaysAgo = new Date();
+//     fortyDaysAgo.setDate(today.getDate() - 40);
+
+//     const { status, includeAll } = req.query;
+//     let statusFilter: any = {};
+
+//     if (status && typeof status === "string") {
+//       statusFilter.orderStatus = status;
+//     } else if (includeAll === "false") {
+//       statusFilter.orderStatus = {
+//         in: ["Ausgeführte_Einlagen", "Einlage_versandt", "Einlage_Abholbereit"],
+//       };
+//     }
+
+//     // 🧾 Fetch orders from 70–40 days ago
+//     const allOrders = await prisma.customerOrders.findMany({
+//       where: {
+//         createdAt: {
+//           gte: seventyDaysAgo,
+//           lt: fortyDaysAgo,
+//         },
+//         ...statusFilter,
+//       },
+//       select: {
+//         totalPrice: true,
+//         createdAt: true,
+//       },
+//     });
+
+//     // 📅 Generate date range (previous 30 days window)
+//     const dateRange = Array.from({ length: 30 }, (_, i) => {
+//       const date = new Date();
+//       date.setDate(date.getDate() - (70 - i)); // 70 → 41 days ago
+//       return date.toISOString().split("T")[0];
+//     });
+
+//     const revenueMap = new Map();
+
+//     allOrders.forEach((order) => {
+//       const dateKey = order.createdAt.toISOString().split("T")[0];
+//       const existing = revenueMap.get(dateKey) || { revenue: 0, count: 0 };
+//       revenueMap.set(dateKey, {
+//         revenue: existing.revenue + (order.totalPrice || 0),
+//         count: existing.count + 1,
+//       });
+//     });
+
+//     const chartData = dateRange.map((dateKey) => {
+//       const dayData = revenueMap.get(dateKey) || { revenue: 0, count: 0 };
+//       return {
+//         date: formatChartDate(dateKey),
+//         value: Math.round(dayData.revenue),
+//       };
+//     });
+
+//     // 📊 Compute totals and averages
+//     let totalRevenue = 0;
+//     let maxRevenue = 0;
+//     let minRevenue = Infinity;
+//     let totalOrders = 0;
+
+//     for (const dayData of revenueMap.values()) {
+//       const revenue = dayData.revenue;
+//       totalRevenue += revenue;
+//       totalOrders += dayData.count;
+//       if (revenue > maxRevenue) maxRevenue = revenue;
+//       if (revenue < minRevenue) minRevenue = revenue;
+//     }
+
+//     if (minRevenue === Infinity) minRevenue = 0;
+
+//     const averageDailyRevenue = Math.round(totalRevenue / 30);
+//     const maxRevenueDay =
+//       chartData.find((day) => Math.round(maxRevenue) === day.value) ||
+//       chartData[0];
+//     const minRevenueDay =
+//       chartData.find((day) => Math.round(minRevenue) === day.value) ||
+//       chartData[0];
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Previous 30 days order statistics fetched successfully",
+//       data: {
+//         chartData,
+//         statistics: {
+//           totalRevenue: Math.round(totalRevenue),
+//           averageDailyRevenue,
+//           maxRevenueDay,
+//           minRevenueDay,
+//           totalOrders,
+//         },
+//       },
+//     });
+//   } catch (error: any) {
+//     console.error("Get Previous 30 Days Stats Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
   try {
-    const fortyDaysAgo = new Date();
-    fortyDaysAgo.setDate(fortyDaysAgo.getDate() - 40);
+    let { year, month, status, includeAll } = req.query;
 
-    const { status, includeAll } = req.query;
+    const now = new Date();
+
+    // Determine monthly mode
+    const isMonthlyMode = typeof month !== "undefined" || typeof year !== "undefined";
+
+    let startDate: Date;
+    let endDate: Date;
+
+    if (isMonthlyMode) {
+      const yearNum = year ? parseInt(year as string) : now.getFullYear();
+      const monthNum = month ? parseInt(month as string) : now.getMonth() + 1;
+
+      if (isNaN(yearNum) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid year or month provided.",
+        });
+      }
+
+      startDate = new Date(yearNum, monthNum - 1, 1, 0, 0, 0, 0);
+      endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+    } else {
+      startDate = new Date();
+      startDate.setDate(now.getDate() - 29);
+      startDate.setHours(0, 0, 0, 0);
+
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+    }
 
     let statusFilter: any = {};
-
     if (status && typeof status === "string") {
       statusFilter.orderStatus = status;
     } else if (includeAll === "false") {
@@ -1641,10 +1782,12 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
       };
     }
 
+
     const allOrders = await prisma.customerOrders.findMany({
       where: {
         createdAt: {
-          gte: fortyDaysAgo,
+          gte: startDate,
+          lte: endDate,
         },
         ...statusFilter,
       },
@@ -1654,18 +1797,16 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
       },
     });
 
-    // console.log("Filter applied:", statusFilter);
-    // console.log("All orders found:", allOrders.length);
-    // console.log("Sample orders:", allOrders.slice(0, 3));
+    const dateRange: string[] = [];
+    const cursor = new Date(startDate);
+    while (cursor <= endDate) {
+      dateRange.push(cursor.toISOString().split("T")[0]);
+      cursor.setDate(cursor.getDate() + 1);
+    }
 
-    const dateRange = Array.from({ length: 40 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (39 - i));
-      return date.toISOString().split("T")[0];
-    });
+    const daysInRange = dateRange.length;
 
-    const revenueMap = new Map();
-
+    const revenueMap = new Map<string, { revenue: number; count: number }>();
     allOrders.forEach((order) => {
       const dateKey = order.createdAt.toISOString().split("T")[0];
       const existing = revenueMap.get(dateKey) || { revenue: 0, count: 0 };
@@ -1675,8 +1816,6 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
       });
     });
 
-    console.log("Revenue map:", Object.fromEntries(revenueMap));
-
     const chartData = dateRange.map((dateKey) => {
       const dayData = revenueMap.get(dateKey) || { revenue: 0, count: 0 };
       return {
@@ -1685,47 +1824,35 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
       };
     });
 
-    let totalRevenue = 0;
-    let maxRevenue = 0;
-    let minRevenue = Infinity;
-    let totalOrders = 0;
 
-    for (const dayData of revenueMap.values()) {
+    let totalRevenue = 0;
+    let totalOrders = 0;
+    let maxRevenue = -Infinity;
+    let minRevenue = Infinity;
+
+    dateRange.forEach((d) => {
+      const dayData = revenueMap.get(d) || { revenue: 0, count: 0 };
       const revenue = dayData.revenue;
       totalRevenue += revenue;
       totalOrders += dayData.count;
       if (revenue > maxRevenue) maxRevenue = revenue;
       if (revenue < minRevenue) minRevenue = revenue;
-    }
+    });
 
+    if (maxRevenue === -Infinity) maxRevenue = 0;
     if (minRevenue === Infinity) minRevenue = 0;
 
-    const averageDailyRevenue = Math.round(totalRevenue / 40);
-    const maxRevenueDay =
-      chartData.find((day) => Math.round(maxRevenue) === day.value) ||
-      chartData[0];
-    const minRevenueDay =
-      chartData.find((day) => Math.round(minRevenue) === day.value) ||
-      chartData[0];
+    const averageDailyRevenue = daysInRange > 0 ? Math.round(totalRevenue / daysInRange) : 0;
+    const maxRevenueDay = chartData.find((d) => d.value === Math.round(maxRevenue)) || chartData[0];
+    const minRevenueDay = chartData.find((d) => d.value === Math.round(minRevenue)) || chartData[0];
 
-    const statusBreakdown = await prisma.customerOrders.groupBy({
-      by: ["orderStatus"],
-      where: {
-        createdAt: {
-          gte: fortyDaysAgo,
-        },
-      },
-      _count: {
-        id: true,
-      },
-      _sum: {
-        totalPrice: true,
-      },
-    });
+    const label = isMonthlyMode
+      ? `Order statistics for ${startDate.toISOString().slice(0, 7)}`
+      : `Order statistics from ${dateRange[0]} to ${dateRange[dateRange.length - 1]}`;
 
     res.status(200).json({
       success: true,
-      message: "Last 40 days order statistics fetched successfully",
+      message: label + " fetched successfully.",
       data: {
         chartData,
         statistics: {
@@ -1734,18 +1861,24 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
           maxRevenueDay,
           minRevenueDay,
           totalOrders,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          daysInRange,
         },
       },
     });
   } catch (error: any) {
-    console.error("Get Last 40 Days Stats Error:", error);
+    console.error("Get Last 30 Days Stats Error:", error);
     res.status(500).json({
       success: false,
-      message: "Something went wrong",
+      message: "Something went wrong while fetching order stats.",
       error: error.message,
     });
   }
 };
+
+
+
 
 const formatChartDate = (dateString: string): string => {
   const date = new Date(dateString);
