@@ -35,6 +35,7 @@ model User {
   partnerOrders          customerOrders[]        @relation("PartnerOrders")
   employees              Employees[]
   customer_price         customer_price[]
+  bestellubersicht       Bestellubersicht?
 
   // Mandatory one-to-one relationship
   workshopNote  WorkshopNote?
@@ -667,6 +668,17 @@ enum ChangeType {
   // TRANSFER // between storage locations 
   sales
   createStock
+}
+
+model Bestellubersicht {
+  id     String @id @default(uuid())
+  number Int
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // {

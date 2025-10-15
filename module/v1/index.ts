@@ -18,6 +18,7 @@ import customerOrders from "./customerOrders/customerOrders.routes";
 import customerPrice from "./customerPrice/customerPrice.routes";
 import workeshopNote from "./workshopNote/workshopNote.routes";
 import storage from "./storage/storage.routes";
+import bestellubersicht from "./bestellubersicht/Bestellubersicht.routes";
 
 import path from "path";
 
@@ -42,6 +43,7 @@ const moduleRoutes = [
   { path: "/customer-price", route: customerPrice },
   { path: "/workshop-note", route: workeshopNote },
   { path: "/store", route: storage },
+  { path: "/bestellubersicht", route: bestellubersicht },
 ];
 
 moduleRoutes.forEach(({ path, route }) => {

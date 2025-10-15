@@ -35,7 +35,7 @@ async function parseCSV(csvPath: string): Promise<any> {
       .on("data", (row) => {
         currentRow++;
         targetCells.forEach((cell) => {
-          const col = cell.charAt(0); // B or C
+          const col = cell.charAt(0);
           const rowNum = parseInt(cell.slice(1));
           if (currentRow === rowNum) {
             const colIndex = col === "B" ? 1 : 2;
