@@ -46,7 +46,8 @@ app.use(
       'https://flux-genius-std-treatments.trycloudflare.com',
       'https://tdhaemoi-landing-page.vercel.app',
       'https://regarded-dictionaries-worlds-restricted.trycloudflare.com',
-      'https://latina-cartoons-syntax-territories.trycloudflare.com'
+      'https://latina-cartoons-syntax-territories.trycloudflare.com',
+      'https://motor-soviet-rhode-hispanic.trycloudflare.com'
     ],
   })
 );
