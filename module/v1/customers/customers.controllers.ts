@@ -1962,3 +1962,143 @@ export const getScreenerFileById = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
+
+export const getEinlagenInProduktion = async (req: Request, res: Response) => {
+  try {
+    const where: any = {
+      orderStatus: {
+        in: [
+          "Einlage_vorbereiten",
+          "Einlage_in_Fertigung", 
+          "Einlage_verpacken",
+          "Einlage_Abholbereit"
+        ]
+      }
+    };
+
+    // Additional filters (optional)
+    if (req.query.customerId) {
+      where.customerId = req.query.customerId as string;
+    }
+
+    if (req.query.partnerId) {
+      where.partnerId = req.query.partnerId as string;
+    }
+
+    // Optional: Filter by specific status if provided
+    if (req.query.specificStatus) {
+      const specificStatus = req.query.specificStatus as string;
+      if ([
+        "Einlage_vorbereiten",
+        "Einlage_in_Fertigung", 
+        "Einlage_verpacken",
+        "Einlage_Abholbereit"
+      ].includes(specificStatus)) {
+        where.orderStatus = specificStatus;
+      }
+    }
+
+    // Get all active orders without pagination
+    const orders = await prisma.customerOrders.findMany({
+      where,
+      orderBy: { 
+        statusUpdate: "desc", // Sort by status update time (most recent first)
+        createdAt: "desc"     // Then by creation time
+      },
+      select: {
+        id: true,
+        fußanalyse: true,
+        einlagenversorgung: true,
+        totalPrice: true,
+        orderStatus: true,
+        statusUpdate: true,
+        invoice: true,
+        createdAt: true,
+        updatedAt: true,
+        customer: {
+          select: {
+            id: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+            telefonnummer: true,
+            wohnort: true,
+            customerNumber: true,
+          },
+        },
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            rohlingHersteller: true,
+            artikelHersteller: true,
+            versorgung: true,
+            material: true,
+            status: true,
+            diagnosis_status: true,
+          },
+        },
+      },
+    });
+
+    // Format orders with invoice URL and partner image URL
+    const formattedOrders = orders.map((order) => ({
+      ...order,
+      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+      partner: order.partner ? {
+        ...order.partner,
+        image: order.partner.image ? getImageUrl(`/uploads/${order.partner.image}`) : null
+      } : null,
+    }));
+
+    // Get status counts for statistics
+    const statusCounts = await prisma.customerOrders.groupBy({
+      by: ['orderStatus'],
+      where: {
+        orderStatus: {
+          in: [
+            "Einlage_vorbereiten",
+            "Einlage_in_Fertigung", 
+            "Einlage_verpacken",
+            "Einlage_Abholbereit"
+          ]
+        }
+      },
+      _count: {
+        id: true
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Active orders fetched successfully",
+      data: formattedOrders,
+      statistics: {
+        totalActiveOrders: orders.length,
+        statusBreakdown: statusCounts.reduce((acc, item) => {
+          acc[item.orderStatus] = item._count.id;
+          return acc;
+        }, {} as Record<string, number>)
+      }
+    });
+  } catch (error: any) {
+    console.error("Get Active Orders Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching active orders",
+      error: error.message,
+    });
+  }
+};

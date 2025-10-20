@@ -681,6 +681,23 @@ model Bestellubersicht {
   updatedAt DateTime @updatedAt
 }
 
+model custom_shafts {
+  id                String  @id @default(uuid())
+  image3d_1         String?
+  image3d_2         String?
+  customerId        String?
+  lederfarbe        String?
+  innenfutter       String?
+  schafthohe        String?
+  polsterung        String?
+  vestarkungen      String?
+  polsterung_text   String?
+  vestarkungen_text String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // {
 //   category: "BUSINESSEINLAGE",
 //   userId: "123",

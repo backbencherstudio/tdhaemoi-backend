@@ -1877,9 +1877,6 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
   }
 };
 
-
-
-
 const formatChartDate = (dateString: string): string => {
   const date = new Date(dateString);
   const month = date.toLocaleString("en-US", { month: "short" });
@@ -2052,6 +2049,37 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+
+export const getEinlagenInProduktion = async (req: Request, res: Response) => {
+  try {
+    const count = await prisma.customerOrders.count({
+      where: {
+        orderStatus: {
+          in: [
+            "Einlage_vorbereiten",
+            "Einlage_in_Fertigung", 
+            "Einlage_verpacken",
+            "Einlage_Abholbereit"
+          ]
+        }
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: count
+    });
+
+  } catch (error: any) {
+    console.error("Get Active Orders Count Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching active orders count",
       error: error.message,
     });
   }

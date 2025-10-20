@@ -12,11 +12,16 @@ import {
   deleteOrder,
   getOrdersByCustomerId,
   getLast40DaysOrderStats,
-  createWerkstattzettel
+  createWerkstattzettel,
+  getEinlagenInProduktion
 } from "./customerOrders.controllers";
 import upload from "../../../config/multer.config";
 
 const router = express.Router();
+
+router.get(
+  "/einlagen-in-produktion", getEinlagenInProduktion
+)
 
 router.post("/create", verifyUser("ADMIN", "PARTNER"), createOrder);
 router.get("/", verifyUser("ADMIN", "PARTNER"), getAllOrders);
@@ -57,5 +62,7 @@ router.get(
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteOrder);
 
 router.post("/werkstattzettel/:customerId", verifyUser("ADMIN", "PARTNER"), createWerkstattzettel);
+
+
 
 export default router;
