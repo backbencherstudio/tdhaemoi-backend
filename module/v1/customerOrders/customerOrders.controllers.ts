@@ -669,6 +669,7 @@ export const createOrder = async (req: Request, res: Response) => {
 // };
 
 export const getAllOrders = async (req: Request, res: Response) => {
+
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -677,7 +678,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
 
     const where: any = {};
 
-    // Add date filter based on days parameter
+    // Date filter
     if (days && !isNaN(days)) {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
@@ -686,16 +687,28 @@ export const getAllOrders = async (req: Request, res: Response) => {
       };
     }
 
+    // Customer filter
     if (req.query.customerId) {
       where.customerId = req.query.customerId as string;
     }
 
+    // Partner filter
     if (req.query.partnerId) {
       where.partnerId = req.query.partnerId as string;
     }
 
+    // 🔹 OrderStatus filter
     if (req.query.orderStatus) {
-      where.orderStatus = req.query.orderStatus as string;
+      const statuses = (req.query.orderStatus as string)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      if (statuses.length === 1) {
+        where.orderStatus = statuses[0];
+      } else if (statuses.length > 1) {
+        where.orderStatus = { in: statuses };
+      }
     }
 
     const [orders, totalCount] = await Promise.all([
@@ -731,7 +744,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
       prisma.customerOrders.count({ where }),
     ]);
 
-    // Format orders with invoice URL
+    // Format invoices
     const formattedOrders = orders.map((order) => ({
       ...order,
       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
@@ -743,7 +756,9 @@ export const getAllOrders = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: "Orders fetched successfully",
+      message: req.query.orderStatus
+        ? `Orders with status: ${req.query.orderStatus}`
+        : "All orders fetched successfully",
       data: formattedOrders,
       pagination: {
         totalItems: totalCount,
@@ -764,6 +779,103 @@ export const getAllOrders = async (req: Request, res: Response) => {
     });
   }
 };
+
+// export const getAllOrders = async (req: Request, res: Response) => {
+//   try {
+//     const page = parseInt(req.query.page as string) || 1;
+//     const limit = parseInt(req.query.limit as string) || 10;
+//     const days = parseInt(req.query.days as string);
+//     const skip = (page - 1) * limit;
+
+//     const where: any = {};
+
+//     // Add date filter based on days parameter
+//     if (days && !isNaN(days)) {
+//       const startDate = new Date();
+//       startDate.setDate(startDate.getDate() - days);
+//       where.createdAt = {
+//         gte: startDate,
+//       };
+//     }
+
+//     if (req.query.customerId) {
+//       where.customerId = req.query.customerId as string;
+//     }
+
+//     if (req.query.partnerId) {
+//       where.partnerId = req.query.partnerId as string;
+//     }
+
+//     if (req.query.orderStatus) {
+//       where.orderStatus = req.query.orderStatus as string;
+//     }
+
+//     const [orders, totalCount] = await Promise.all([
+//       prisma.customerOrders.findMany({
+//         where,
+//         skip,
+//         take: limit,
+//         orderBy: { createdAt: "desc" },
+//         select: {
+//           id: true,
+//           fußanalyse: true,
+//           einlagenversorgung: true,
+//           totalPrice: true,
+//           orderStatus: true,
+//           statusUpdate: true,
+//           invoice: true,
+//           createdAt: true,
+//           updatedAt: true,
+//           customer: {
+//             select: {
+//               id: true,
+//               vorname: true,
+//               nachname: true,
+//               email: true,
+//               telefonnummer: true,
+//               wohnort: true,
+//               customerNumber: true,
+//             },
+//           },
+//           product: true,
+//         },
+//       }),
+//       prisma.customerOrders.count({ where }),
+//     ]);
+
+//     // Format orders with invoice URL
+//     const formattedOrders = orders.map((order) => ({
+//       ...order,
+//       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+//     }));
+
+//     const totalPages = Math.ceil(totalCount / limit);
+//     const hasNextPage = page < totalPages;
+//     const hasPrevPage = page > 1;
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Orders fetched successfully",
+//       data: formattedOrders,
+//       pagination: {
+//         totalItems: totalCount,
+//         totalPages,
+//         currentPage: page,
+//         itemsPerPage: limit,
+//         hasNextPage,
+//         hasPrevPage,
+//         filter: days ? `Last ${days} days` : "All time",
+//       },
+//     });
+//   } catch (error: any) {
+//     console.error("Get All Orders Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
 
 export const getOrderById = async (req: Request, res: Response) => {
   try {
@@ -786,7 +898,7 @@ export const getOrderById = async (req: Request, res: Response) => {
             fusslange2: true,
             gender: true,
             geburtsdatum: true,
-            
+
             screenerFile: {
               orderBy: { updatedAt: "desc" },
               take: 1,
@@ -1393,7 +1505,7 @@ export const uploadInvoiceOnly = async (req: Request, res: Response) => {
 export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
-    
+
     // Check if req.body exists and has email property
     const email = req.body?.email; // Optional: override customer email
 
@@ -1624,7 +1736,6 @@ export const deleteOrder = async (req: Request, res: Response) => {
   }
 };
 
-
 // export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
 //   try {
 //     // today
@@ -1738,7 +1849,6 @@ export const deleteOrder = async (req: Request, res: Response) => {
 //   }
 // };
 
-
 export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
   try {
     let { year, month, status, includeAll } = req.query;
@@ -1746,7 +1856,8 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
     const now = new Date();
 
     // Determine monthly mode
-    const isMonthlyMode = typeof month !== "undefined" || typeof year !== "undefined";
+    const isMonthlyMode =
+      typeof month !== "undefined" || typeof year !== "undefined";
 
     let startDate: Date;
     let endDate: Date;
@@ -1781,7 +1892,6 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
         in: ["Ausgeführte_Einlagen", "Einlage_versandt", "Einlage_Abholbereit"],
       };
     }
-
 
     const allOrders = await prisma.customerOrders.findMany({
       where: {
@@ -1824,7 +1934,6 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
       };
     });
 
-
     let totalRevenue = 0;
     let totalOrders = 0;
     let maxRevenue = -Infinity;
@@ -1842,13 +1951,18 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
     if (maxRevenue === -Infinity) maxRevenue = 0;
     if (minRevenue === Infinity) minRevenue = 0;
 
-    const averageDailyRevenue = daysInRange > 0 ? Math.round(totalRevenue / daysInRange) : 0;
-    const maxRevenueDay = chartData.find((d) => d.value === Math.round(maxRevenue)) || chartData[0];
-    const minRevenueDay = chartData.find((d) => d.value === Math.round(minRevenue)) || chartData[0];
+    const averageDailyRevenue =
+      daysInRange > 0 ? Math.round(totalRevenue / daysInRange) : 0;
+    const maxRevenueDay =
+      chartData.find((d) => d.value === Math.round(maxRevenue)) || chartData[0];
+    const minRevenueDay =
+      chartData.find((d) => d.value === Math.round(minRevenue)) || chartData[0];
 
     const label = isMonthlyMode
       ? `Order statistics for ${startDate.toISOString().slice(0, 7)}`
-      : `Order statistics from ${dateRange[0]} to ${dateRange[dateRange.length - 1]}`;
+      : `Order statistics from ${dateRange[0]} to ${
+          dateRange[dateRange.length - 1]
+        }`;
 
     res.status(200).json({
       success: true,
@@ -2054,7 +2168,6 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getEinlagenInProduktion = async (req: Request, res: Response) => {
   try {
     const count = await prisma.customerOrders.count({
@@ -2062,19 +2175,18 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
         orderStatus: {
           in: [
             "Einlage_vorbereiten",
-            "Einlage_in_Fertigung", 
+            "Einlage_in_Fertigung",
             "Einlage_verpacken",
-            "Einlage_Abholbereit"
-          ]
-        }
-      }
+            "Einlage_Abholbereit",
+          ],
+        },
+      },
     });
 
     res.status(200).json({
       success: true,
-      data: count
+      data: count,
     });
-
   } catch (error: any) {
     console.error("Get Active Orders Count Error:", error);
     res.status(500).json({
