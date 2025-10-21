@@ -38,9 +38,9 @@ model User {
   bestellubersicht       Bestellubersicht?
 
   // Mandatory one-to-one relationship
-  workshopNote  WorkshopNote?
-  stores        Stores[]
-  StoresHistory StoresHistory[]
+  workshopNote          WorkshopNote?
+  stores                Stores[]
+  StoresHistory         StoresHistory[]
 
   @@map("users")
 }
@@ -681,6 +681,17 @@ model Bestellubersicht {
   updatedAt DateTime @updatedAt
 }
 
+model maßschaft_kollektion {
+  id          String          @id @default(uuid())
+  image       String?
+  ide         String?
+  price       Float?
+  customShafts custom_shafts[] // 👈 Relation (one-to-many)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model custom_shafts {
   id                String  @id @default(uuid())
   image3d_1         String?
@@ -693,6 +704,9 @@ model custom_shafts {
   vestarkungen      String?
   polsterung_text   String?
   vestarkungen_text String?
+
+  maßschaftKollektionId String?
+  maßschaft_kollektion   maßschaft_kollektion? @relation(fields: [maßschaftKollektionId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

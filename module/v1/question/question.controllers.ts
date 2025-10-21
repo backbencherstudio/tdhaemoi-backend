@@ -1,21 +1,105 @@
 import { questionnaireData } from "./question.data";
 
+// function normalize(text) {
+//   return text.toLowerCase().replace(/[^\w\s]/gi, "").replace(/\s+/g, "_").trim();
+// }
+
+// export const getQuestionsFlow = (req, res) => {
+//   const { categoryTitle, subCategoryTitle } = req.params;
+
+//   if (!categoryTitle) {
+//     const categories = questionnaireData.map(cat => ({
+//       title: cat.title,
+//       slug: normalize(cat.title),
+//       image: cat.image
+//     }));
+//     return res.json({ level: "category", data: categories });
+//   }
+
+//   const category = questionnaireData.find(
+//     c => normalize(c.title) === normalize(categoryTitle)
+//   );
+
+//   if (!category) {
+//     return res.status(404).json({ message: "Category not found" });
+//   }
+
+//   if (Array.isArray(category.data) && category.data.length > 0) {
+//     if (subCategoryTitle) {
+//       const subCategory = category.data.find(
+//         sub => normalize(sub.title) === normalize(subCategoryTitle)
+//       );
+
+//       if (!subCategory) {
+//         return res.status(404).json({ message: "Sub-category not found" });
+//       }
+
+//       return res.json({
+//         level: "questions",
+//         category: category.title,
+//         subCategory: subCategory.title,
+//         questions: (subCategory.questions || []).map(q => ({
+//           question: q.question,
+//           question_key: normalize(q.question),
+//           options: q.options
+//         }))
+//       });
+//     }
+
+//     const subCategories = category.data.map(sub => ({
+//       title: sub.title,
+//       slug: normalize(sub.title),
+//       image: sub.image
+//     }));
+
+//     return res.json({
+//       level: "sub-categories",
+//       category: category.title,
+//       data: subCategories
+//     });
+//   }
+
+//   if (category.questions && Array.isArray(category.questions)) {
+//     return res.json({
+//       level: "questions",
+//       category: category.title,
+//       questions: category.questions.map(q => ({
+//         question: q.question,
+//         question_key: normalize(q.question),
+//         options: q.options
+//       }))
+//     });
+//   }
+
+//   return res.json({ level: "category", category: category.title, data: [] });
+// };
+
+
+ 
+
 function normalize(text) {
-  return text.toLowerCase().replace(/[^\w\s]/gi, "").replace(/\s+/g, "_").trim();
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/gi, "")
+    .replace(/\s+/g, "_")
+    .trim();
 }
 
 export const getQuestionsFlow = (req, res) => {
   const { categoryTitle, subCategoryTitle } = req.params;
 
+  // ✅ 1. If no category provided → return all categories
   if (!categoryTitle) {
     const categories = questionnaireData.map(cat => ({
       title: cat.title,
       slug: normalize(cat.title),
       image: cat.image
     }));
+
     return res.json({ level: "category", data: categories });
   }
 
+  // ✅ 2. Find category
   const category = questionnaireData.find(
     c => normalize(c.title) === normalize(categoryTitle)
   );
@@ -24,7 +108,9 @@ export const getQuestionsFlow = (req, res) => {
     return res.status(404).json({ message: "Category not found" });
   }
 
+  // ✅ 3. If category has subcategories
   if (Array.isArray(category.data) && category.data.length > 0) {
+    // If subcategory provided → return questions
     if (subCategoryTitle) {
       const subCategory = category.data.find(
         sub => normalize(sub.title) === normalize(subCategoryTitle)
@@ -46,6 +132,7 @@ export const getQuestionsFlow = (req, res) => {
       });
     }
 
+    // Otherwise → return subcategories
     const subCategories = category.data.map(sub => ({
       title: sub.title,
       slug: normalize(sub.title),
@@ -59,6 +146,7 @@ export const getQuestionsFlow = (req, res) => {
     });
   }
 
+  // ✅ 4. If category has direct questions (no subcategories)
   if (category.questions && Array.isArray(category.questions)) {
     return res.json({
       level: "questions",
@@ -71,5 +159,10 @@ export const getQuestionsFlow = (req, res) => {
     });
   }
 
-  return res.json({ level: "category", category: category.title, data: [] });
+  // ✅ 5. Default fallback
+  return res.json({
+    level: "category",
+    category: category.title,
+    data: []
+  });
 };
