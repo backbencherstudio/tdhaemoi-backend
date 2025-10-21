@@ -4,6 +4,7 @@ import upload from "../../../config/multer.config";
 import {
   createMaßschaftKollektion,
   createTustomShafts,
+  deleteMaßschaftKollektion,
   getAllMaßschaftKollektion,
   getMaßschaftKollektionById,
   updateMaßschaftKollektion,
@@ -45,6 +46,12 @@ router.get(
   "/mabschaft_kollektion/:id",
   verifyUser("PARTNER", "ADMIN"),
   getMaßschaftKollektionById
+);
+
+router.delete(
+  "/mabschaft_kollektion/:id",
+  verifyUser("PARTNER", "ADMIN"),
+  deleteMaßschaftKollektion
 );
 
 export default router;

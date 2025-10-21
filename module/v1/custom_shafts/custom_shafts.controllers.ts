@@ -76,98 +76,6 @@ export const createMaßschaftKollektion = async (
   }
 };
 
-export const createTustomShafts = async (req: Request, res: Response) => {
-  const files = req.files as any;
-
-  try {
-    const {
-      customerId,
-      lederfarbe,
-      innenfutter,
-      schafthohe,
-      polsterung,
-      vestarkungen,
-      polsterung_text,
-      vestarkungen_text,
-    } = req.body;
-
-    if (customerId) {
-      const customer = await prisma.customers.findUnique({
-        where: { id: customerId },
-      });
-
-      if (!customer) {
-        return res.status(404).json({
-          success: false,
-          message: "Customer not found",
-        });
-      }
-
-      const existingCustomShaft = await prisma.customers.findUnique({
-        where: { id: customerId },
-      });
-
-      if (existingCustomShaft) {
-        return res.status(400).json({
-          success: false,
-          message: "Custom shaft already exists for this customer",
-        });
-      }
-    }
-
-    const customShaft = await prisma.custom_shafts.create({
-      data: {
-        image3d_1: files.image3d_1?.[0]?.filename || null,
-        image3d_2: files.image3d_2?.[0]?.filename || null,
-        customerId: customerId || null,
-        lederfarbe: lederfarbe || null,
-        innenfutter: innenfutter || null,
-        schafthohe: schafthohe || null,
-        polsterung: polsterung || null,
-        vestarkungen: vestarkungen || null,
-        polsterung_text: polsterung_text || null,
-        vestarkungen_text: vestarkungen_text || null,
-      },
-    });
-
-    const formattedCustomShaft = {
-      ...customShaft,
-      image3d_1: customShaft.image3d_1
-        ? getImageUrl(`/uploads/${customShaft.image3d_1}`)
-        : null,
-      image3d_2: customShaft.image3d_2
-        ? getImageUrl(`/uploads/${customShaft.image3d_2}`)
-        : null,
-    };
-
-    res.status(201).json({
-      success: true,
-      message: "Custom shaft created successfully",
-      data: formattedCustomShaft,
-    });
-  } catch (err: any) {
-    console.error("Create Custom Shaft Error:", err);
-
-    if (files) {
-      Object.keys(files).forEach((key) => {
-        files[key].forEach((file: any) => {
-          try {
-            fs.unlinkSync(file.path);
-          } catch (error) {
-            console.error(`Failed to delete file ${file.path}`, error);
-          }
-        });
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-      error: err.message,
-    });
-  }
-};
-
 export const getAllMaßschaftKollektion = async (
   req: Request,
   res: Response
@@ -335,17 +243,17 @@ export const updateMaßschaftKollektion = async (
   }
 };
 
-
-export const getMaßschaftKollektionById = async (req: Request, res: Response) => {
+export const getMaßschaftKollektionById = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const { id } = req.params;
 
-    // Find the kollektion by ID
     const kollektion = await prisma.maßschaft_kollektion.findUnique({
       where: { id },
     });
 
-    // If not found, return 404
     if (!kollektion) {
       return res.status(404).json({
         success: false,
@@ -353,7 +261,6 @@ export const getMaßschaftKollektionById = async (req: Request, res: Response) =
       });
     }
 
-    // Format the response with image URL
     const formattedKollektion = {
       ...kollektion,
       image: kollektion.image
@@ -372,6 +279,207 @@ export const getMaßschaftKollektionById = async (req: Request, res: Response) =
       success: false,
       message: "Something went wrong while fetching Maßschaft Kollektion",
       error: error.message,
+    });
+  }
+};
+
+export const deleteMaßschaftKollektion = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const existingKollektion = await prisma.maßschaft_kollektion.findUnique({
+      where: { id },
+    });
+
+    if (!existingKollektion) {
+      return res.status(404).json({
+        success: false,
+        message: "Maßschaft Kollektion not found",
+      });
+    }
+
+    if (existingKollektion.image) {
+      const imagePath = `uploads/${existingKollektion.image}`;
+      if (fs.existsSync(imagePath)) {
+        try {
+          fs.unlinkSync(imagePath);
+          console.log(`Deleted image file: ${imagePath}`);
+        } catch (err) {
+          console.error(`Failed to delete image file: ${imagePath}`, err);
+        }
+      }
+    }
+
+    await prisma.maßschaft_kollektion.delete({
+      where: { id },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Maßschaft Kollektion deleted successfully",
+    });
+  } catch (error: any) {
+    console.error("Delete Maßschaft Kollektion Error:", error);
+
+    if (error.code === "P2003") {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Cannot delete this kollektion because it is being used elsewhere in the system",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while deleting Maßschaft Kollektion",
+      error: error.message,
+    });
+  }
+};
+
+// ----------------------------
+export const createTustomShafts = async (req: Request, res: Response) => {
+  const files = req.files as any;
+
+  try {
+    const {
+      customerId,
+      maßschaftKollektionId,
+      lederfarbe,
+      innenfutter,
+      schafthohe,
+      polsterung,
+      vestarkungen,
+      polsterung_text,
+      vestarkungen_text,
+    } = req.body;
+
+    // Validate customer exists if customerId is provided
+    if (customerId) {
+      const customer = await prisma.customers.findUnique({
+        where: { id: customerId },
+      });
+
+      if (!customer) {
+        return res.status(404).json({
+          success: false,
+          message: "Customer not found",
+        });
+      }
+    }
+
+    // Validate maßschaft kollektion exists ONLY if maßschaftKollektionId is provided
+    let kollektion = null;
+    if (maßschaftKollektionId) {
+      kollektion = await prisma.maßschaft_kollektion.findUnique({
+        where: { id: maßschaftKollektionId },
+      });
+
+      if (!kollektion) {
+        return res.status(404).json({
+          success: false,
+          message: "Maßschaft Kollektion not found",
+        });
+      }
+    }
+
+    // Check if at least one of customerId or maßschaftKollektionId is provided
+    if (!customerId && !maßschaftKollektionId) {
+      return res.status(400).json({
+        success: false,
+        message: "Either customerId or maßschaftKollektionId must be provided",
+      });
+    }
+
+    const customShaft = await prisma.custom_shafts.create({
+      data: {
+        image3d_1: files.image3d_1?.[0]?.filename || null,
+        image3d_2: files.image3d_2?.[0]?.filename || null,
+        customerId: customerId || null,
+        maßschaftKollektionId: maßschaftKollektionId || null,
+        lederfarbe: lederfarbe || null,
+        innenfutter: innenfutter || null,
+        schafthohe: schafthohe || null,
+        polsterung: polsterung || null,
+        vestarkungen: vestarkungen || null,
+        polsterung_text: polsterung_text || null,
+        vestarkungen_text: vestarkungen_text || null,
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+          },
+        },
+        maßschaft_kollektion: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    const formattedCustomShaft = {
+      ...customShaft,
+      image3d_1: customShaft.image3d_1
+        ? getImageUrl(`/uploads/${customShaft.image3d_1}`)
+        : null,
+      image3d_2: customShaft.image3d_2
+        ? getImageUrl(`/uploads/${customShaft.image3d_2}`)
+        : null,
+      maßschaft_kollektion: customShaft.maßschaft_kollektion
+        ? {
+            ...customShaft.maßschaft_kollektion,
+            image: customShaft.maßschaft_kollektion.image
+              ? getImageUrl(
+                  `/uploads/${customShaft.maßschaft_kollektion.image}`
+                )
+              : null,
+          }
+        : null,
+    };
+
+    res.status(201).json({
+      success: true,
+      message: "Custom shaft created successfully",
+      data: formattedCustomShaft,
+    });
+  } catch (err: any) {
+    console.error("Create Custom Shaft Error:", err);
+
+    // Clean up uploaded files on error
+    if (files) {
+      Object.keys(files).forEach((key) => {
+        files[key].forEach((file: any) => {
+          try {
+            fs.unlinkSync(file.path);
+          } catch (error) {
+            console.error(`Failed to delete file ${file.path}`, error);
+          }
+        });
+      });
+    }
+
+    // Handle specific Prisma errors
+    if (err.code === "P2003") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid customer ID or Maßschaft Kollektion ID provided",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: err.message,
     });
   }
 };

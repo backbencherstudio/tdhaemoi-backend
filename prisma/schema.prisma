@@ -363,6 +363,7 @@ model customers {
   ausfuhrliche_diagnose String?
   customerOrders        customerOrders[]
   werkstattzettel       Werkstattzettel?
+  custom_shafts         custom_shafts[]
 
   kundeSteuernummer String? // Kunde Steuernummer
   diagnose          String? // Diagnose
@@ -714,6 +715,8 @@ model custom_shafts {
 
   maßschaftKollektionId String?
   maßschaft_kollektion  maßschaft_kollektion? @relation(fields: [maßschaftKollektionId], references: [id])
+  
+  customer               customers?             @relation(fields: [customerId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
