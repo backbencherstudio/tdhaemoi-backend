@@ -41,6 +41,7 @@ model User {
   workshopNote  WorkshopNote?
   stores        Stores[]
   StoresHistory StoresHistory[]
+  custom_shafts custom_shafts[]
 
   @@map("users")
 }
@@ -713,13 +714,25 @@ model custom_shafts {
   vestarkungen_text String?
   polsterung_text   String?
 
+  nahtfarbe      String?
+  nahtfarbe_text String?
+
+  lederType String?
+
   maßschaftKollektionId String?
   maßschaft_kollektion  maßschaft_kollektion? @relation(fields: [maßschaftKollektionId], references: [id])
-  
   customer               customers?             @relation(fields: [customerId], references: [id])
+
+  partnerId String?
+  user      User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([maßschaftKollektionId])
+  @@index([partnerId])
+  @@index([createdAt])
 }
 
 // {

@@ -8,16 +8,11 @@ import {
   getAllMaßschaftKollektion,
   getMaßschaftKollektionById,
   updateMaßschaftKollektion,
+  getTustomShafts,
+  getSingleCustomShaft
 } from "./custom_shafts.controllers";
 
 const router = express.Router();
-
-router.post(
-  "/create/mabschaft_kollektion",
-  verifyUser("PARTNER", "ADMIN"),
-  upload.fields([{ name: "image", maxCount: 1 }]),
-  createMaßschaftKollektion
-);
 
 router.post(
   "/create",
@@ -27,6 +22,26 @@ router.post(
     { name: "image3d_2", maxCount: 1 },
   ]),
   createTustomShafts
+);
+
+router.get(
+  "/get",
+  verifyUser("PARTNER", "ADMIN"),
+  getTustomShafts
+);
+
+router.get(
+  "/get/:id",
+  verifyUser("PARTNER", "ADMIN"),
+  getSingleCustomShaft
+);
+
+//------------------------------------------
+router.post(
+  "/create/mabschaft_kollektion",
+  verifyUser("PARTNER", "ADMIN"),
+  upload.fields([{ name: "image", maxCount: 1 }]),
+  createMaßschaftKollektion
 );
 
 router.get(

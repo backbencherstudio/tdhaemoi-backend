@@ -340,13 +340,15 @@ export const deleteMaßschaftKollektion = async (
 };
 
 // ----------------------------
+
 export const createTustomShafts = async (req: Request, res: Response) => {
   const files = req.files as any;
+  const { id } = req.user;
 
   try {
     const {
       customerId,
-      maßschaftKollektionId,
+      mabschaftKollektionId,
       lederfarbe,
       innenfutter,
       schafthohe,
@@ -354,59 +356,69 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       vestarkungen,
       polsterung_text,
       vestarkungen_text,
+      nahtfarbe,
+      nahtfarbe_text,
+      lederType,
     } = req.body;
 
-    // Validate customer exists if customerId is provided
-    if (customerId) {
-      const customer = await prisma.customers.findUnique({
-        where: { id: customerId },
-      });
-
-      if (!customer) {
-        return res.status(404).json({
-          success: false,
-          message: "Customer not found",
-        });
-      }
-    }
-
-    // Validate maßschaft kollektion exists ONLY if maßschaftKollektionId is provided
-    let kollektion = null;
-    if (maßschaftKollektionId) {
-      kollektion = await prisma.maßschaft_kollektion.findUnique({
-        where: { id: maßschaftKollektionId },
-      });
-
-      if (!kollektion) {
-        return res.status(404).json({
-          success: false,
-          message: "Maßschaft Kollektion not found",
-        });
-      }
-    }
-
-    // Check if at least one of customerId or maßschaftKollektionId is provided
-    if (!customerId && !maßschaftKollektionId) {
+    // Early validation
+    if (!customerId && !mabschaftKollektionId) {
       return res.status(400).json({
         success: false,
         message: "Either customerId or maßschaftKollektionId must be provided",
       });
     }
 
+    // Run validations in parallel
+    const [customer, kollektion] = await Promise.all([
+      customerId ? prisma.customers.findUnique({
+        where: { id: customerId },
+        select: { id: true } // Only select what you need
+      }) : Promise.resolve(null),
+      
+      mabschaftKollektionId ? prisma.maßschaft_kollektion.findUnique({
+        where: { id: mabschaftKollektionId },
+        select: { id: true } // Only select what you need
+      }) : Promise.resolve(null)
+    ]);
+
+    // Validate results
+    if (customerId && !customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    if (mabschaftKollektionId && !kollektion) {
+      return res.status(404).json({
+        success: false,
+        message: "Maßschaft Kollektion not found",
+      });
+    }
+
+    // Prepare data object
+    const shaftData = {
+      image3d_1: files.image3d_1?.[0]?.filename || null,
+      image3d_2: files.image3d_2?.[0]?.filename || null,
+      customerId: customer ? customerId : null,
+      maßschaftKollektionId: kollektion ? mabschaftKollektionId : null,
+      lederfarbe: lederfarbe || null,
+      innenfutter: innenfutter || null,
+      schafthohe: schafthohe || null,
+      polsterung: polsterung || null,
+      vestarkungen: vestarkungen || null,
+      polsterung_text: polsterung_text || null,
+      vestarkungen_text: vestarkungen_text || null,
+      nahtfarbe: nahtfarbe || null,
+      nahtfarbe_text: nahtfarbe_text || null,
+      lederType: lederType || null,
+      partnerId: id,
+    };
+
+    // Create the custom shaft
     const customShaft = await prisma.custom_shafts.create({
-      data: {
-        image3d_1: files.image3d_1?.[0]?.filename || null,
-        image3d_2: files.image3d_2?.[0]?.filename || null,
-        customerId: customerId || null,
-        maßschaftKollektionId: maßschaftKollektionId || null,
-        lederfarbe: lederfarbe || null,
-        innenfutter: innenfutter || null,
-        schafthohe: schafthohe || null,
-        polsterung: polsterung || null,
-        vestarkungen: vestarkungen || null,
-        polsterung_text: polsterung_text || null,
-        vestarkungen_text: vestarkungen_text || null,
-      },
+      data: shaftData,
       include: {
         customer: {
           select: {
@@ -424,9 +436,18 @@ export const createTustomShafts = async (req: Request, res: Response) => {
             image: true,
           },
         },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
       },
     });
 
+    // Format response (non-blocking)
     const formattedCustomShaft = {
       ...customShaft,
       image3d_1: customShaft.image3d_1
@@ -439,36 +460,43 @@ export const createTustomShafts = async (req: Request, res: Response) => {
         ? {
             ...customShaft.maßschaft_kollektion,
             image: customShaft.maßschaft_kollektion.image
-              ? getImageUrl(
-                  `/uploads/${customShaft.maßschaft_kollektion.image}`
-                )
+              ? getImageUrl(`/uploads/${customShaft.maßschaft_kollektion.image}`)
+              : null,
+          }
+        : null,
+      partner: customShaft.user
+        ? {
+            ...customShaft.user,
+            image: customShaft.user.image
+              ? getImageUrl(`/uploads/${customShaft.user.image}`)
               : null,
           }
         : null,
     };
 
+    const { user, ...finalFormattedShaft } = formattedCustomShaft;
+
+    // Send response immediately
     res.status(201).json({
       success: true,
       message: "Custom shaft created successfully",
-      data: formattedCustomShaft,
+      data: finalFormattedShaft,
     });
+
   } catch (err: any) {
     console.error("Create Custom Shaft Error:", err);
 
-    // Clean up uploaded files on error
+    // File cleanup (non-blocking)
     if (files) {
       Object.keys(files).forEach((key) => {
         files[key].forEach((file: any) => {
-          try {
-            fs.unlinkSync(file.path);
-          } catch (error) {
-            console.error(`Failed to delete file ${file.path}`, error);
-          }
+          fs.unlink(file.path, (error) => {
+            if (error) console.error(`Failed to delete file ${file.path}`, error);
+          });
         });
       });
     }
 
-    // Handle specific Prisma errors
     if (err.code === "P2003") {
       return res.status(400).json({
         success: false,
@@ -480,6 +508,288 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       success: false,
       message: "Something went wrong",
       error: err.message,
+    });
+  }
+};
+
+export const getTustomShafts = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = (req.query.search as string) || "";
+    const skip = (page - 1) * limit;
+
+    const whereCondition: any = {};
+
+    if (search) {
+      whereCondition.OR = [
+        { lederfarbe: { contains: search, mode: "insensitive" } },
+        { innenfutter: { contains: search, mode: "insensitive" } },
+        { schafthohe: { contains: search, mode: "insensitive" } },
+        { polsterung: { contains: search, mode: "insensitive" } },
+        { vestarkungen: { contains: search, mode: "insensitive" } },
+        { polsterung_text: { contains: search, mode: "insensitive" } },
+        { vestarkungen_text: { contains: search, mode: "insensitive" } },
+        { nahtfarbe: { contains: search, mode: "insensitive" } },
+        { nahtfarbe_text: { contains: search, mode: "insensitive" } },
+        { lederType: { contains: search, mode: "insensitive" } },
+        {
+          customer: {
+            OR: [
+              { vorname: { contains: search, mode: "insensitive" } },
+              { nachname: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
+              { telefon: { contains: search, mode: "insensitive" } },
+              { ort: { contains: search, mode: "insensitive" } },
+              { land: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+        {
+          maßschaft_kollektion: {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { catagoary: { contains: search, mode: "insensitive" } },
+              { gender: { contains: search, mode: "insensitive" } },
+              { description: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+        {
+          user: {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      ];
+    }
+
+    const [totalCount, customShafts] = await Promise.all([
+      prisma.custom_shafts.count({
+        where: whereCondition,
+      }),
+      prisma.custom_shafts.findMany({
+        where: whereCondition,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              customerNumber: true,
+              vorname: true,
+              nachname: true,
+              email: true,
+              telefon: true,
+              ort: true,
+              land: true,
+              straße: true,
+              geburtsdatum: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+          maßschaft_kollektion: {
+            select: {
+              id: true,
+              ide: true,
+              name: true,
+              price: true,
+              image: true,
+              catagoary: true,
+              gender: true,
+              description: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const formattedCustomShafts = customShafts.map(({ user, ...shaft }) => ({
+      ...shaft,
+      image3d_1: shaft.image3d_1
+        ? getImageUrl(`/uploads/${shaft.image3d_1}`)
+        : null,
+      image3d_2: shaft.image3d_2
+        ? getImageUrl(`/uploads/${shaft.image3d_2}`)
+        : null,
+      customer: shaft.customer
+        ? {
+            ...shaft.customer,
+          }
+        : null,
+      maßschaft_kollektion: shaft.maßschaft_kollektion
+        ? {
+            ...shaft.maßschaft_kollektion,
+            image: shaft.maßschaft_kollektion.image
+              ? getImageUrl(`/uploads/${shaft.maßschaft_kollektion.image}`)
+              : null,
+          }
+        : null,
+      partner: user
+        ? {
+            ...user,
+            image: user.image ? getImageUrl(`/uploads/${user.image}`) : null,
+          }
+        : null,
+    }));
+
+    // Calculate pagination values
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    res.status(200).json({
+      success: true,
+      message: "Custom shafts fetched successfully",
+      data: formattedCustomShafts,
+      pagination: {
+        totalItems: totalCount,
+        totalPages: totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage: hasNextPage,
+        hasPrevPage: hasPrevPage,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get Custom Shafts Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching custom shafts",
+      error: error.message,
+    });
+  }
+};
+
+export const getSingleCustomShaft = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Custom shaft ID is required",
+      });
+    }
+
+    const customShaft = await prisma.custom_shafts.findUnique({
+      where: { id },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            customerNumber: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+            telefon: true,
+            ort: true,
+            land: true,
+            straße: true,
+            geburtsdatum: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        maßschaft_kollektion: {
+          select: {
+            id: true,
+            ide: true,
+            name: true,
+            price: true,
+            image: true,
+            catagoary: true,
+            gender: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    if (!customShaft) {
+      return res.status(404).json({
+        success: false,
+        message: "Custom shaft not found",
+      });
+    }
+
+    // Extract user first
+    const { user, ...shaftWithoutUser } = customShaft;
+
+    // Format the response
+    const formattedShaft = {
+      ...shaftWithoutUser,
+      image3d_1: customShaft.image3d_1
+        ? getImageUrl(`/uploads/${customShaft.image3d_1}`)
+        : null,
+      image3d_2: customShaft.image3d_2
+        ? getImageUrl(`/uploads/${customShaft.image3d_2}`)
+        : null,
+      customer: customShaft.customer
+        ? {
+            ...customShaft.customer,
+          }
+        : null,
+      maßschaft_kollektion: customShaft.maßschaft_kollektion
+        ? {
+            ...customShaft.maßschaft_kollektion,
+            image: customShaft.maßschaft_kollektion.image
+              ? getImageUrl(`/uploads/${customShaft.maßschaft_kollektion.image}`)
+              : null,
+          }
+        : null,
+      partner: user
+        ? {
+            ...user,
+            image: user.image ? getImageUrl(`/uploads/${user.image}`) : null,
+          }
+        : null,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Custom shaft fetched successfully",
+      data: formattedShaft,
+    });
+
+  } catch (error: any) {
+    console.error("Get Single Custom Shaft Error:", error);
+    
+    if (error.code === "P2025") {
+      return res.status(404).json({
+        success: false,
+        message: "Custom shaft not found",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching the custom shaft",
+      error: error.message,
     });
   }
 };
