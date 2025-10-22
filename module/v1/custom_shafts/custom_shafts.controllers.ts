@@ -371,15 +371,19 @@ export const createTustomShafts = async (req: Request, res: Response) => {
 
     // Run validations in parallel
     const [customer, kollektion] = await Promise.all([
-      customerId ? prisma.customers.findUnique({
-        where: { id: customerId },
-        select: { id: true } // Only select what you need
-      }) : Promise.resolve(null),
-      
-      mabschaftKollektionId ? prisma.maßschaft_kollektion.findUnique({
-        where: { id: mabschaftKollektionId },
-        select: { id: true } // Only select what you need
-      }) : Promise.resolve(null)
+      customerId
+        ? prisma.customers.findUnique({
+            where: { id: customerId },
+            select: { id: true }, // Only select what you need
+          })
+        : Promise.resolve(null),
+
+      mabschaftKollektionId
+        ? prisma.maßschaft_kollektion.findUnique({
+            where: { id: mabschaftKollektionId },
+            select: { id: true }, // Only select what you need
+          })
+        : Promise.resolve(null),
     ]);
 
     // Validate results
@@ -414,6 +418,9 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       nahtfarbe_text: nahtfarbe_text || null,
       lederType: lederType || null,
       partnerId: id,
+      orderNumber: `MS-${new Date().getFullYear()}-${Math.floor(
+        10000 + Math.random() * 90000
+      )}`,
     };
 
     // Create the custom shaft
@@ -460,7 +467,9 @@ export const createTustomShafts = async (req: Request, res: Response) => {
         ? {
             ...customShaft.maßschaft_kollektion,
             image: customShaft.maßschaft_kollektion.image
-              ? getImageUrl(`/uploads/${customShaft.maßschaft_kollektion.image}`)
+              ? getImageUrl(
+                  `/uploads/${customShaft.maßschaft_kollektion.image}`
+                )
               : null,
           }
         : null,
@@ -482,7 +491,6 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       message: "Custom shaft created successfully",
       data: finalFormattedShaft,
     });
-
   } catch (err: any) {
     console.error("Create Custom Shaft Error:", err);
 
@@ -491,7 +499,8 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       Object.keys(files).forEach((key) => {
         files[key].forEach((file: any) => {
           fs.unlink(file.path, (error) => {
-            if (error) console.error(`Failed to delete file ${file.path}`, error);
+            if (error)
+              console.error(`Failed to delete file ${file.path}`, error);
           });
         });
       });
@@ -533,6 +542,8 @@ export const getTustomShafts = async (req: Request, res: Response) => {
         { nahtfarbe: { contains: search, mode: "insensitive" } },
         { nahtfarbe_text: { contains: search, mode: "insensitive" } },
         { lederType: { contains: search, mode: "insensitive" } },
+
+        //
         {
           customer: {
             OR: [
@@ -758,7 +769,9 @@ export const getSingleCustomShaft = async (req: Request, res: Response) => {
         ? {
             ...customShaft.maßschaft_kollektion,
             image: customShaft.maßschaft_kollektion.image
-              ? getImageUrl(`/uploads/${customShaft.maßschaft_kollektion.image}`)
+              ? getImageUrl(
+                  `/uploads/${customShaft.maßschaft_kollektion.image}`
+                )
               : null,
           }
         : null,
@@ -775,10 +788,9 @@ export const getSingleCustomShaft = async (req: Request, res: Response) => {
       message: "Custom shaft fetched successfully",
       data: formattedShaft,
     });
-
   } catch (error: any) {
     console.error("Get Single Custom Shaft Error:", error);
-    
+
     if (error.code === "P2025") {
       return res.status(404).json({
         success: false,

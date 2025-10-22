@@ -703,6 +703,7 @@ model maßschaft_kollektion {
 
 model custom_shafts {
   id                String  @id @default(uuid())
+  orderNumber       String?
   image3d_1         String?
   image3d_2         String?
   customerId        String?

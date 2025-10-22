@@ -3,7 +3,6 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-
 ///using ai------------------------------------------------------------------------------------
 // Helper function to check for overlapping appointments
 const checkAppointmentOverlap = async (
@@ -14,22 +13,22 @@ const checkAppointmentOverlap = async (
   excludeAppointmentId?: string
 ) => {
   // Parse the time string (assuming format like "14:30" or "2:30 PM")
-  const [timeStr, period] = time.includes(' ') ? time.split(' ') : [time, ''];
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  
+  const [timeStr, period] = time.includes(" ") ? time.split(" ") : [time, ""];
+  const [hours, minutes] = timeStr.split(":").map(Number);
+
   let startHour = hours;
-  if (period.toLowerCase() === 'pm' && hours !== 12) {
+  if (period.toLowerCase() === "pm" && hours !== 12) {
     startHour += 12;
-  } else if (period.toLowerCase() === 'am' && hours === 12) {
+  } else if (period.toLowerCase() === "am" && hours === 12) {
     startHour = 0;
   }
-  
+
   const startTime = new Date(date);
   startTime.setHours(startHour, minutes, 0, 0);
-  
+
   const endTime = new Date(startTime);
   endTime.setHours(startTime.getHours() + duration);
-  
+
   // Check for overlapping appointments
   const overlappingAppointments = await prisma.appointment.findMany({
     where: {
@@ -41,39 +40,50 @@ const checkAppointmentOverlap = async (
       ...(excludeAppointmentId && { id: { not: excludeAppointmentId } }),
     },
   });
-  
+
   for (const appointment of overlappingAppointments) {
-    const [existingTimeStr, existingPeriod] = appointment.time.includes(' ') 
-      ? appointment.time.split(' ') 
-      : [appointment.time, ''];
-    const [existingHours, existingMinutes] = existingTimeStr.split(':').map(Number);
-    
+    const [existingTimeStr, existingPeriod] = appointment.time.includes(" ")
+      ? appointment.time.split(" ")
+      : [appointment.time, ""];
+    const [existingHours, existingMinutes] = existingTimeStr
+      .split(":")
+      .map(Number);
+
     let existingStartHour = existingHours;
-    if (existingPeriod.toLowerCase() === 'pm' && existingHours !== 12) {
+    if (existingPeriod.toLowerCase() === "pm" && existingHours !== 12) {
       existingStartHour += 12;
-    } else if (existingPeriod.toLowerCase() === 'am' && existingHours === 12) {
+    } else if (existingPeriod.toLowerCase() === "am" && existingHours === 12) {
       existingStartHour = 0;
     }
-    
+
     const existingStartTime = new Date(appointment.date);
     existingStartTime.setHours(existingStartHour, existingMinutes, 0, 0);
-    
+
     const existingEndTime = new Date(existingStartTime);
-    existingEndTime.setHours(existingStartTime.getHours() + (appointment.duration || 1));
-    
+    existingEndTime.setHours(
+      existingStartTime.getHours() + (appointment.duration || 1)
+    );
+
     // Check if appointments overlap
     if (
       (startTime < existingEndTime && endTime > existingStartTime) ||
-      (startTime.getTime() === existingStartTime.getTime())
+      startTime.getTime() === existingStartTime.getTime()
     ) {
       return {
         hasOverlap: true,
         conflictingAppointment: appointment,
-        message: `Employee ${appointment.assignedTo} already has an appointment from ${appointment.time} to ${existingEndTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} on this date.`
+        message: `Employee ${
+          appointment.assignedTo
+        } already has an appointment from ${
+          appointment.time
+        } to ${existingEndTime.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })} on this date.`,
       };
     }
   }
-  
+
   return { hasOverlap: false };
 };
 
@@ -81,7 +91,7 @@ const checkAppointmentOverlap = async (
 export const getAvailableTimeSlots = async (req: Request, res: Response) => {
   try {
     const { employeId, date } = req.query;
-    
+
     if (!employeId || !date) {
       res.status(400).json({
         success: false,
@@ -91,18 +101,26 @@ export const getAvailableTimeSlots = async (req: Request, res: Response) => {
     }
 
     const appointmentDate = new Date(date as string);
-    
+
     // Get all appointments for the employee on the specified date
     const appointments = await prisma.appointment.findMany({
       where: {
         employeId: employeId as string,
         date: {
-          gte: new Date(appointmentDate.getFullYear(), appointmentDate.getMonth(), appointmentDate.getDate()),
-          lt: new Date(appointmentDate.getFullYear(), appointmentDate.getMonth(), appointmentDate.getDate() + 1),
+          gte: new Date(
+            appointmentDate.getFullYear(),
+            appointmentDate.getMonth(),
+            appointmentDate.getDate()
+          ),
+          lt: new Date(
+            appointmentDate.getFullYear(),
+            appointmentDate.getMonth(),
+            appointmentDate.getDate() + 1
+          ),
         },
       },
       orderBy: {
-        time: 'asc',
+        time: "asc",
       },
     });
 
@@ -112,25 +130,31 @@ export const getAvailableTimeSlots = async (req: Request, res: Response) => {
     const slotDuration = 0.5; // 30 minutes slots
     const availableSlots = [];
 
-    for (let hour = workingHours; hour < workingEndHours; hour += slotDuration) {
-      const slotTime = `${Math.floor(hour).toString().padStart(2, '0')}:${hour % 1 === 0 ? '00' : '30'}`;
-      
+    for (
+      let hour = workingHours;
+      hour < workingEndHours;
+      hour += slotDuration
+    ) {
+      const slotTime = `${Math.floor(hour).toString().padStart(2, "0")}:${
+        hour % 1 === 0 ? "00" : "30"
+      }`;
+
       // Check if this slot conflicts with existing appointments
-      const hasConflict = appointments.some(appointment => {
-        const [appTimeStr, appPeriod] = appointment.time.includes(' ') 
-          ? appointment.time.split(' ') 
-          : [appointment.time, ''];
-        const [appHours, appMinutes] = appTimeStr.split(':').map(Number);
-        
+      const hasConflict = appointments.some((appointment) => {
+        const [appTimeStr, appPeriod] = appointment.time.includes(" ")
+          ? appointment.time.split(" ")
+          : [appointment.time, ""];
+        const [appHours, appMinutes] = appTimeStr.split(":").map(Number);
+
         let appStartHour = appHours;
-        if (appPeriod.toLowerCase() === 'pm' && appHours !== 12) {
+        if (appPeriod.toLowerCase() === "pm" && appHours !== 12) {
           appStartHour += 12;
-        } else if (appPeriod.toLowerCase() === 'am' && appHours === 12) {
+        } else if (appPeriod.toLowerCase() === "am" && appHours === 12) {
           appStartHour = 0;
         }
-        
+
         const appEndHour = appStartHour + (appointment.duration || 1);
-        
+
         return hour >= appStartHour && hour < appEndHour;
       });
 
@@ -142,7 +166,7 @@ export const getAvailableTimeSlots = async (req: Request, res: Response) => {
     res.status(200).json({
       success: true,
       availableSlots,
-      existingAppointments: appointments.map(app => ({
+      existingAppointments: appointments.map((app) => ({
         id: app.id,
         time: app.time,
         duration: app.duration || 1,
@@ -178,7 +202,6 @@ export const createAppointment = async (req: Request, res: Response) => {
     const { id } = req.user;
 
     const missingField = [
-      "customer_name",
       "time",
       "date",
       "reason",
@@ -410,16 +433,16 @@ export const getAppointmentById = async (req: Request, res: Response) => {
 export const updateAppointment = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { 
-      customer_name, 
-      time, 
-      date, 
-      reason, 
-      assignedTo, 
+    const {
+      customer_name,
+      time,
+      date,
+      reason,
+      assignedTo,
       employeId,
       duration,
-      details, 
-      isClient 
+      details,
+      isClient,
     } = req.body;
 
     const existingAppointment = await prisma.appointment.findUnique({
@@ -438,7 +461,8 @@ export const updateAppointment = async (req: Request, res: Response) => {
     const updatedTime = time || existingAppointment.time;
     const updatedDate = date ? new Date(date) : existingAppointment.date;
     const updatedEmployeId = employeId || existingAppointment.employeId;
-    const updatedDuration = duration !== undefined ? duration : (existingAppointment.duration || 1);
+    const updatedDuration =
+      duration !== undefined ? duration : existingAppointment.duration || 1;
 
     // Validate duration
     if (updatedDuration <= 0) {
@@ -450,12 +474,13 @@ export const updateAppointment = async (req: Request, res: Response) => {
     }
 
     // Check for overlapping appointments if employeId is provided and time/date/duration changed
-    if (updatedEmployeId && (
-      time !== undefined || 
-      date !== undefined || 
-      duration !== undefined ||
-      employeId !== undefined
-    )) {
+    if (
+      updatedEmployeId &&
+      (time !== undefined ||
+        date !== undefined ||
+        duration !== undefined ||
+        employeId !== undefined)
+    ) {
       const overlapCheck = await checkAppointmentOverlap(
         updatedEmployeId,
         updatedDate,
