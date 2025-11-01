@@ -116,7 +116,7 @@ model appointment {
   employeId     String?
   duration      Float?
 
-  details    String
+  details    String?
   isClient   Boolean?
   userId     String
   customerId String?
@@ -727,13 +727,25 @@ model custom_shafts {
   partnerId String?
   user      User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull)
 
+  status custom_shafts_status? @default(Neu)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([status])
   @@index([customerId])
   @@index([maßschaftKollektionId])
   @@index([partnerId])
   @@index([createdAt])
+}
+
+enum custom_shafts_status {
+  Neu
+  Zu_Produzent_abgeschickt
+  In_Bearbeitung
+  Zu_Kunde_abgeschickt
+  Bei_uns_angekommen
+  Beim_Kunden_angekommen
 }
 
 // {

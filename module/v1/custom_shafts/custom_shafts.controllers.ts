@@ -84,10 +84,11 @@ export const getAllMaßschaftKollektion = async (
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = (req.query.search as string) || "";
+    const gender = (req.query.gender as string)?.trim() || "";
     const skip = (page - 1) * limit;
 
-    // Build where condition for search
     const whereCondition: any = {};
+
     if (search) {
       whereCondition.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -97,7 +98,13 @@ export const getAllMaßschaftKollektion = async (
       ];
     }
 
-    // Get total count and kollektion data in parallel
+    if (gender && (gender === "Herren" || gender === "Damen")) {
+      whereCondition.gender = {
+        contains: gender,
+        mode: "insensitive",
+      };
+    }
+
     const [totalCount, kollektion] = await Promise.all([
       prisma.maßschaft_kollektion.count({ where: whereCondition }),
       prisma.maßschaft_kollektion.findMany({
@@ -108,13 +115,11 @@ export const getAllMaßschaftKollektion = async (
       }),
     ]);
 
-    // Format the response with image URLs
     const formattedKollektion = kollektion.map((item) => ({
       ...item,
       image: item.image ? getImageUrl(`/uploads/${item.image}`) : null,
     }));
 
-    // Calculate pagination values
     const totalPages = Math.ceil(totalCount / limit);
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
@@ -421,6 +426,7 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       orderNumber: `MS-${new Date().getFullYear()}-${Math.floor(
         10000 + Math.random() * 90000
       )}`,
+      status: "Neu" as any,
     };
 
     // Create the custom shaft
@@ -526,9 +532,32 @@ export const getTustomShafts = async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = (req.query.search as string) || "";
+    const status = req.query.status;
     const skip = (page - 1) * limit;
 
     const whereCondition: any = {};
+
+    const validStatuses = [
+      "Neu",
+      "Zu_Produzent_abgeschickt",
+      "In_Bearbeitung",
+      "Zu_Kunde_abgeschickt",
+      "Bei_uns_angekommen",
+      "Beim_Kunden_angekommen",
+    ];
+
+    // Safe status validation
+    if (status && !validStatuses.includes(status.toString())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value",
+        validStatuses: validStatuses,
+      });
+    }
+
+    if (status) {
+      whereCondition.status = status;
+    }
 
     if (search) {
       whereCondition.OR = [
@@ -542,8 +571,6 @@ export const getTustomShafts = async (req: Request, res: Response) => {
         { nahtfarbe: { contains: search, mode: "insensitive" } },
         { nahtfarbe_text: { contains: search, mode: "insensitive" } },
         { lederType: { contains: search, mode: "insensitive" } },
-
-        //
         {
           customer: {
             OR: [
@@ -801,6 +828,178 @@ export const getSingleCustomShaft = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong while fetching the custom shaft",
+      error: error.message,
+    });
+  }
+};
+
+export const updateCustomShaftStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Status is required",
+      });
+    }
+
+    const validStatuses = [
+      "Neu",
+      "Zu_Produzent_abgeschickt",
+      "In_Bearbeitung",
+      "Zu_Kunde_abgeschickt",
+      "Bei_uns_angekommen",
+      "Beim_Kunden_angekommen",
+    ];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value",
+        validStatuses: validStatuses,
+      });
+    }
+
+    const existingCustomShaft = await prisma.custom_shafts.findUnique({
+      where: { id },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+          },
+        },
+        maßschaft_kollektion: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            image: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    if (!existingCustomShaft) {
+      return res.status(404).json({
+        success: false,
+        message: "Custom shaft not found",
+      });
+    }
+
+    // Update the status
+    const updatedCustomShaft = await prisma.custom_shafts.update({
+      where: { id },
+      data: {
+        status: status,
+        updatedAt: new Date(),
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            customerNumber: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+            telefon: true,
+            ort: true,
+            land: true,
+            straße: true,
+            geburtsdatum: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        maßschaft_kollektion: {
+          select: {
+            id: true,
+            ide: true,
+            name: true,
+            price: true,
+            image: true,
+            catagoary: true,
+            gender: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+      },
+    });
+
+    // Format the response
+    const { user, ...shaftWithoutUser } = updatedCustomShaft;
+
+    const formattedShaft = {
+      ...shaftWithoutUser,
+      image3d_1: updatedCustomShaft.image3d_1
+        ? getImageUrl(`/uploads/${updatedCustomShaft.image3d_1}`)
+        : null,
+      image3d_2: updatedCustomShaft.image3d_2
+        ? getImageUrl(`/uploads/${updatedCustomShaft.image3d_2}`)
+        : null,
+      customer: updatedCustomShaft.customer
+        ? {
+            ...updatedCustomShaft.customer,
+          }
+        : null,
+      maßschaft_kollektion: updatedCustomShaft.maßschaft_kollektion
+        ? {
+            ...updatedCustomShaft.maßschaft_kollektion,
+            image: updatedCustomShaft.maßschaft_kollektion.image
+              ? getImageUrl(
+                  `/uploads/${updatedCustomShaft.maßschaft_kollektion.image}`
+                )
+              : null,
+          }
+        : null,
+      partner: user
+        ? {
+            ...user,
+            image: user.image ? getImageUrl(`/uploads/${user.image}`) : null,
+          }
+        : null,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Custom shaft status updated successfully",
+      data: formattedShaft,
+    });
+  } catch (error: any) {
+    console.error("Update Custom Shaft Status Error:", error);
+
+    if (error.code === "P2025") {
+      return res.status(404).json({
+        success: false,
+        message: "Custom shaft not found",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while updating custom shaft status",
       error: error.message,
     });
   }

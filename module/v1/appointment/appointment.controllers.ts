@@ -201,13 +201,9 @@ export const createAppointment = async (req: Request, res: Response) => {
     } = req.body;
     const { id } = req.user;
 
-    const missingField = [
-      "time",
-      "date",
-      "reason",
-      "assignedTo",
-      "details",
-    ].find((field) => !req.body[field]);
+    const missingField = ["time", "date", "reason", "assignedTo"].find(
+      (field) => !req.body[field]
+    );
 
     if (missingField) {
       res.status(400).json({
@@ -252,7 +248,7 @@ export const createAppointment = async (req: Request, res: Response) => {
       date: new Date(date),
       reason,
       assignedTo,
-      details,
+      details: details ? details : null,
       userId: id,
       customerId,
       duration: appointmentDuration,

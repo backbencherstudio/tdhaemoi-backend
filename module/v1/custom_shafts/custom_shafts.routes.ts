@@ -9,7 +9,8 @@ import {
   getMaßschaftKollektionById,
   updateMaßschaftKollektion,
   getTustomShafts,
-  getSingleCustomShaft
+  getSingleCustomShaft,
+  updateCustomShaftStatus
 } from "./custom_shafts.controllers";
 
 const router = express.Router();
@@ -34,6 +35,12 @@ router.get(
   "/get/:id",
   verifyUser("PARTNER", "ADMIN"),
   getSingleCustomShaft
+);
+
+router.patch(
+  "/update-status/:id",
+  verifyUser("PARTNER", "ADMIN"),
+  updateCustomShaftStatus
 );
 
 //------------------------------------------
@@ -68,5 +75,8 @@ router.delete(
   verifyUser("PARTNER", "ADMIN"),
   deleteMaßschaftKollektion
 );
+
+
+
 
 export default router;
