@@ -283,3 +283,436 @@ export const createCustomerFile = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+const UPLOADS_DIR = path.join(process.cwd(), "uploads"); // adjust if needed
+
+// -----------------------------------------------------------------
+// Helper: Delete file from disk
+// -----------------------------------------------------------------
+const deleteFileFromDisk = (filename: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const filePath = path.join(UPLOADS_DIR, filename);
+    fs.unlink(filePath, (err) => {
+      if (err && err.code !== "ENOENT") {
+        console.error(`Failed to delete file: ${filePath}`, err);
+        return reject(err);
+      }
+      resolve();
+    });
+  });
+};
+
+// -----------------------------------------------------------------
+// Main Delete Controller
+// -----------------------------------------------------------------
+export const deleteCustomerFile = async (req: Request, res: Response) => {
+  const { id, table, fieldName, url } = req.body;
+
+  // Validate required fields
+  if (!id || !table || !fieldName || !url) {
+    return res.status(400).json({
+      success: false,
+      message: "id, table, fieldName, and url are required",
+    });
+  }
+
+  // Validate table
+  const allowedTables = ["screener_file", "custom_shafts", "customer_files"] as const;
+  if (!allowedTables.includes(table as any)) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid table. Allowed: ${allowedTables.join(", ")}`,
+    });
+  }
+
+  try {
+    let deleted = false;
+    let updated = false;
+
+    // -----------------------------------------------------------------
+    // Switch: Handle per table logic
+    // -----------------------------------------------------------------
+    switch (table) {
+      case "customer_files":
+        // Delete entire row + file
+        const customerFile = await prisma.customer_files.findUnique({
+          where: { id },
+          select: { url: true },
+        });
+
+        if (!customerFile) {
+          return res.status(404).json({
+            success: false,
+            message: "File record not found",
+          });
+        }
+
+        await prisma.customer_files.delete({ where: { id } });
+        await deleteFileFromDisk(url);
+        deleted = true;
+        break;
+
+      case "screener_file":
+        // Only null the specific field
+        const validScreenerFields = [
+          "picture_10",
+          "picture_23",
+          "threed_model_left",
+          "picture_17",
+          "picture_11",
+          "picture_24",
+          "threed_model_right",
+          "picture_16",
+          "csvFile",
+        ];
+
+        if (!validScreenerFields.includes(fieldName)) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid field for screener_file: ${fieldName}`,
+          });
+        }
+
+        const screenerRow = await prisma.screener_file.findUnique({
+          where: { id },
+          select: { [fieldName]: true },
+        });
+
+        if (!screenerRow || !screenerRow[fieldName]) {
+          return res.status(404).json({
+            success: false,
+            message: "File not found in screener_file",
+          });
+        }
+
+        await prisma.screener_file.update({
+          where: { id },
+          data: { [fieldName]: null },
+        });
+
+        await deleteFileFromDisk(url);
+        updated = true;
+        break;
+
+      case "custom_shafts":
+        // Only null the specific field
+        const validShaftFields = ["image3d_1", "image3d_2"];
+        if (!validShaftFields.includes(fieldName)) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid field for custom_shafts: ${fieldName}`,
+          });
+        }
+
+        const shaftRow = await prisma.custom_shafts.findUnique({
+          where: { id },
+          select: { [fieldName]: true },
+        });
+
+        if (!shaftRow || !shaftRow[fieldName]) {
+          return res.status(404).json({
+            success: false,
+            message: "File not found in custom_shafts",
+          });
+        }
+
+        await prisma.custom_shafts.update({
+          where: { id },
+          data: { [fieldName]: null },
+        });
+
+        await deleteFileFromDisk(url);
+        updated = true;
+        break;
+
+      default:
+        return res.status(400).json({
+          success: false,
+          message: "Unsupported table",
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // Success Response
+    // -----------------------------------------------------------------
+    res.status(200).json({
+      success: true,
+      message: deleted
+        ? "File and record deleted successfully"
+        : "File removed and field updated successfully",
+      data: {
+        id,
+        table,
+        fieldName,
+        url,
+        action: deleted ? "deleted" : "field_cleared",
+      },
+    });
+  } catch (error: any) {
+    console.error("Delete Customer File Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete file",
+      error: error.message,
+    });
+  }
+};
+
+// -----------------------------------------------------------------
+// Update Customer File Controller
+// -----------------------------------------------------------------
+export const updateCustomerFile = async (req: Request, res: Response) => {
+  const files = req.files as any;
+  const { id, table, fieldName, oldUrl } = req.body;
+
+  const cleanupFiles = () => {
+    if (!files) return;
+    Object.keys(files).forEach((key) => {
+      files[key].forEach((file: any) => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (err) {
+          console.error(`Failed to delete file ${file.path}`, err);
+        }
+      });
+    });
+  };
+
+  // Validate required fields
+  if (!id || !table || !fieldName || !oldUrl) {
+    cleanupFiles();
+    return res.status(400).json({
+      success: false,
+      message: "id, table, fieldName, and oldUrl are required",
+    });
+  }
+
+  // Validate table
+  const allowedTables = ["screener_file", "custom_shafts", "customer_files"] as const;
+  if (!allowedTables.includes(table as any)) {
+    cleanupFiles();
+    return res.status(400).json({
+      success: false,
+      message: `Invalid table. Allowed: ${allowedTables.join(", ")}`,
+    });
+  }
+
+  // Check if new file is uploaded
+  if (!files || !files.image || !files.image[0]) {
+    cleanupFiles();
+    return res.status(400).json({
+      success: false,
+      message: "New file is required. Please upload a file with field name 'image'",
+    });
+  }
+
+  try {
+    const uploadedFile = files.image[0];
+    const newFilename = uploadedFile.filename;
+
+    // -----------------------------------------------------------------
+    // Switch: Handle per table logic
+    // -----------------------------------------------------------------
+    switch (table) {
+      case "customer_files": {
+        // Find existing record
+        const customerFile = await prisma.customer_files.findUnique({
+          where: { id },
+          select: { url: true, customerId: true, createdAt: true },
+        });
+
+        if (!customerFile) {
+          cleanupFiles();
+          return res.status(404).json({
+            success: false,
+            message: "File record not found",
+          });
+        }
+
+        // Verify oldUrl matches
+        if (customerFile.url !== oldUrl) {
+          cleanupFiles();
+          return res.status(400).json({
+            success: false,
+            message: "oldUrl does not match the current file URL",
+          });
+        }
+
+        // Delete old file from disk
+        await deleteFileFromDisk(oldUrl);
+
+        // Update database with new file
+        const updatedFile = await prisma.customer_files.update({
+          where: { id },
+          data: { url: newFilename },
+        });
+
+        const baseUrl = process.env.APP_URL || req.protocol + "://" + req.get("host");
+        const formattedEntry = {
+          fieldName: "image",
+          table: "customer_files",
+          url: newFilename,
+          id: updatedFile.id,
+          fileType: getFileType(newFilename),
+          createdAt: updatedFile.createdAt,
+          fullUrl: `${baseUrl}/uploads/${newFilename}`,
+        };
+
+        return res.status(200).json({
+          success: true,
+          message: "File updated successfully",
+          data: formattedEntry,
+        });
+      }
+
+      case "screener_file": {
+        // Validate field
+        const validScreenerFields = [
+          "picture_10",
+          "picture_23",
+          "threed_model_left",
+          "picture_17",
+          "picture_11",
+          "picture_24",
+          "threed_model_right",
+          "picture_16",
+          "csvFile",
+        ];
+
+        if (!validScreenerFields.includes(fieldName)) {
+          cleanupFiles();
+          return res.status(400).json({
+            success: false,
+            message: `Invalid field for screener_file: ${fieldName}`,
+          });
+        }
+
+        // Find existing record
+        const screenerRow = await prisma.screener_file.findUnique({
+          where: { id },
+          select: { [fieldName]: true, createdAt: true },
+        });
+
+        if (!screenerRow || !screenerRow[fieldName]) {
+          cleanupFiles();
+          return res.status(404).json({
+            success: false,
+            message: "File not found in screener_file",
+          });
+        }
+
+        // Verify oldUrl matches
+        if (screenerRow[fieldName] !== oldUrl) {
+          cleanupFiles();
+          return res.status(400).json({
+            success: false,
+            message: "oldUrl does not match the current file URL",
+          });
+        }
+
+        // Delete old file from disk
+        await deleteFileFromDisk(oldUrl);
+
+        // Update database with new file
+        await prisma.screener_file.update({
+          where: { id },
+          data: { [fieldName]: newFilename },
+        });
+
+        const baseUrl = process.env.APP_URL || req.protocol + "://" + req.get("host");
+        const formattedEntry = {
+          fieldName,
+          table: "screener_file",
+          url: newFilename,
+          id,
+          fileType: getFileType(newFilename),
+          createdAt: screenerRow.createdAt,
+          fullUrl: `${baseUrl}/uploads/${newFilename}`,
+        };
+
+        return res.status(200).json({
+          success: true,
+          message: "File updated successfully",
+          data: formattedEntry,
+        });
+      }
+
+      case "custom_shafts": {
+        // Validate field
+        const validShaftFields = ["image3d_1", "image3d_2"];
+        if (!validShaftFields.includes(fieldName)) {
+          cleanupFiles();
+          return res.status(400).json({
+            success: false,
+            message: `Invalid field for custom_shafts: ${fieldName}`,
+          });
+        }
+
+        // Find existing record
+        const shaftRow = await prisma.custom_shafts.findUnique({
+          where: { id },
+          select: { [fieldName]: true, createdAt: true },
+        });
+
+        if (!shaftRow || !shaftRow[fieldName]) {
+          cleanupFiles();
+          return res.status(404).json({
+            success: false,
+            message: "File not found in custom_shafts",
+          });
+        }
+
+        // Verify oldUrl matches
+        if (shaftRow[fieldName] !== oldUrl) {
+          cleanupFiles();
+          return res.status(400).json({
+            success: false,
+            message: "oldUrl does not match the current file URL",
+          });
+        }
+
+        // Delete old file from disk
+        await deleteFileFromDisk(oldUrl);
+
+        // Update database with new file
+        await prisma.custom_shafts.update({
+          where: { id },
+          data: { [fieldName]: newFilename },
+        });
+
+        const baseUrl = process.env.APP_URL || req.protocol + "://" + req.get("host");
+        const formattedEntry = {
+          fieldName,
+          table: "custom_shafts",
+          url: newFilename,
+          id,
+          fileType: getFileType(newFilename),
+          createdAt: shaftRow.createdAt,
+          fullUrl: `${baseUrl}/uploads/${newFilename}`,
+        };
+
+        return res.status(200).json({
+          success: true,
+          message: "File updated successfully",
+          data: formattedEntry,
+        });
+      }
+
+      default:
+        cleanupFiles();
+        return res.status(400).json({
+          success: false,
+          message: "Unsupported table",
+        });
+    }
+  } catch (error: any) {
+    console.error("Update Customer File Error:", error);
+    cleanupFiles();
+    res.status(500).json({
+      success: false,
+      message: "Failed to update file",
+      error: error.message,
+    });
+  }
+};
