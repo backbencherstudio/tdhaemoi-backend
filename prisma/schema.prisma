@@ -121,7 +121,8 @@ model appointment {
   userId     String
   customerId String?
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
+
+  createdAt DateTime @default(now())
 
   @@map("appointment")
 }
@@ -375,9 +376,10 @@ model customers {
   fußanalyse        Float? //ইনসোল $
   einlagenversorgung Float? //Foot analysis $
 
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  StoresHistory StoresHistory[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  StoresHistory  StoresHistory[]
+  customer_files customer_files[]
 
   @@index([vorname, nachname])
   @@index([telefonnummer])
@@ -409,6 +411,18 @@ model screener_file {
 
   @@index([customerId])
   @@index([id])
+  @@index([createdAt])
+}
+
+model customer_files {
+  id         String    @id @default(uuid())
+  customerId String
+  customer   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  url String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
   @@index([createdAt])
 }
 

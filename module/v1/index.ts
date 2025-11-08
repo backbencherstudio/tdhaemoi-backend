@@ -19,9 +19,8 @@ import customerPrice from "./customerPrice/customerPrice.routes";
 import workeshopNote from "./workshopNote/workshopNote.routes";
 import storage from "./storage/storage.routes";
 import bestellubersicht from "./bestellubersicht/Bestellubersicht.routes";
-import custom_shafts from "./custom_shafts/custom_shafts.routes"
-
-import path from "path";
+import custom_shafts from "./custom_shafts/custom_shafts.routes";
+import customer_files from "./customer_files/customer_files.routes";
 
 const router = express.Router();
 
@@ -45,7 +44,8 @@ const moduleRoutes = [
   { path: "/workshop-note", route: workeshopNote },
   { path: "/store", route: storage },
   { path: "/bestellubersicht", route: bestellubersicht },
-  { path: "/custom_shafts", route: custom_shafts}
+  { path: "/custom_shafts", route: custom_shafts },
+  { path: "/customer-files", route: customer_files },
 ];
 
 moduleRoutes.forEach(({ path, route }) => {
