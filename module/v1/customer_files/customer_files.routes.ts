@@ -10,6 +10,8 @@ import upload from "../../../config/multer.config";
 
 const router = express.Router();
 
+router.get("/get", getCustomerFiles);
+
 router.post(
   "/create/:customerId",
   verifyUser("PARTNER", "ADMIN"),
@@ -17,10 +19,8 @@ router.post(
   createCustomerFile
 );
 
-router.get("/get", verifyUser("PARTNER", "ADMIN"), getCustomerFiles);
-
 router.put(
-  "/update",
+  "/update/:customerId",
   verifyUser("PARTNER", "ADMIN"),
   upload.fields([{ name: "image", maxCount: 1 }]),
   updateCustomerFile

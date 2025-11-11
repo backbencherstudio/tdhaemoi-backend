@@ -6,7 +6,6 @@ import { getImageUrl } from "../../../utils/base_utl";
 
 const prisma = new PrismaClient();
 
-
 // -----------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------
@@ -15,14 +14,7 @@ const getFileType = (filename: string): string => {
   return ext.startsWith(".") ? ext.slice(1) : ext;
 };
 
-const addFileEntry = (
-  entries,
-  row,
-  field,
-  table,
-  rowId,
-  createdAt
-) => {
+const addFileEntry = (entries, row, field, table, rowId, createdAt) => {
   const url = row[field];
   if (url && typeof url === "string") {
     entries.push({
@@ -38,66 +30,76 @@ const addFileEntry = (
 
 export const getCustomerFiles = async (req, res) => {
   try {
-    const { customerId } = req.body;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const skip = (page - 1) * limit;
+    // 1. READ FROM QUERY, NOT BODY
+    const customerId = req.query.id as string; // ← correct
 
     if (!customerId) {
       return res.status(400).json({
         success: false,
-        message: "customerId is required",
+        message: "customerId is required in query params",
       });
     }
 
-    if (page < 1 || limit < 1) {
-      return res.status(400).json({
+    console.log("Customer ID:", customerId);
+
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 20;
+    const skip = (page - 1) * limit;
+
+    // Check if customer exists
+    const customer = await prisma.customers.findUnique({
+      where: { id: customerId },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
         success: false,
-        message: "page and limit must be positive integers",
+        message: "Customer not found",
       });
     }
 
     // -----------------------------------------------------------------
     // 1. Fetch all relevant rows with createdAt
     // -----------------------------------------------------------------
-    const [screenerRows, customShaftRows, customerFilesRows] = await Promise.all([
-      prisma.screener_file.findMany({
-        where: { customerId },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          createdAt: true,
-          picture_10: true,
-          picture_23: true,
-          threed_model_left: true,
-          picture_17: true,
-          picture_11: true,
-          picture_24: true,
-          threed_model_right: true,
-          picture_16: true,
-          csvFile: true,
-        },
-      }),
-      prisma.custom_shafts.findMany({
-        where: { customerId },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          createdAt: true,
-          image3d_1: true,
-          image3d_2: true,
-        },
-      }),
-      prisma.customer_files.findMany({
-        where: { customerId },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          createdAt: true,
-          url: true,
-        },
-      }),
-    ]);
+    const [screenerRows, customShaftRows, customerFilesRows] =
+      await Promise.all([
+        prisma.screener_file.findMany({
+          where: { customerId },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            createdAt: true,
+            picture_10: true,
+            picture_23: true,
+            threed_model_left: true,
+            picture_17: true,
+            picture_11: true,
+            picture_24: true,
+            threed_model_right: true,
+            picture_16: true,
+            csvFile: true,
+          },
+        }),
+        prisma.custom_shafts.findMany({
+          where: { customerId },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            createdAt: true,
+            image3d_1: true,
+            image3d_2: true,
+          },
+        }),
+        prisma.customer_files.findMany({
+          where: { customerId },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            createdAt: true,
+            url: true,
+          },
+        }),
+      ]);
 
     // -----------------------------------------------------------------
     // 2. Collect all file entries with createdAt
@@ -119,7 +121,14 @@ export const getCustomerFiles = async (req, res) => {
       ] as const;
 
       for (const field of fields) {
-        addFileEntry(allEntries, row, field, "screener_file", row.id, row.createdAt);
+        addFileEntry(
+          allEntries,
+          row,
+          field,
+          "screener_file",
+          row.id,
+          row.createdAt
+        );
       }
     }
 
@@ -127,7 +136,14 @@ export const getCustomerFiles = async (req, res) => {
     for (const row of customShaftRows) {
       const fields = ["image3d_1", "image3d_2"] as const;
       for (const field of fields) {
-        addFileEntry(allEntries, row, field, "custom_shafts", row.id, row.createdAt);
+        addFileEntry(
+          allEntries,
+          row,
+          field,
+          "custom_shafts",
+          row.id,
+          row.createdAt
+        );
       }
     }
 
@@ -158,7 +174,8 @@ export const getCustomerFiles = async (req, res) => {
     const paginatedEntries = allEntries.slice(skip, skip + limit);
 
     // Optional: Add full URL
-    const baseUrl = process.env.APP_URL || req.protocol + "://" + req.get("host");
+    const baseUrl =
+      process.env.APP_URL || req.protocol + "://" + req.get("host");
     paginatedEntries.forEach((entry) => {
       entry.fullUrl = `${baseUrl}/uploads/${entry.url}`;
     });
@@ -189,7 +206,7 @@ export const getCustomerFiles = async (req, res) => {
       error: error.message,
     });
   }
-};;
+};
 
 export const createCustomerFile = async (req: Request, res: Response) => {
   const files = req.files as any;
@@ -264,6 +281,7 @@ export const createCustomerFile = async (req: Request, res: Response) => {
       fieldName: "image",
       table: "customer_files",
       url: filename,
+      fullUrl: getImageUrl(`/uploads/${filename}`),
       id: customerFile.id,
       fileType,
     };
@@ -283,7 +301,6 @@ export const createCustomerFile = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 const UPLOADS_DIR = path.join(process.cwd(), "uploads"); // adjust if needed
 
@@ -318,7 +335,11 @@ export const deleteCustomerFile = async (req: Request, res: Response) => {
   }
 
   // Validate table
-  const allowedTables = ["screener_file", "custom_shafts", "customer_files"] as const;
+  const allowedTables = [
+    "screener_file",
+    "custom_shafts",
+    "customer_files",
+  ] as const;
   if (!allowedTables.includes(table as any)) {
     return res.status(400).json({
       success: false,
@@ -489,7 +510,11 @@ export const updateCustomerFile = async (req: Request, res: Response) => {
   }
 
   // Validate table
-  const allowedTables = ["screener_file", "custom_shafts", "customer_files"] as const;
+  const allowedTables = [
+    "screener_file",
+    "custom_shafts",
+    "customer_files",
+  ] as const;
   if (!allowedTables.includes(table as any)) {
     cleanupFiles();
     return res.status(400).json({
@@ -503,7 +528,8 @@ export const updateCustomerFile = async (req: Request, res: Response) => {
     cleanupFiles();
     return res.status(400).json({
       success: false,
-      message: "New file is required. Please upload a file with field name 'image'",
+      message:
+        "New file is required. Please upload a file with field name 'image'",
     });
   }
 
@@ -548,7 +574,8 @@ export const updateCustomerFile = async (req: Request, res: Response) => {
           data: { url: newFilename },
         });
 
-        const baseUrl = process.env.APP_URL || req.protocol + "://" + req.get("host");
+        const baseUrl =
+          process.env.APP_URL || req.protocol + "://" + req.get("host");
         const formattedEntry = {
           fieldName: "image",
           table: "customer_files",
@@ -620,7 +647,8 @@ export const updateCustomerFile = async (req: Request, res: Response) => {
           data: { [fieldName]: newFilename },
         });
 
-        const baseUrl = process.env.APP_URL || req.protocol + "://" + req.get("host");
+        const baseUrl =
+          process.env.APP_URL || req.protocol + "://" + req.get("host");
         const formattedEntry = {
           fieldName,
           table: "screener_file",
@@ -681,7 +709,8 @@ export const updateCustomerFile = async (req: Request, res: Response) => {
           data: { [fieldName]: newFilename },
         });
 
-        const baseUrl = process.env.APP_URL || req.protocol + "://" + req.get("host");
+        const baseUrl =
+          process.env.APP_URL || req.protocol + "://" + req.get("host");
         const formattedEntry = {
           fieldName,
           table: "custom_shafts",

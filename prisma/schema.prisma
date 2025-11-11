@@ -330,7 +330,7 @@ model customers {
   telefonnummer  String?
   wohnort        String?
 
-  gender       Gender?
+  gender       String?
   geburtsdatum String?
   straße      String?
   land         String?
@@ -372,6 +372,7 @@ model customers {
   kodexeMassschuhe  String? // Kodexe Massschuhe
   kodexeEinlagen    String? // Kodexe Einlagen
   sonstiges         String? // Sonstiges
+
 
   fußanalyse        Float? //ইনসোল $
   einlagenversorgung Float? //Foot analysis $
