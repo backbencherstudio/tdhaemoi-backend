@@ -373,7 +373,6 @@ model customers {
   kodexeEinlagen    String? // Kodexe Einlagen
   sonstiges         String? // Sonstiges
 
-
   fußanalyse        Float? //ইনসোল $
   einlagenversorgung Float? //Foot analysis $
 
@@ -407,6 +406,20 @@ model screener_file {
   picture_16         String? //Sohlen Index right   (image)
   csvFile            String?
 
+  // this all data come form a single csv file
+  fusslange1   String? //B58   (.csv)
+  fusslange2   String? //C58   (.csv)
+  fussbreite1  String? //B73   (.csv)
+  fussbreite2  String? //C73   (.csv)
+  kugelumfang1 String? //B102  (.csv)
+  kugelumfang2 String? //C102  (.csv)
+  rist1        String? //B105  (.csv)
+  rist2        String? //C105  (.csv)
+  zehentyp1    String? //B136  (.csv)
+  zehentyp2    String? //C136  (.csv)
+  archIndex1   String? //B120  (.csv)
+  archIndex2   String? //C120  (.csv)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -419,9 +432,9 @@ model customer_files {
   id         String    @id @default(uuid())
   customerId String
   customer   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  url String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  url        String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([customerId])
   @@index([createdAt])
