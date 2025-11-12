@@ -5,22 +5,22 @@ const prisma = new PrismaClient();
 
 // Helper function to format appointment response with clean employee structure
 const formatAppointmentResponse = (appointment: any) => {
+  const employeesArray = appointment.appointmentEmployees
+    ? appointment.appointmentEmployees.map((ae: any) => ({
+        employeId: ae.employee?.id || ae.employeeId,
+        assignedTo: ae.assignedTo,
+      }))
+    : [];
+
   const formatted = {
     ...appointment,
-    employees: appointment.appointmentEmployees
-      ? appointment.appointmentEmployees.map((ae: any) => ({
-          id: ae.employee?.id || ae.employeeId,
-          name: ae.employee?.employeeName || ae.assignedTo,
-          email: ae.employee?.email || null,
-          assignedTo: ae.assignedTo,
-        }))
-      : [],
+    assignedTo: employeesArray.length > 0 ? employeesArray : appointment.assignedTo,
   };
 
   // Remove the raw appointmentEmployees field
   delete formatted.appointmentEmployees;
 
-  // Remove redundant employeId field since we have employees array
+  // Remove redundant employeId field since we have assignedTo array
   delete formatted.employeId;
 
   return formatted;
@@ -243,17 +243,25 @@ export const createAppointment = async (req: Request, res: Response) => {
       time,
       date,
       reason,
-      assignedTo,
+      assignedTo, // Can be array of employees or string (for backward compatibility)
       employeId,
-      employe, // Array of employees for v2
+      employe, // Legacy: Array of employees (for backward compatibility)
       duration,
       details,
       isClient,
     } = req.body;
     const { id } = req.user;
 
-    // For v2: support both single employee (employeId) and multiple employees (employe array)
-    let employees = employe && Array.isArray(employe) ? employe : [];
+    // For v2: support assignedTo as array, or fall back to employe array, or single employee
+    let employees: any[] = [];
+    
+    // Check if assignedTo is an array (new format)
+    if (Array.isArray(assignedTo)) {
+      employees = assignedTo;
+    } else if (employe && Array.isArray(employe)) {
+      // Fall back to employe array for backward compatibility
+      employees = employe;
+    }
 
     // Remove duplicate employees based on employeId to prevent unique constraint violations
     if (employees.length > 0) {
@@ -277,7 +285,7 @@ export const createAppointment = async (req: Request, res: Response) => {
           res.status(400).json({
             success: false,
             message:
-              "Each employee in 'employe' array must have 'employeId' and 'assignedTo'",
+              "Each employee in 'assignedTo' array must have 'employeId' and 'assignedTo'",
           });
           return;
         }
@@ -287,9 +295,7 @@ export const createAppointment = async (req: Request, res: Response) => {
     // For backward compatibility, still check single employee
     const missingField = hasMultipleEmployees
       ? ["time", "date", "reason"].find((field) => !req.body[field])
-      : ["time", "date", "reason", "assignedTo"].find(
-          (field) => !req.body[field]
-        );
+      : ["time", "date", "reason"].find((field) => !req.body[field]);
 
     if (missingField) {
       res.status(400).json({
@@ -416,11 +422,23 @@ export const createAppointment = async (req: Request, res: Response) => {
       }
     }
 
-    // Determine assignedTo value
-    let finalAssignedTo = assignedTo;
+    // Determine assignedTo value for the appointment record
+    let finalAssignedTo: string;
     if (hasMultipleEmployees) {
-      // Use first employee's name or combine all names
+      // Combine all employee names
       finalAssignedTo = employees.map((emp) => emp.assignedTo).join(", ");
+    } else if (typeof assignedTo === "string") {
+      // Single employee name (backward compatibility)
+      finalAssignedTo = assignedTo;
+    } else if (employeId) {
+      // Fall back to employeId if no assignedTo provided
+      finalAssignedTo = "";
+    } else {
+      res.status(400).json({
+        success: false,
+        message: "assignedTo (as array) or employeId is required",
+      });
+      return;
     }
 
     const appointmentData: any = {
@@ -700,8 +718,16 @@ export const updateAppointment = async (req: Request, res: Response) => {
       return;
     }
 
-    // For v2: support both single employee (employeId) and multiple employees (employe array)
-    let employees = employe && Array.isArray(employe) ? employe : [];
+    // For v2: support assignedTo as array, or fall back to employe array, or single employee
+    let employees: any[] = [];
+    
+    // Check if assignedTo is an array (new format)
+    if (Array.isArray(assignedTo)) {
+      employees = assignedTo;
+    } else if (employe && Array.isArray(employe)) {
+      // Fall back to employe array for backward compatibility
+      employees = employe;
+    }
 
     // Remove duplicate employees based on employeId to prevent unique constraint violations
     if (employees.length > 0) {
@@ -725,7 +751,7 @@ export const updateAppointment = async (req: Request, res: Response) => {
           res.status(400).json({
             success: false,
             message:
-              "Each employee in 'employe' array must have 'employeId' and 'assignedTo'",
+              "Each employee in 'assignedTo' array must have 'employeId' and 'assignedTo'",
           });
           return;
         }
@@ -806,11 +832,16 @@ export const updateAppointment = async (req: Request, res: Response) => {
       }
     }
 
-    // Determine assignedTo value
-    let finalAssignedTo = assignedTo;
+    // Determine assignedTo value for the appointment record
+    let finalAssignedTo: string;
     if (hasMultipleEmployees) {
+      // Combine all employee names
       finalAssignedTo = employees.map((emp) => emp.assignedTo).join(", ");
-    } else if (!assignedTo) {
+    } else if (typeof assignedTo === "string") {
+      // Single employee name (backward compatibility)
+      finalAssignedTo = assignedTo;
+    } else {
+      // Keep existing value if not provided
       finalAssignedTo = existingAppointment.assignedTo;
     }
 
