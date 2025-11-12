@@ -165,7 +165,6 @@ export const createCustomers = async (req: Request, res: Response) => {
             threed_model_right: files.threed_model_right?.[0]?.filename || null,
             picture_16: files.picture_16?.[0]?.filename || null,
             csvFile: csvFileName,
- 
           },
         });
         screenerFileId = screenerFile.id;
@@ -1539,6 +1538,44 @@ export const searchCustomers = async (req: Request, res: Response) => {
 //   @@index([createdAt])
 // }
 
+// model screener_file {
+//   id         String    @id @default(uuid())
+//   customerId String
+//   customer   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+//   picture_10        String? //Fersenneigung left (image)
+//   picture_23        String? //Plantaransicht left (image)
+//   threed_model_left String? //3D-Model left   (.stl)
+//   picture_17        String? //Sohlen Index left (image)
+
+//   picture_11         String? //Fersenneigung right (image)
+//   picture_24         String? //Plantaransich right  (image)
+//   threed_model_right String? //3D-Model right   .stl
+//   picture_16         String? //Sohlen Index right   (image)
+//   csvFile            String?
+
+//   // this all data come form a single csv file
+  // fusslange1   String? //B58   (.csv)
+  // fusslange2   String? //C58   (.csv)
+  // fussbreite1  String? //B73   (.csv)
+  // fussbreite2  String? //C73   (.csv)
+  // kugelumfang1 String? //B102  (.csv)
+  // kugelumfang2 String? //C102  (.csv)
+  // rist1        String? //B105  (.csv)
+  // rist2        String? //C105  (.csv)
+  // zehentyp1    String? //B136  (.csv)
+  // zehentyp2    String? //C136  (.csv)
+  // archIndex1   String? //B120  (.csv)
+  // archIndex2   String? //C120  (.csv)
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([customerId])
+//   @@index([id])
+//   @@index([createdAt])
+// }
+
 export const addScreenerFile = async (req: Request, res: Response) => {
   const { customerId } = req.params;
   const files = req.files as any;
@@ -1595,6 +1632,8 @@ export const addScreenerFile = async (req: Request, res: Response) => {
           zehentyp2: csvData.C136 || null,
           updatedBy: req.user.id,
           updatedAt: new Date(),
+          
+
         },
       });
     }
@@ -1611,6 +1650,19 @@ export const addScreenerFile = async (req: Request, res: Response) => {
         threed_model_right: files.threed_model_right?.[0]?.filename || null,
         picture_16: files.picture_16?.[0]?.filename || null,
         csvFile: csvFileName,
+        // ---
+        fusslange1: csvData.B58 || null,
+        fusslange2: csvData.C58 || null,
+        fussbreite1: csvData.B73 || null,
+        fussbreite2: csvData.C73 || null,
+        kugelumfang1: csvData.B102 || null,
+        kugelumfang2: csvData.C102 || null,
+        rist1: csvData.B105 || null,
+        rist2: csvData.C105 || null,
+        archIndex1: csvData.B120 || null,
+        archIndex2: csvData.C120 || null,
+        zehentyp1: csvData.B136 || null,
+        zehentyp2: csvData.C136 || null,
       },
     });
 
@@ -1644,6 +1696,21 @@ export const addScreenerFile = async (req: Request, res: Response) => {
       csvFile: newScreener.csvFile
         ? getImageUrl(`/uploads/${newScreener.csvFile}`)
         : null,
+      // CSV export data for this scanner set
+      csvData: {
+        fusslange1: newScreener.fusslange1,
+        fusslange2: newScreener.fusslange2,
+        fussbreite1: newScreener.fussbreite1,
+        fussbreite2: newScreener.fussbreite2,
+        kugelumfang1: newScreener.kugelumfang1,
+        kugelumfang2: newScreener.kugelumfang2,
+        rist1: newScreener.rist1,
+        rist2: newScreener.rist2,
+        zehentyp1: newScreener.zehentyp1,
+        zehentyp2: newScreener.zehentyp2,
+        archIndex1: newScreener.archIndex1,
+        archIndex2: newScreener.archIndex2,
+      },
       createdAt: newScreener.createdAt,
       updatedAt: newScreener.updatedAt,
     };
@@ -1825,8 +1892,23 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
       csvFileName = files.csvFile[0].filename;
       csvData = await parseCSV(csvPath);
       updateData.csvFile = csvFileName;
+      
+      // Store CSV data in the screener_file record (each scanner set has its own CSV data)
+      updateData.fusslange1 = csvData.B58 ?? existingScreener.fusslange1 ?? null;
+      updateData.fusslange2 = csvData.C58 ?? existingScreener.fusslange2 ?? null;
+      updateData.fussbreite1 = csvData.B73 ?? existingScreener.fussbreite1 ?? null;
+      updateData.fussbreite2 = csvData.C73 ?? existingScreener.fussbreite2 ?? null;
+      updateData.kugelumfang1 = csvData.B102 ?? existingScreener.kugelumfang1 ?? null;
+      updateData.kugelumfang2 = csvData.C102 ?? existingScreener.kugelumfang2 ?? null;
+      updateData.rist1 = csvData.B105 ?? existingScreener.rist1 ?? null;
+      updateData.rist2 = csvData.C105 ?? existingScreener.rist2 ?? null;
+      updateData.archIndex1 = csvData.B120 ?? existingScreener.archIndex1 ?? null;
+      updateData.archIndex2 = csvData.C120 ?? existingScreener.archIndex2 ?? null;
+      updateData.zehentyp1 = csvData.B136 ?? existingScreener.zehentyp1 ?? null;
+      updateData.zehentyp2 = csvData.C136 ?? existingScreener.zehentyp2 ?? null;
     }
 
+    // Only update customer record if this is the latest screener file
     if (Object.keys(csvData).length > 0 && latestScreener?.id === screenerId) {
       await prisma.customers.update({
         where: { id: customerId },
@@ -1871,6 +1953,21 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
       picture_17: formatFileUrl(updatedScreener.picture_17),
       picture_16: formatFileUrl(updatedScreener.picture_16),
       csvFile: formatFileUrl(updatedScreener.csvFile),
+      // CSV export data for this scanner set
+      csvData: {
+        fusslange1: updatedScreener.fusslange1,
+        fusslange2: updatedScreener.fusslange2,
+        fussbreite1: updatedScreener.fussbreite1,
+        fussbreite2: updatedScreener.fussbreite2,
+        kugelumfang1: updatedScreener.kugelumfang1,
+        kugelumfang2: updatedScreener.kugelumfang2,
+        rist1: updatedScreener.rist1,
+        rist2: updatedScreener.rist2,
+        zehentyp1: updatedScreener.zehentyp1,
+        zehentyp2: updatedScreener.zehentyp2,
+        archIndex1: updatedScreener.archIndex1,
+        archIndex2: updatedScreener.archIndex2,
+      },
       createdAt: updatedScreener.createdAt,
       updatedAt: updatedScreener.updatedAt,
     };
@@ -1980,6 +2077,21 @@ export const getScreenerFileById = async (req: Request, res: Response) => {
       picture_17: formatFileUrl(screenerFile.picture_17),
       picture_16: formatFileUrl(screenerFile.picture_16),
       csvFile: formatFileUrl(screenerFile.csvFile),
+      // CSV export data for this scanner set
+      csvData: {
+        fusslange1: screenerFile.fusslange1,
+        fusslange2: screenerFile.fusslange2,
+        fussbreite1: screenerFile.fussbreite1,
+        fussbreite2: screenerFile.fussbreite2,
+        kugelumfang1: screenerFile.kugelumfang1,
+        kugelumfang2: screenerFile.kugelumfang2,
+        rist1: screenerFile.rist1,
+        rist2: screenerFile.rist2,
+        zehentyp1: screenerFile.zehentyp1,
+        zehentyp2: screenerFile.zehentyp2,
+        archIndex1: screenerFile.archIndex1,
+        archIndex2: screenerFile.archIndex2,
+      },
       createdAt: screenerFile.createdAt,
       updatedAt: screenerFile.updatedAt,
     };
