@@ -122,9 +122,27 @@ model appointment {
   customerId String?
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  appointmentEmployees AppointmentEmployee[]
+
   createdAt DateTime @default(now())
 
   @@map("appointment")
+}
+
+model AppointmentEmployee {
+  id            String      @id @default(uuid())
+  appointmentId String
+  appointment   appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  employeeId    String
+  employee      Employees   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  assignedTo    String // Employee name for this appointment
+
+  createdAt DateTime @default(now())
+
+  @@unique([appointmentId, employeeId])
+  @@index([appointmentId])
+  @@index([employeeId])
+  @@map("appointment_employee")
 }
 
 model SuggestionFeetf1rst {
@@ -223,7 +241,8 @@ model Employees {
   partnerId String
   user      User   @relation(fields: [partnerId], references: [id])
 
-  WorkshopNote WorkshopNote?
+  WorkshopNote         WorkshopNote?
+  appointmentEmployees AppointmentEmployee[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -742,6 +761,9 @@ model custom_shafts {
   vestarkungen      String?
   vestarkungen_text String?
   polsterung_text   String?
+
+  osen_einsetzen_price         Float?
+  Passenden_schnursenkel_price Float?
 
   nahtfarbe      String?
   nahtfarbe_text String?

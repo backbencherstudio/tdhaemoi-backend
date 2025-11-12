@@ -76,6 +76,7 @@ export const createMaßschaftKollektion = async (
   }
 };
 
+
 export const getAllMaßschaftKollektion = async (
   req: Request,
   res: Response
@@ -85,10 +86,12 @@ export const getAllMaßschaftKollektion = async (
     const limit = parseInt(req.query.limit as string) || 10;
     const search = (req.query.search as string) || "";
     const gender = (req.query.gender as string)?.trim() || "";
+    const category = (req.query.category as string)?.trim() || ""; // <-- NEW
     const skip = (page - 1) * limit;
 
     const whereCondition: any = {};
 
+    // ---------- SEARCH ----------
     if (search) {
       whereCondition.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -98,6 +101,7 @@ export const getAllMaßschaftKollektion = async (
       ];
     }
 
+    // ---------- GENDER ----------
     if (gender && (gender === "Herren" || gender === "Damen")) {
       whereCondition.gender = {
         contains: gender,
@@ -105,6 +109,17 @@ export const getAllMaßschaftKollektion = async (
       };
     }
 
+    // ---------- CATEGORY ----------
+    // If a category is supplied → filter exactly on it
+    // If empty → show **all** categories
+    if (category) {
+      whereCondition.catagoary = {
+        equals: category,               // exact match (case-insensitive)
+        mode: "insensitive",
+      };
+    }
+
+    // ---------- FETCH ----------
     const [totalCount, kollektion] = await Promise.all([
       prisma.maßschaft_kollektion.count({ where: whereCondition }),
       prisma.maßschaft_kollektion.findMany({
@@ -345,6 +360,10 @@ export const deleteMaßschaftKollektion = async (
 };
 
 // ----------------------------
+// {
+//     "success": false,
+//     "message": "Maßschaft Kollektion not found"
+// }
 
 export const createTustomShafts = async (req: Request, res: Response) => {
   const files = req.files as any;
@@ -364,6 +383,9 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       nahtfarbe,
       nahtfarbe_text,
       lederType,
+
+      osen_einsetzen_price,
+      Passenden_schnursenkel_price,
     } = req.body;
 
     // Early validation
@@ -427,6 +449,12 @@ export const createTustomShafts = async (req: Request, res: Response) => {
         10000 + Math.random() * 90000
       )}`,
       status: "Neu" as any,
+      osen_einsetzen_price: osen_einsetzen_price
+        ? parseFloat(osen_einsetzen_price)
+        : null,
+      Passenden_schnursenkel_price: Passenden_schnursenkel_price
+        ? parseFloat(Passenden_schnursenkel_price)
+        : null,
     };
 
     // Create the custom shaft
