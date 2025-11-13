@@ -13,7 +13,7 @@ import {
   getOrdersByCustomerId,
   getLast40DaysOrderStats,
   createWerkstattzettel,
-  getEinlagenInProduktion
+  getEinlagenInProduktion,
 } from "./customerOrders.controllers";
 import upload from "../../../config/multer.config";
 
@@ -63,6 +63,8 @@ router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteOrder);
 
 router.post("/werkstattzettel/:customerId", verifyUser("ADMIN", "PARTNER"), createWerkstattzettel);
 
+
+ 
 
 
 export default router;

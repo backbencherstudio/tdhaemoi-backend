@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma, OrderStatus } from "@prisma/client";
 import fs from "fs";
 import iconv from "iconv-lite";
 import csvParser from "csv-parser";
@@ -7,6 +7,12 @@ import { getImageUrl } from "../../../utils/base_utl";
 import path from "path";
 
 const prisma = new PrismaClient();
+
+const COMPLETED_ORDER_STATUSES: OrderStatus[] = [
+  "Ausgeführte_Einlagen",
+  "Einlage_versandt",
+  "Einlage_Abholbereit",
+];
 
 const targetCells = [
   "B58", // fusslange1
@@ -1555,18 +1561,18 @@ export const searchCustomers = async (req: Request, res: Response) => {
 //   csvFile            String?
 
 //   // this all data come form a single csv file
-  // fusslange1   String? //B58   (.csv)
-  // fusslange2   String? //C58   (.csv)
-  // fussbreite1  String? //B73   (.csv)
-  // fussbreite2  String? //C73   (.csv)
-  // kugelumfang1 String? //B102  (.csv)
-  // kugelumfang2 String? //C102  (.csv)
-  // rist1        String? //B105  (.csv)
-  // rist2        String? //C105  (.csv)
-  // zehentyp1    String? //B136  (.csv)
-  // zehentyp2    String? //C136  (.csv)
-  // archIndex1   String? //B120  (.csv)
-  // archIndex2   String? //C120  (.csv)
+// fusslange1   String? //B58   (.csv)
+// fusslange2   String? //C58   (.csv)
+// fussbreite1  String? //B73   (.csv)
+// fussbreite2  String? //C73   (.csv)
+// kugelumfang1 String? //B102  (.csv)
+// kugelumfang2 String? //C102  (.csv)
+// rist1        String? //B105  (.csv)
+// rist2        String? //C105  (.csv)
+// zehentyp1    String? //B136  (.csv)
+// zehentyp2    String? //C136  (.csv)
+// archIndex1   String? //B120  (.csv)
+// archIndex2   String? //C120  (.csv)
 
 //   createdAt DateTime @default(now())
 //   updatedAt DateTime @updatedAt
@@ -1632,8 +1638,6 @@ export const addScreenerFile = async (req: Request, res: Response) => {
           zehentyp2: csvData.C136 || null,
           updatedBy: req.user.id,
           updatedAt: new Date(),
-          
-
         },
       });
     }
@@ -1892,18 +1896,26 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
       csvFileName = files.csvFile[0].filename;
       csvData = await parseCSV(csvPath);
       updateData.csvFile = csvFileName;
-      
+
       // Store CSV data in the screener_file record (each scanner set has its own CSV data)
-      updateData.fusslange1 = csvData.B58 ?? existingScreener.fusslange1 ?? null;
-      updateData.fusslange2 = csvData.C58 ?? existingScreener.fusslange2 ?? null;
-      updateData.fussbreite1 = csvData.B73 ?? existingScreener.fussbreite1 ?? null;
-      updateData.fussbreite2 = csvData.C73 ?? existingScreener.fussbreite2 ?? null;
-      updateData.kugelumfang1 = csvData.B102 ?? existingScreener.kugelumfang1 ?? null;
-      updateData.kugelumfang2 = csvData.C102 ?? existingScreener.kugelumfang2 ?? null;
+      updateData.fusslange1 =
+        csvData.B58 ?? existingScreener.fusslange1 ?? null;
+      updateData.fusslange2 =
+        csvData.C58 ?? existingScreener.fusslange2 ?? null;
+      updateData.fussbreite1 =
+        csvData.B73 ?? existingScreener.fussbreite1 ?? null;
+      updateData.fussbreite2 =
+        csvData.C73 ?? existingScreener.fussbreite2 ?? null;
+      updateData.kugelumfang1 =
+        csvData.B102 ?? existingScreener.kugelumfang1 ?? null;
+      updateData.kugelumfang2 =
+        csvData.C102 ?? existingScreener.kugelumfang2 ?? null;
       updateData.rist1 = csvData.B105 ?? existingScreener.rist1 ?? null;
       updateData.rist2 = csvData.C105 ?? existingScreener.rist2 ?? null;
-      updateData.archIndex1 = csvData.B120 ?? existingScreener.archIndex1 ?? null;
-      updateData.archIndex2 = csvData.C120 ?? existingScreener.archIndex2 ?? null;
+      updateData.archIndex1 =
+        csvData.B120 ?? existingScreener.archIndex1 ?? null;
+      updateData.archIndex2 =
+        csvData.C120 ?? existingScreener.archIndex2 ?? null;
       updateData.zehentyp1 = csvData.B136 ?? existingScreener.zehentyp1 ?? null;
       updateData.zehentyp2 = csvData.C136 ?? existingScreener.zehentyp2 ?? null;
     }
@@ -2249,6 +2261,343 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong while fetching active orders",
+      error: error.message,
+    });
+  }
+};
+
+export const filterCustomer = async (req: Request, res: Response) => {
+  try {
+    const {
+      today,
+      yesterday,
+      thisWeek,
+      lastWeek,
+      thisMonth,
+      month,
+      year,
+      completedOrders,
+      noOrder,
+      page = "1",
+      limit = "10",
+      search,
+    } = req.query;
+
+    const normalizeString = (value: unknown): string | undefined => {
+      if (Array.isArray(value)) {
+        value = value[0];
+      }
+      return typeof value === "string" ? value : undefined;
+    };
+
+    const parseBoolean = (value: unknown): boolean => {
+      const normalized = normalizeString(value);
+      if (!normalized) return false;
+      return ["true", "1", "yes"].includes(normalized.toLowerCase());
+    };
+
+    const parseIntOrNull = (value: unknown): number | null => {
+      const normalized = normalizeString(value);
+      if (!normalized) {
+        return null;
+      }
+      const parsed = Number.parseInt(normalized, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const clampNumber = (value: unknown, fallback: number): number => {
+      const parsed = parseIntOrNull(value);
+      return parsed === null ? fallback : parsed;
+    };
+
+    const completedOrdersFilter = parseBoolean(completedOrders);
+    const noOrderFilter = parseBoolean(noOrder);
+
+    if (completedOrdersFilter && noOrderFilter) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Filters 'completedOrders' and 'noOrder' cannot be used together.",
+      });
+    }
+
+    const limitNumber = Math.min(Math.max(clampNumber(limit, 10), 1), 100);
+    const pageNumber = Math.max(clampNumber(page, 1), 1);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const monthNumber = parseIntOrNull(month);
+    const yearNumber = parseIntOrNull(year);
+
+    if (monthNumber !== null && (monthNumber < 1 || monthNumber > 12)) {
+      return res.status(400).json({
+        success: false,
+        message: "Month must be an integer between 1 and 12.",
+      });
+    }
+
+    const timeframeFlags = [
+      { key: "today", active: parseBoolean(today) },
+      { key: "yesterday", active: parseBoolean(yesterday) },
+      { key: "thisWeek", active: parseBoolean(thisWeek) },
+      { key: "lastWeek", active: parseBoolean(lastWeek) },
+      { key: "thisMonth", active: parseBoolean(thisMonth) },
+    ];
+
+    const activeTimeframes = timeframeFlags.filter((flag) => flag.active);
+
+    if (
+      (monthNumber !== null || yearNumber !== null) &&
+      activeTimeframes.length
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Month/year filters cannot be combined with relative time filters (today, thisWeek, etc.).",
+      });
+    }
+
+    if (activeTimeframes.length > 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Choose only one relative time filter at a time.",
+      });
+    }
+
+    const startOfDay = (date: Date) => {
+      const copy = new Date(date);
+      copy.setHours(0, 0, 0, 0);
+      return copy;
+    };
+
+    const addDays = (date: Date, days: number) => {
+      const copy = new Date(date);
+      copy.setDate(copy.getDate() + days);
+      return copy;
+    };
+
+    const startOfWeek = (date: Date) => {
+      const copy = startOfDay(date);
+      const day = copy.getDay(); // 0 (Sun) - 6 (Sat)
+      const diff = day === 0 ? -6 : 1 - day; // Monday as first day
+      copy.setDate(copy.getDate() + diff);
+      return copy;
+    };
+
+    const now = new Date();
+    let dateRange: { start: Date; end: Date } | null = null;
+
+    if (yearNumber !== null) {
+      const rangeMonth = monthNumber ?? null;
+      const start = new Date(yearNumber, rangeMonth ? rangeMonth - 1 : 0, 1);
+      const end = rangeMonth
+        ? new Date(yearNumber, rangeMonth, 1)
+        : new Date(yearNumber + 1, 0, 1);
+      dateRange = { start, end };
+    } else if (monthNumber !== null) {
+      const currentYear = now.getFullYear();
+      const start = new Date(currentYear, monthNumber - 1, 1);
+      const end = new Date(currentYear, monthNumber, 1);
+      dateRange = { start, end };
+    } else if (activeTimeframes.length === 1) {
+      const timeframe = activeTimeframes[0].key;
+      switch (timeframe) {
+        case "today": {
+          const start = startOfDay(now);
+          const end = addDays(start, 1);
+          dateRange = { start, end };
+          break;
+        }
+        case "yesterday": {
+          const end = startOfDay(now);
+          const start = addDays(end, -1);
+          dateRange = { start, end };
+          break;
+        }
+        case "thisWeek": {
+          const start = startOfWeek(now);
+          const end = addDays(start, 7);
+          dateRange = { start, end };
+          break;
+        }
+        case "lastWeek": {
+          const end = startOfWeek(now);
+          const start = addDays(end, -7);
+          dateRange = { start, end };
+          break;
+        }
+        case "thisMonth": {
+          const start = new Date(now.getFullYear(), now.getMonth(), 1);
+          const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+          dateRange = { start, end };
+          break;
+        }
+        default:
+          break;
+      }
+    }
+
+    const whereConditions: Prisma.customersWhereInput[] = [];
+
+    if (dateRange) {
+      whereConditions.push({
+        createdAt: {
+          gte: dateRange.start,
+          lt: dateRange.end,
+        },
+      });
+    }
+
+    if (completedOrdersFilter) {
+      whereConditions.push({
+        customerOrders: {
+          some: {
+            orderStatus: {
+              in: COMPLETED_ORDER_STATUSES,
+            },
+          },
+        },
+      });
+    }
+
+    if (noOrderFilter) {
+      whereConditions.push({
+        customerOrders: {
+          none: {},
+        },
+      });
+    }
+
+    const normalizedSearch = normalizeString(search)?.trim();
+    if (normalizedSearch) {
+      whereConditions.push({
+        OR: [
+          { vorname: { contains: normalizedSearch, mode: "insensitive" } },
+          { nachname: { contains: normalizedSearch, mode: "insensitive" } },
+          { email: { contains: normalizedSearch, mode: "insensitive" } },
+          { telefonnummer: { contains: normalizedSearch, mode: "insensitive" } },
+          { wohnort: { contains: normalizedSearch, mode: "insensitive" } },
+        ],
+      });
+    }
+
+    const where: Prisma.customersWhereInput = whereConditions.length
+      ? { AND: whereConditions }
+      : {};
+
+    const [totalCount, customers] = await prisma.$transaction([
+      prisma.customers.count({ where }),
+      prisma.customers.findMany({
+        where,
+        skip,
+        take: limitNumber,
+        orderBy: { createdAt: "desc" },
+        include: {
+          customerOrders: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              orderStatus: true,
+              totalPrice: true,
+              createdAt: true,
+            },
+          },
+          screenerFile: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              id: true,
+              customerId: true,
+              picture_10: true,
+              picture_23: true,
+              picture_11: true,
+              picture_24: true,
+              createdAt: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const completedStatusesForCount = new Set(COMPLETED_ORDER_STATUSES);
+
+    const formatScreener = (screener: any | undefined) =>
+      screener
+        ? {
+            id: screener.id,
+            createdAt: screener.createdAt,
+            picture_10: screener.picture_10
+              ? getImageUrl(`/uploads/${screener.picture_10}`)
+              : null,
+            picture_23: screener.picture_23
+              ? getImageUrl(`/uploads/${screener.picture_23}`)
+              : null,
+            picture_11: screener.picture_11
+              ? getImageUrl(`/uploads/${screener.picture_11}`)
+              : null,
+            picture_24: screener.picture_24
+              ? getImageUrl(`/uploads/${screener.picture_24}`)
+              : null,
+          }
+        : null;
+
+    const responseData = customers.map((customer) => {
+      const completedOrdersCount = customer.customerOrders.filter((order) =>
+        completedStatusesForCount.has(order.orderStatus)
+      ).length;
+
+      const latestOrder = customer.customerOrders[0] || null;
+      const latestScreener = formatScreener(customer.screenerFile[0]);
+
+      return {
+        id: customer.id,
+        customerNumber: customer.customerNumber,
+        vorname: customer.vorname,
+        nachname: customer.nachname,
+        email: customer.email,
+        telefonnummer: customer.telefonnummer,
+        wohnort: customer.wohnort,
+        createdAt: customer.createdAt,
+        totalOrders: customer.customerOrders.length,
+        completedOrders: completedOrdersCount,
+        latestOrder,
+        latestScreener,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Customers filtered successfully",
+      data: responseData,
+      pagination: {
+        totalItems: totalCount,
+        totalPages: Math.ceil(totalCount / limitNumber),
+        currentPage: pageNumber,
+        itemsPerPage: limitNumber,
+      },
+      appliedFilters: {
+        today: parseBoolean(today),
+        yesterday: parseBoolean(yesterday),
+        thisWeek: parseBoolean(thisWeek),
+        lastWeek: parseBoolean(lastWeek),
+        thisMonth: parseBoolean(thisMonth),
+        month: monthNumber,
+        year: yearNumber,
+        completedOrders: completedOrdersFilter,
+        noOrder: noOrderFilter,
+        search: normalizedSearch || undefined,
+        dateRange: dateRange
+          ? {
+              start: dateRange.start.toISOString(),
+              end: dateRange.end.toISOString(),
+            }
+          : null,
+      },
+    });
+  } catch (error: any) {
+    console.error("Filter Customer Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while filtering customers",
       error: error.message,
     });
   }

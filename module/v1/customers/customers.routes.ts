@@ -14,7 +14,8 @@ import {
   updateScreenerFile,
   deleteScreenerFile,
   getScreenerFileById,
-  getEinlagenInProduktion
+  getEinlagenInProduktion,
+  filterCustomer
 } from "./customers.controllers";
 import upload from "../../../config/multer.config";
 
@@ -41,6 +42,7 @@ router.get(
 )
 router.get("/", verifyUser("ADMIN", "PARTNER"), getAllCustomers);
 router.get("/search", verifyUser("ADMIN", "PARTNER"), searchCustomers);
+router.get("/filter-customers", filterCustomer);
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteCustomer);
 
 router.patch(
@@ -53,8 +55,6 @@ router.patch(
   verifyUser("PARTNER", "ADMIN"),
   updateCustomerSpecialFields
 );
-
-router.get("/:id", verifyUser("PARTNER", "ADMIN"), getCustomerById);
 
 router.post(
   "/assign-versorgungen/:customerId/:versorgungenId",
@@ -117,6 +117,8 @@ router.get(
   // verifyUser("PARTNER", "ADMIN"),
   getScreenerFileById
 );
+
+router.get("/:id", verifyUser("PARTNER", "ADMIN"), getCustomerById);
 
 
 
