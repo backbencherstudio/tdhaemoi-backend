@@ -534,7 +534,7 @@ export const createOrder = async (req: Request, res: Response) => {
               quantity: currentQty > 0 ? 1 : 0,
               newStock: newQty,
               reason: `Order size ${matchedSizeKey}`,
-              text: `Order created for customer ${customerId}, size ${matchedSizeKey}`,
+              // text: `Order created for customer ${customerId}, size ${matchedSizeKey}`,
               partnerId: store.userId,
               customerId: customerId,
               orderId: newOrder.id,

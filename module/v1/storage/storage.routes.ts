@@ -6,7 +6,8 @@ import {
   getSingleStorage,
   updateStorage,
   getStorageChartData,
-  getStorageHistory
+  getStorageHistory,
+  getStoragePerformer
 } from "./storage.controllers";
 import { verifyUser } from "../../../middleware/verifyUsers";
 
@@ -20,4 +21,5 @@ router.delete("/delete/:id", verifyUser("PARTNER", "ADMIN"), deleteStorage);
 router.get("/chart-data", verifyUser("PARTNER", "ADMIN"), getStorageChartData);
  
 router.get("/history/:id", verifyUser("PARTNER", "ADMIN"), getStorageHistory);
+router.get("/performer", verifyUser("PARTNER", "ADMIN"), getStoragePerformer);
 export default router;

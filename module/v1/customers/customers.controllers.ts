@@ -569,6 +569,15 @@ export const deleteCustomer = async (req: Request, res: Response) => {
         screenerFile: true,
         einlagenAnswers: true,
         versorgungen: true,
+        customerOrders: {
+          include: {
+            product: true,
+          },
+        },
+        werkstattzettel: true,
+        custom_shafts: true,
+        customer_files: true,
+        StoresHistory: true,
       },
     });
 
@@ -579,6 +588,8 @@ export const deleteCustomer = async (req: Request, res: Response) => {
       });
     }
 
+    // Delete all physical files first
+    // 1. Delete screener files
     customer.screenerFile.forEach((screener) => {
       const fileFields = [
         screener.picture_10,
@@ -593,21 +604,119 @@ export const deleteCustomer = async (req: Request, res: Response) => {
       ];
       fileFields.forEach((file) => {
         if (file) {
-          const filePath = `uploads/${file}`;
+          const filePath = path.join(process.cwd(), "uploads", file);
           if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+            try {
+              fs.unlinkSync(filePath);
+            } catch (err) {
+              console.error(`Failed to delete file ${filePath}:`, err);
+            }
           }
         }
       });
     });
 
-    await prisma.customers.delete({
-      where: { id },
+    // 2. Delete customer files
+    customer.customer_files.forEach((file) => {
+      if (file.url) {
+        const filePath = path.join(process.cwd(), "uploads", file.url);
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (err) {
+            console.error(`Failed to delete customer file ${filePath}:`, err);
+          }
+        }
+      }
+    });
+
+    // 3. Delete order invoices
+    customer.customerOrders.forEach((order) => {
+      if (order.invoice) {
+        const invoicePath = path.join(process.cwd(), "uploads", order.invoice);
+        if (fs.existsSync(invoicePath)) {
+          try {
+            fs.unlinkSync(invoicePath);
+          } catch (err) {
+            console.error(`Failed to delete invoice ${invoicePath}:`, err);
+          }
+        }
+      }
+    });
+
+    // Delete all related data in a transaction
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete customer_versorgungen (no cascade)
+      await tx.customer_versorgungen.deleteMany({
+        where: { customerId: id },
+      });
+
+      // 2. Delete customerOrders and their related customerProduct
+      for (const order of customer.customerOrders) {
+        // Delete customerProduct if it exists
+        if (order.productId) {
+          await tx.customerProduct.delete({
+            where: { id: order.productId },
+          }).catch(() => {
+            // Ignore if already deleted
+          });
+        }
+      }
+      await tx.customerOrders.deleteMany({
+        where: { customerId: id },
+      });
+
+      // 3. Delete werkstattzettel (SetNull, but we want to delete it)
+      if (customer.werkstattzettel) {
+        await tx.werkstattzettel.delete({
+          where: { customerId: id },
+        }).catch(() => {
+          // Ignore if already deleted
+        });
+      }
+
+      // 4. Delete custom_shafts (no cascade on customer relation)
+      await tx.custom_shafts.deleteMany({
+        where: { customerId: id },
+      });
+
+      // 5. Delete StoresHistory entries (SetNull, but we want to delete them)
+      await tx.storesHistory.deleteMany({
+        where: { customerId: id },
+      });
+
+      // 6. Delete customer_files (has cascade, but delete explicitly for safety)
+      await tx.customer_files.deleteMany({
+        where: { customerId: id },
+      });
+
+      // 7. Delete customerHistorie (has cascade, but delete explicitly for safety)
+      await tx.customerHistorie.deleteMany({
+        where: { customerId: id },
+      });
+
+      // 8. Delete einlagenAnswers (has cascade, but delete explicitly for safety)
+      await tx.einlagenAnswers.deleteMany({
+        where: { customerId: id },
+      });
+
+      // 9. Delete screener_file (has cascade, but delete explicitly for safety)
+      await tx.screener_file.deleteMany({
+        where: { customerId: id },
+      });
+
+      // 10. Finally, delete the customer
+      await tx.customers.delete({
+        where: { id },
+      });
     });
 
     res.status(200).json({
       success: true,
-      message: "Customer deleted successfully",
+      message: "Customer and all related data deleted successfully",
+      data: {
+        id,
+      },
     });
   } catch (error: any) {
     console.error("Delete Customer Error:", error);

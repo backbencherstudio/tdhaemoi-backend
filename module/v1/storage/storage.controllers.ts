@@ -121,9 +121,8 @@ enum ChangeType {
   CORRECTION // manual adjustments
   TRANSFER // between storage locations 
 }
-
-
 */
+
 
 export const createStorage = async (req: Request, res: Response) => {
   try {
@@ -197,6 +196,7 @@ export const createStorage = async (req: Request, res: Response) => {
 export const getAllMyStorage = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
+
     console.log(userId);
 
     const page = parseInt(req.query.page as string) || 1;
@@ -204,11 +204,11 @@ export const getAllMyStorage = async (req: Request, res: Response) => {
     const skip = (page - 1) * limit;
 
     const totalItems = await prisma.stores.count({
-      where: { userId },
+      where: { user: { id: userId } },
     });
 
     const allStorage = await prisma.stores.findMany({
-      where: { userId },
+      where: { user: { id: userId } },
       skip,
       take: limit,
     });
@@ -250,7 +250,7 @@ export const getSingleStorage = async (req: Request, res: Response) => {
     });
 
     const data = await prisma.stores.findFirst({
-      where: { userId, id: storeId },
+      where: { user: { id: userId }, id: storeId },
     });
 
     // Add calculated Status to store
@@ -273,16 +273,19 @@ export const getSingleStorage = async (req: Request, res: Response) => {
 export const updateStorage = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-
+    const userId = req.user.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     const updatedStorageData = Object.fromEntries(
       Object.entries(req.body).filter(([_, value]) => value !== undefined)
     );
 
     // Remove Status from update data if present (it's calculated dynamically)
     delete updatedStorageData.Status;
-
+    // { user: { id: userId } 
     const updatedStorage = await prisma.stores.update({
-      where: { id },
+      where: { id, user: { id: userId } },
       data: updatedStorageData,
     });
 
@@ -315,9 +318,14 @@ export const updateStorage = async (req: Request, res: Response) => {
 export const deleteStorage = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
 
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    // { user: { id: userId } 
     const deletedStorage = await prisma.stores.delete({
-      where: { id },
+      where: { id, user: { id: userId } },
     });
 
     res.status(200).json({
@@ -362,6 +370,7 @@ export const getStorageChartData = async (req: Request, res: Response) => {
 
     // If a specific year is requested, return monthly data for that year
     if (specificYear && !isNaN(specificYear)) {
+
       const monthNames = [
         "Jan",
         "Feb",
@@ -477,7 +486,7 @@ export const getStorageHistory = async (req: Request, res: Response) => {
     const totalPages = Math.ceil(totalItems / limit);
 
     const history = await prisma.storesHistory.findMany({
-      where: { storeId },
+      where: { storeId, user: { id: userId } },
       orderBy: { createdAt: "desc" },
       skip,
       take: limit,
@@ -533,6 +542,43 @@ export const getStorageHistory = async (req: Request, res: Response) => {
         hasPrevPage: page > 1,
       },
     });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+//  i need a group data top to low Performer= [
+//   { model: 'Modell B', verkaufe: 230, umsatzanteil: 12.7 },
+//   { model: 'Modell C', verkaufe: 210, umsatzanteil: 10.7 },
+//   { model: 'Modell A', verkaufe: 195, umsatzanteil: 8.2 },
+//   { model: 'Modell D', verkaufe: 160, umsatzanteil: 7.9 },
+//   { model: 'Modell E', verkaufe: 115, umsatzanteil: 6.1 }
+// ]
+
+export const getStoragePerformer = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const performer = await prisma.storesHistory.findMany({
+      where: { user: { id: userId } },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Storage performer fetched successfully",
+      data: performer,
+    });
+
   } catch (error) {
     res.status(500).json({
       success: false,
