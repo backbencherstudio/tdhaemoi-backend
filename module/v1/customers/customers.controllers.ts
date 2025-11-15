@@ -556,8 +556,6 @@ export const getAllCustomers = async (req: Request, res: Response) => {
       message: "Something went wrong",
       error: error.message,
     });
-  } finally {
-    await prisma.$disconnect();
   }
 };
 
@@ -1754,8 +1752,6 @@ export const addScreenerFile = async (req: Request, res: Response) => {
       message: "Something went wrong",
       error: error.message,
     });
-  } finally {
-    await prisma.$disconnect();
   }
 };
 

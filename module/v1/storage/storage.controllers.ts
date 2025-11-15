@@ -3,6 +3,56 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+/**
+ * Calculate Status dynamically based on mindestbestand and groessenMengen
+ * @param groessenMengen - JSON object with sizes and quantities (e.g., {"S": 10, "M": 20, "L": 15})
+ * @param mindestbestand - Minimum stock level threshold
+ * @returns "Voller Bestand" if all sizes >= mindestbestand, "Niedriger Bestand" otherwise
+ */
+const calculateStatus = (
+  groessenMengen: any,
+  mindestbestand: number
+): string => {
+  if (!groessenMengen || typeof groessenMengen !== "object") {
+    return "Niedriger Bestand";
+  }
+
+  const sizes = groessenMengen as Record<string, number>;
+  const sizeKeys = Object.keys(sizes);
+
+  if (sizeKeys.length === 0) {
+    return "Niedriger Bestand";
+  }
+
+  // Check if any size is below mindestbestand
+  for (const sizeKey of sizeKeys) {
+    const quantity = Number(sizes[sizeKey] ?? 0);
+    if (quantity < mindestbestand) {
+      return "Niedriger Bestand";
+    }
+  }
+
+  return "Voller Bestand";
+};
+
+/**
+ * Add Status field to a single store object
+ */
+const addStatusToStore = (store: any) => {
+  if (!store) return store;
+  return {
+    ...store,
+    Status: calculateStatus(store.groessenMengen, store.mindestbestand),
+  };
+};
+
+/**
+ * Add Status field to an array of store objects
+ */
+const addStatusToStores = (stores: any[]) => {
+  return stores.map((store) => addStatusToStore(store));
+};
+
 /* VERY IMPORTANT ALSO SHOW CUSTOMER FOR WHICH ONE IN THE HISTORY WE USED THE SIZE FOR4. 🧾 Inventory Movement History (Stock Log)Each product has its own history log showing every stock change:Incoming (e.g. deliveries)Outgoing (e.g. sales, reservations)Corrections (manual adjustments)Transfers (between storage locations)Each entry should include:Date & timeQuantity change (+X or –X)New stock levelUser or system actionOptional: Comment or reason
 
 */
@@ -86,7 +136,6 @@ export const createStorage = async (req: Request, res: Response) => {
       groessenMengen,
       purchase_price,
       selling_price,
-      Status,
     } = req.body;
 
     const userId = req.user.id;
@@ -104,7 +153,6 @@ export const createStorage = async (req: Request, res: Response) => {
       "groessenMengen",
       "purchase_price",
       "selling_price",
-      "Status",
     ].find((field) => !req.body[field]);
 
     if (missingField) {
@@ -124,15 +172,17 @@ export const createStorage = async (req: Request, res: Response) => {
         groessenMengen,
         purchase_price,
         selling_price,
-        Status,
         userId,
       },
     });
 
+    // Add calculated Status to response
+    const storageWithStatus = addStatusToStore(newStorage);
+
     res.status(201).json({
       success: true,
       message: "Storage created successfully",
-      data: newStorage,
+      data: storageWithStatus,
     });
   } catch (error) {
     console.error("error:", error);
@@ -165,10 +215,13 @@ export const getAllMyStorage = async (req: Request, res: Response) => {
 
     const totalPages = Math.ceil(totalItems / limit);
 
+    // Add calculated Status to all stores
+    const storageWithStatus = addStatusToStores(allStorage);
+
     res.status(200).json({
       success: true,
       message: "All storage fetched successfully",
-      data: allStorage,
+      data: storageWithStatus,
       pagination: {
         totalItems,
         totalPages,
@@ -200,10 +253,13 @@ export const getSingleStorage = async (req: Request, res: Response) => {
       where: { userId, id: storeId },
     });
 
+    // Add calculated Status to store
+    const storageWithStatus = addStatusToStore(data);
+
     res.status(200).json({
       success: true,
       message: "storage fetched successfully",
-      data,
+      data: storageWithStatus,
     });
   } catch (error) {
     res.status(500).json({
@@ -214,7 +270,6 @@ export const getSingleStorage = async (req: Request, res: Response) => {
   }
 };
 
-
 export const updateStorage = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -223,15 +278,21 @@ export const updateStorage = async (req: Request, res: Response) => {
       Object.entries(req.body).filter(([_, value]) => value !== undefined)
     );
 
+    // Remove Status from update data if present (it's calculated dynamically)
+    delete updatedStorageData.Status;
+
     const updatedStorage = await prisma.stores.update({
       where: { id },
       data: updatedStorageData,
     });
 
+    // Add calculated Status to response
+    const storageWithStatus = addStatusToStore(updatedStorage);
+
     res.status(200).json({
       success: true,
       message: "Storage updated successfully",
-      data: updatedStorage,
+      data: storageWithStatus,
     });
   } catch (error: any) {
     console.error("updateStorage error:", error);
@@ -262,6 +323,9 @@ export const deleteStorage = async (req: Request, res: Response) => {
     res.status(200).json({
       success: true,
       message: "Storage deleted successfully",
+      data: {
+        id: deletedStorage.id,
+      },
     });
   } catch (error: any) {
     if (error.code === "P2025") {
@@ -284,10 +348,9 @@ export const getStorageChartData = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
 
-    // Optional filters: fromYear, toYear
     const fromYearParam = req.query.fromYear as string | undefined;
     const toYearParam = req.query.toYear as string | undefined;
-    const yearParam = req.query.year as string | undefined; // when provided, return monthly breakdown
+    const yearParam = req.query.year as string | undefined; 
     const fromYear = fromYearParam ? parseInt(fromYearParam, 10) : undefined;
     const toYear = toYearParam ? parseInt(toYearParam, 10) : undefined;
     const specificYear = yearParam ? parseInt(yearParam, 10) : undefined;
@@ -314,7 +377,9 @@ export const getStorageChartData = async (req: Request, res: Response) => {
         "Dec",
       ];
 
-      const monthToSums = new Array(12).fill(null).map(() => ({ einkauf: 0, verkauf: 0 }));
+      const monthToSums = new Array(12)
+        .fill(null)
+        .map(() => ({ einkauf: 0, verkauf: 0 }));
 
       for (const s of stores) {
         const d = new Date(s.createdAt);
@@ -366,6 +431,107 @@ export const getStorageChartData = async (req: Request, res: Response) => {
       success: true,
       message: "Storage chart data fetched successfully",
       data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const getStorageHistory = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const storeId = req.params.id;
+
+    // Pagination values
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    // Count total entries
+    const totalItems = await prisma.storesHistory.count({
+      where: { storeId },
+    });
+
+    // If no items, return empty result with totalPages = 0
+    if (totalItems === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "Storage history fetched successfully",
+        data: [],
+        pagination: {
+          totalItems: 0,
+          totalPages: 0,
+          currentPage: page,
+          itemsPerPage: limit,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
+      });
+    }
+
+    // Calculate total pages normally if items > 0
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const history = await prisma.storesHistory.findMany({
+      where: { storeId },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        customer: {
+          select: {
+            id: true,
+            customerNumber: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+            telefonnummer: true,
+            wohnort: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            totalPrice: true,
+            orderStatus: true,
+            createdAt: true,
+            product: {
+              select: {
+                id: true,
+                name: true,
+                rohlingHersteller: true,
+                artikelHersteller: true,
+              },
+            },
+          },
+        },
+        user: { 
+          select: { 
+            id: true, 
+            name: true, 
+            email: true,
+            busnessName: true,
+          } 
+        },
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Storage history fetched successfully",
+      data: history,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     });
   } catch (error) {
     res.status(500).json({

@@ -486,6 +486,21 @@ export const createOrder = async (req: Request, res: Response) => {
         },
       });
 
+      // Create order first so we can use its ID in StoresHistory
+      const newOrder = await tx.customerOrders.create({
+        data: {
+          customerId,
+          partnerId,
+          werkstattzettelId,
+          fußanalyse: customer.fußanalyse,
+          einlagenversorgung: customer.einlagenversorgung,
+          totalPrice,
+          productId: customerProduct.id,
+          statusUpdate: new Date(),
+        },
+        select: { id: true },
+      });
+
       // Decrement store stock for the matched size (if storeId present)
       if (versorgung.storeId) {
         const store = await tx.stores.findUnique({
@@ -511,6 +526,7 @@ export const createOrder = async (req: Request, res: Response) => {
             data: { groessenMengen: sizes },
           });
 
+          // Create StoresHistory with customerId and orderId
           await tx.storesHistory.create({
             data: {
               storeId: store.id,
@@ -518,25 +534,14 @@ export const createOrder = async (req: Request, res: Response) => {
               quantity: currentQty > 0 ? 1 : 0,
               newStock: newQty,
               reason: `Order size ${matchedSizeKey}`,
+              text: `Order created for customer ${customerId}, size ${matchedSizeKey}`,
               partnerId: store.userId,
+              customerId: customerId,
+              orderId: newOrder.id,
             },
           });
         }
       }
-
-      const newOrder = await tx.customerOrders.create({
-        data: {
-          customerId,
-          partnerId,
-          werkstattzettelId,
-          fußanalyse: customer.fußanalyse,
-          einlagenversorgung: customer.einlagenversorgung,
-          totalPrice,
-          productId: customerProduct.id,
-          statusUpdate: new Date(),
-        },
-        select: { id: true },
-      });
 
       await tx.customerHistorie.create({
         data: {
