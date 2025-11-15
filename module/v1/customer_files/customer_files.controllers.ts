@@ -28,185 +28,203 @@ const addFileEntry = (entries, row, field, table, rowId, createdAt) => {
   }
 };
 
-export const getCustomerFiles = async (req, res) => {
-  try {
-    // 1. READ FROM QUERY, NOT BODY
-    const customerId = req.query.id as string; // ← correct
+// export const getCustomerFiles = async (req, res) => {
+//   try {
+//     // 1. READ FROM QUERY, NOT BODY
+//     const customerId = req.query.id as string; // ← correct
 
-    if (!customerId) {
-      return res.status(400).json({
-        success: false,
-        message: "customerId is required in query params",
-      });
-    }
 
-    console.log("Customer ID:", customerId);
+  
+//   //   {
+//   //     "fieldName": "image",
+//   //     "table": "customer_files",
+//   //     "url": "071ee896-2e6b-4776-9e26-d73234cae793.stl",
+//   //     "id": "abdb9ab5-c989-480c-b464-6b6adaab47a6",
+//   //     "fileType": "stl",
+//   //     "createdAt": "2025-11-10T11:13:33.686Z",
+//   //     "fullUrl": "http://192.168.7.12:3001/uploads/071ee896-2e6b-4776-9e26-d73234cae793.stl"
+//   // },
 
-    const page = parseInt(req.query.page as string, 10) || 1;
-    const limit = parseInt(req.query.limit as string, 10) || 20;
-    const skip = (page - 1) * limit;
+//     // i wanna query by table ?table=customer_files or ect
+//     // custom_shafts screener_file customer_files
+//     const table = req.query.table as string;
 
-    // Check if customer exists
-    const customer = await prisma.customers.findUnique({
-      where: { id: customerId },
-    });
 
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-      });
-    }
+//     if (!customerId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "customerId is required in query params",
+//       });
+//     }
 
-    // -----------------------------------------------------------------
-    // 1. Fetch all relevant rows with createdAt
-    // -----------------------------------------------------------------
-    const [screenerRows, customShaftRows, customerFilesRows] =
-      await Promise.all([
-        prisma.screener_file.findMany({
-          where: { customerId },
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            createdAt: true,
-            picture_10: true,
-            picture_23: true,
-            threed_model_left: true,
-            picture_17: true,
-            picture_11: true,
-            picture_24: true,
-            threed_model_right: true,
-            picture_16: true,
-            csvFile: true,
-          },
-        }),
-        prisma.custom_shafts.findMany({
-          where: { customerId },
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            createdAt: true,
-            image3d_1: true,
-            image3d_2: true,
-          },
-        }),
-        prisma.customer_files.findMany({
-          where: { customerId },
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            createdAt: true,
-            url: true,
-          },
-        }),
-      ]);
+//     console.log("Customer ID:", customerId);
 
-    // -----------------------------------------------------------------
-    // 2. Collect all file entries with createdAt
-    // -----------------------------------------------------------------
-    const allEntries = [];
+//     const page = parseInt(req.query.page as string, 10) || 1;
+//     const limit = parseInt(req.query.limit as string, 10) || 20;
+//     const skip = (page - 1) * limit;
 
-    // Screener Files
-    for (const row of screenerRows) {
-      const fields = [
-        "picture_10",
-        "picture_23",
-        "threed_model_left",
-        "picture_17",
-        "picture_11",
-        "picture_24",
-        "threed_model_right",
-        "picture_16",
-        "csvFile",
-      ] as const;
 
-      for (const field of fields) {
-        addFileEntry(
-          allEntries,
-          row,
-          field,
-          "screener_file",
-          row.id,
-          row.createdAt
-        );
-      }
-    }
+//     // Check if customer exists
+//     const customer = await prisma.customers.findUnique({
+//       where: { id: customerId },
+//     });
 
-    // Custom Shafts
-    for (const row of customShaftRows) {
-      const fields = ["image3d_1", "image3d_2"] as const;
-      for (const field of fields) {
-        addFileEntry(
-          allEntries,
-          row,
-          field,
-          "custom_shafts",
-          row.id,
-          row.createdAt
-        );
-      }
-    }
+//     if (!customer) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Customer not found",
+//       });
+//     }
 
-    // Customer Files (fieldName = "image")
-    for (const row of customerFilesRows) {
-      if (row.url) {
-        allEntries.push({
-          fieldName: "image",
-          table: "customer_files",
-          url: row.url,
-          id: row.id,
-          fileType: getFileType(row.url),
-          createdAt: row.createdAt,
-        });
-      }
-    }
+//     // -----------------------------------------------------------------
+//     // 1. Fetch all relevant rows with createdAt
+//     // -----------------------------------------------------------------
+//     const [screenerRows, customShaftRows, customerFilesRows] =
+//       await Promise.all([
+//         prisma.screener_file.findMany({
+//           where: { customerId },
+//           orderBy: { createdAt: "desc" },
+//           select: {
+//             id: true,
+//             createdAt: true,
+//             picture_10: true,
+//             picture_23: true,
+//             threed_model_left: true,
+//             picture_17: true,
+//             picture_11: true,
+//             picture_24: true,
+//             threed_model_right: true,
+//             picture_16: true,
+//             csvFile: true,
+//           },
+//         }),
+//         prisma.custom_shafts.findMany({
+//           where: { customerId },
+//           orderBy: { createdAt: "desc" },
+//           select: {
+//             id: true,
+//             createdAt: true,
+//             image3d_1: true,
+//             image3d_2: true,
+//           },
+//         }),
+//         prisma.customer_files.findMany({
+//           where: { customerId },
+//           orderBy: { createdAt: "desc" },
+//           select: {
+//             id: true,
+//             createdAt: true,
+//             url: true,
+//           },
+//         }),
+//       ]);
 
-    // -----------------------------------------------------------------
-    // 3. Global sort by createdAt (latest first)
-    // -----------------------------------------------------------------
-    allEntries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+//     // -----------------------------------------------------------------
+//     // 2. Collect all file entries with createdAt
+//     // -----------------------------------------------------------------
+//     const allEntries = [];
 
-    // -----------------------------------------------------------------
-    // 4. Pagination
-    // -----------------------------------------------------------------
-    const total = allEntries.length;
-    const totalPages = Math.ceil(total / limit);
-    const paginatedEntries = allEntries.slice(skip, skip + limit);
+//     // Screener Files
+//     for (const row of screenerRows) {
+//       const fields = [
+//         "picture_10",
+//         "picture_23",
+//         "threed_model_left",
+//         "picture_17",
+//         "picture_11",
+//         "picture_24",
+//         "threed_model_right",
+//         "picture_16",
+//         "csvFile",
+//       ] as const;
 
-    // Optional: Add full URL
-    const baseUrl =
-      process.env.APP_URL || req.protocol + "://" + req.get("host");
-    paginatedEntries.forEach((entry) => {
-      entry.fullUrl = `${baseUrl}/uploads/${entry.url}`;
-    });
+//       for (const field of fields) {
+//         addFileEntry(
+//           allEntries,
+//           row,
+//           field,
+//           "screener_file",
+//           row.id,
+//           row.createdAt
+//         );
+//       }
+//     }
 
-    // -----------------------------------------------------------------
-    // 5. Response
-    // -----------------------------------------------------------------
-    const response = {
-      success: true,
-      message: "Files fetched successfully",
-      data: paginatedEntries,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
-    };
+//     // Custom Shafts
+//     for (const row of customShaftRows) {
+//       const fields = ["image3d_1", "image3d_2"] as const;
+//       for (const field of fields) {
+//         addFileEntry(
+//           allEntries,
+//           row,
+//           field,
+//           "custom_shafts",
+//           row.id,
+//           row.createdAt
+//         );
+//       }
+//     }
 
-    res.status(200).json(response);
-  } catch (error: any) {
-    console.error("Get Customer Files Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
-};
+//     // Customer Files (fieldName = "image")
+//     for (const row of customerFilesRows) {
+//       if (row.url) {
+//         allEntries.push({
+//           fieldName: "image",
+//           table: "customer_files",
+//           url: row.url,
+//           id: row.id,
+//           fileType: getFileType(row.url),
+//           createdAt: row.createdAt,
+//         });
+//       }
+//     }
+
+//     // -----------------------------------------------------------------
+//     // 3. Global sort by createdAt (latest first)
+//     // -----------------------------------------------------------------
+//     allEntries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+//     // -----------------------------------------------------------------
+//     // 4. Pagination
+//     // -----------------------------------------------------------------
+//     const total = allEntries.length;
+//     const totalPages = Math.ceil(total / limit);
+//     const paginatedEntries = allEntries.slice(skip, skip + limit);
+
+//     // Optional: Add full URL
+//     const baseUrl =
+//       process.env.APP_URL || req.protocol + "://" + req.get("host");
+//     paginatedEntries.forEach((entry) => {
+//       entry.fullUrl = `${baseUrl}/uploads/${entry.url}`;
+//     });
+
+//     // -----------------------------------------------------------------
+//     // 5. Response
+//     // -----------------------------------------------------------------
+//     const response = {
+//       success: true,
+//       message: "Files fetched successfully",
+//       data: paginatedEntries,
+//       pagination: {
+//         page,
+//         limit,
+//         total,
+//         totalPages,
+//         hasNext: page < totalPages,
+//         hasPrev: page > 1,
+//       },
+//     };
+
+//     res.status(200).json(response);
+//   } catch (error: any) {
+//     console.error("Get Customer Files Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//       error: error.message,
+//     });
+//   }
+// };
 
 export const createCustomerFile = async (req: Request, res: Response) => {
   const files = req.files as any;
@@ -301,6 +319,188 @@ export const createCustomerFile = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+export const getCustomerFiles = async (req, res) => {
+  try {
+    const customerId = req.query.id as string;
+    const table = (req.query.table as string) || "all"; // all, screener_file, custom_shafts, customer_files
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId is required in query params",
+      });
+    }
+
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 20;
+    const skip = (page - 1) * limit;
+
+    // Check if customer exists
+    const customer = await prisma.customers.findUnique({
+      where: { id: customerId },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    let screenerRows = [];
+    let customShaftRows = [];
+    let customerFilesRows = [];
+
+    // Load only what user requested
+    if (table === "all" || table === "screener_file") {
+      screenerRows = await prisma.screener_file.findMany({
+        where: { customerId },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          createdAt: true,
+          picture_10: true,
+          picture_23: true,
+          threed_model_left: true,
+          picture_17: true,
+          picture_11: true,
+          picture_24: true,
+          threed_model_right: true,
+          picture_16: true,
+          csvFile: true,
+        },
+      });
+    }
+
+    if (table === "all" || table === "custom_shafts") {
+      customShaftRows = await prisma.custom_shafts.findMany({
+        where: { customerId },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          createdAt: true,
+          image3d_1: true,
+          image3d_2: true,
+        },
+      });
+    }
+
+    if (table === "all" || table === "customer_files") {
+      customerFilesRows = await prisma.customer_files.findMany({
+        where: { customerId },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          createdAt: true,
+          url: true,
+        },
+      });
+    }
+
+    // Build final output
+    const allEntries: any[] = [];
+
+    // Screener File
+    for (const row of screenerRows) {
+      const fields = [
+        "picture_10",
+        "picture_23",
+        "threed_model_left",
+        "picture_17",
+        "picture_11",
+        "picture_24",
+        "threed_model_right",
+        "picture_16",
+        "csvFile",
+      ] as const;
+
+      for (const field of fields) {
+        if (row[field]) {
+          allEntries.push({
+            fieldName: field,
+            table: "screener_file",
+            url: row[field],
+            id: row.id,
+            fileType: getFileType(row[field]),
+            createdAt: row.createdAt,
+          });
+        }
+      }
+    }
+
+    // Admin Order (custom shaft)
+    for (const row of customShaftRows) {
+      const fields = ["image3d_1", "image3d_2"] as const;
+
+      for (const field of fields) {
+        if (row[field]) {
+          allEntries.push({
+            fieldName: field,
+            table: "custom_shafts",
+            url: row[field],
+            id: row.id,
+            fileType: getFileType(row[field]),
+            createdAt: row.createdAt,
+          });
+        }
+      }
+    }
+
+    // Customer File
+    for (const row of customerFilesRows) {
+      if (row.url) {
+        allEntries.push({
+          fieldName: "image",
+          table: "customer_files",
+          url: row.url,
+          id: row.id,
+          fileType: getFileType(row.url),
+          createdAt: row.createdAt,
+        });
+      }
+    }
+
+    // Sort newest first
+    allEntries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    // Pagination
+    const total = allEntries.length;
+    const totalPages = Math.ceil(total / limit);
+    const paginatedEntries = allEntries.slice(skip, skip + limit);
+
+    // Add full URL
+    const baseUrl =
+      process.env.APP_URL || req.protocol + "://" + req.get("host");
+
+    paginatedEntries.forEach((entry) => {
+      entry.fullUrl = `${baseUrl}/uploads/${entry.url}`;
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Files fetched successfully",
+      data: paginatedEntries,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Get Customer Files Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 
 const UPLOADS_DIR = path.join(process.cwd(), "uploads"); // adjust if needed
 
