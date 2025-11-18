@@ -5,10 +5,13 @@ const prisma = new PrismaClient();
 
 /**
  * Calculate Status dynamically based on mindestbestand and groessenMengen
- * @param groessenMengen - JSON object with sizes and quantities (e.g., {"S": 10, "M": 20, "L": 15})
+ * @param groessenMengen - JSON object with sizes and quantities
+ *   New format: {"35": {"quantity": 5, "length": 225}, "36": {"quantity": 2, "length": 230}}
+ *   Old format (backward compatible): {"35": 5, "36": 2}
  * @param mindestbestand - Minimum stock level threshold
  * @returns "Voller Bestand" if all sizes >= mindestbestand, "Niedriger Bestand" otherwise
  */
+
 const calculateStatus = (
   groessenMengen: any,
   mindestbestand: number
@@ -17,7 +20,7 @@ const calculateStatus = (
     return "Niedriger Bestand";
   }
 
-  const sizes = groessenMengen as Record<string, number>;
+  const sizes = groessenMengen as Record<string, any>;
   const sizeKeys = Object.keys(sizes);
 
   if (sizeKeys.length === 0) {
@@ -26,7 +29,21 @@ const calculateStatus = (
 
   // Check if any size is below mindestbestand
   for (const sizeKey of sizeKeys) {
-    const quantity = Number(sizes[sizeKey] ?? 0);
+    const sizeValue = sizes[sizeKey];
+    let quantity: number;
+
+    // Handle new format: { quantity: number, length: number }
+    if (sizeValue && typeof sizeValue === "object" && "quantity" in sizeValue) {
+      quantity = Number(sizeValue.quantity ?? 0);
+    } 
+    // Handle old format: number (backward compatibility)
+    else if (typeof sizeValue === "number") {
+      quantity = sizeValue;
+    } 
+    else {
+      quantity = 0;
+    }
+
     if (quantity < mindestbestand) {
       return "Niedriger Bestand";
     }
@@ -56,73 +73,6 @@ const addStatusToStores = (stores: any[]) => {
 /* VERY IMPORTANT ALSO SHOW CUSTOMER FOR WHICH ONE IN THE HISTORY WE USED THE SIZE FOR4. 🧾 Inventory Movement History (Stock Log)Each product has its own history log showing every stock change:Incoming (e.g. deliveries)Outgoing (e.g. sales, reservations)Corrections (manual adjustments)Transfers (between storage locations)Each entry should include:Date & timeQuantity change (+X or –X)New stock levelUser or system actionOptional: Comment or reason
 
 */
-
-/*
-model Stores {
-  id             String @id @default(uuid()) // Unique identifier for each store item
-  produktname    String // Product name
-  hersteller     String // Manufacturer
-  artikelnummer  String // Article number / SKU
-  lagerort       String // Storage location / warehouse location
-  mindestbestand Int // Minimum stock level
-
-  groessenMengen Json // Sizes & quantities (e.g., {"S": 10, "M": 20, "L": 15})
-  purchase_price Int // Purchase price
-  selling_price  Int // Selling price
-  Status         String // Status (e.g., "In Stock", "Out of Stock", "Discontinued")
-
-  versorgungen Versorgungen[]
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  storesHistory StoresHistory[] // History of stock changes
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([id, produktname])
-  @@map("stores")
-}
-
-model StoresHistory {
-  id      String @id @default(uuid())
-  storeId String
-  store   Stores @relation(fields: [storeId], references: [id], onDelete: Cascade)
-
-  changeType ChangeType
-  quantity   Int
-  newStock   Int
-  reason     String?
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  customerId String? // Optional: Link to customer if applicable
-  customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-
-  orderId String? // Optional: Link to order if applicable
-  order   customerOrders? @relation(fields: [orderId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([storeId])
-  @@index([userId])
-  @@index([createdAt])
-  @@index([customerId])
-  @@index([orderId])
-  @@map("storeshistory")
-}
-
-enum ChangeType {
-  INCOMING // e.g., deliveries
-  OUTGOING // e.g., sales, reservations
-  CORRECTION // manual adjustments
-  TRANSFER // between storage locations 
-}
-*/
-
 
 export const createStorage = async (req: Request, res: Response) => {
   try {
@@ -551,7 +501,7 @@ export const getStorageHistory = async (req: Request, res: Response) => {
   }
 };
 
-//  i need a group data top to low Performer= [
+//  i need a group data top to low Performer = [
 //   { model: 'Modell B', verkaufe: 230, umsatzanteil: 12.7 },
 //   { model: 'Modell C', verkaufe: 210, umsatzanteil: 10.7 },
 //   { model: 'Modell A', verkaufe: 195, umsatzanteil: 8.2 },

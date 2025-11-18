@@ -318,6 +318,9 @@ export const getSystemAppointment = async (req: Request, res: Response) => {
   try {
     const { customerId, appointmentId } = req.params;
 
+    //i need only single user appomnent
+    const { id } = req.user;
+
     const appointment = await prisma.appointment.findFirst({
       where: {
         id: appointmentId,

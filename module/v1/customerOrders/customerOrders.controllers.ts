@@ -515,11 +515,43 @@ export const createOrder = async (req: Request, res: Response) => {
         ) {
           const sizes = { ...(store.groessenMengen as any) } as Record<
             string,
-            number
+            any
           >;
-          const currentQty = Number(sizes[matchedSizeKey] ?? 0);
+          
+          const sizeValue = sizes[matchedSizeKey];
+          let currentQty: number;
+          let length: number | undefined;
+
+          // Handle new format: { quantity: number, length: number }
+          if (sizeValue && typeof sizeValue === "object" && "quantity" in sizeValue) {
+            currentQty = Number(sizeValue.quantity ?? 0);
+            length = sizeValue.length ? Number(sizeValue.length) : undefined;
+          } 
+          // Handle old format: number (backward compatibility)
+          else if (typeof sizeValue === "number") {
+            currentQty = sizeValue;
+            length = undefined;
+          } 
+          else {
+            currentQty = 0;
+            length = undefined;
+          }
+
           const newQty = currentQty > 0 ? currentQty - 1 : 0;
-          sizes[matchedSizeKey] = newQty;
+          
+          // Update with new format structure
+          if (length !== undefined) {
+            sizes[matchedSizeKey] = {
+              quantity: newQty,
+              length: length,
+            };
+          } else {
+            // If old format, keep old format or convert to new format
+            sizes[matchedSizeKey] = {
+              quantity: newQty,
+              length: 0, // Default length if not available
+            };
+          }
 
           await tx.stores.update({
             where: { id: store.id },

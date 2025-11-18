@@ -43,6 +43,7 @@ router.get(
 router.get("/", verifyUser("ADMIN", "PARTNER"), getAllCustomers);
 router.get("/search", verifyUser("ADMIN", "PARTNER"), searchCustomers);
 router.get("/filter-customers", filterCustomer);
+
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteCustomer);
 
 router.patch(

@@ -141,6 +141,7 @@ const checkAppointmentOverlap = async (
 export const getAvailableTimeSlots = async (req: Request, res: Response) => {
   try {
     const { employeId, date } = req.query;
+    
 
     if (!employeId || !date) {
       res.status(400).json({

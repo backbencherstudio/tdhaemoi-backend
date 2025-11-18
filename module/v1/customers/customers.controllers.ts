@@ -1484,6 +1484,78 @@ export const undoAssignVersorgungToCustomer = async (
 // };
 
 export const searchCustomers = async (req: Request, res: Response) => {
+  
+// model customers {
+//   id             String  @id @default(uuid())
+//   customerNumber Int     @unique @default(autoincrement())
+//   vorname        String
+//   nachname       String
+//   email          String  @unique
+//   telefonnummer  String?
+//   wohnort        String?
+
+//   gender       String?
+//   geburtsdatum String?
+//   straße      String?
+//   land         String?
+//   ort          String?
+//   telefon      String?
+
+//   screenerFile screener_file[]
+
+//   // this all data come form a single csv file
+//   fusslange1   String? //B58   (.csv)
+//   fusslange2   String? //C58   (.csv)
+//   fussbreite1  String? //B73   (.csv)
+//   fussbreite2  String? //C73   (.csv)
+//   kugelumfang1 String? //B102  (.csv)
+//   kugelumfang2 String? //C102  (.csv)
+//   rist1        String? //B105  (.csv)
+//   rist2        String? //C105  (.csv)
+//   zehentyp1    String? //B136  (.csv)
+//   zehentyp2    String? //C136  (.csv)
+//   archIndex1   String? //B120  (.csv)
+//   archIndex2   String? //C120  (.csv)
+
+//   createdBy String
+//   updatedBy String?
+
+//   // Relation to KundenHistorie
+//   customerHistorie customerHistorie[]
+
+//   // Relation to UserAnswer
+//   einlagenAnswers       einlagenAnswers[]
+//   versorgungen          customer_versorgungen[] @relation("customerVersorgungen")
+//   ausfuhrliche_diagnose String?
+//   customerOrders        customerOrders[]
+//   werkstattzettel       Werkstattzettel?
+//   custom_shafts         custom_shafts[]
+
+//   kundeSteuernummer String? // Kunde Steuernummer
+//   diagnose          String? // Diagnose
+//   kodexeMassschuhe  String? // Kodexe Massschuhe
+//   kodexeEinlagen    String? // Kodexe Einlagen
+//   sonstiges         String? // Sonstiges
+
+//   fußanalyse        Float? //ইনসোল $
+//   einlagenversorgung Float? //Foot analysis $
+
+//   createdAt      DateTime         @default(now())
+//   updatedAt      DateTime         @updatedAt
+//   StoresHistory  StoresHistory[]
+//   customer_files customer_files[]
+
+//   @@index([vorname, nachname])
+//   @@index([telefonnummer])
+//   @@index([wohnort])
+//   @@index([email])
+//   @@index([id, vorname])
+//   @@index([id, email])
+//   @@index([createdAt])
+// }
+
+// i need to search customers only base on user
+
   try {
     const {
       search,

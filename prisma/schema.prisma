@@ -286,7 +286,7 @@ model Versorgungen {
   artikelHersteller String
   versorgung        String
   material          String
-  langenempfehlung  Json
+  langenempfehlung  Json?
 
   status           versorgungenStatus
   diagnosis_status versorgungenDiagnosisStatus?
@@ -663,7 +663,7 @@ model Stores {
   selling_price  Int
 
   /// এই স্টাটাস ডিপেন্ড করে mindestbestand এর উপর যদি mindestbestand এর উপরে থাকে তাহলে এটা "Voller Bestand" এই স্ট্রিং দিবে যদি mindestbestand এর নিচে থাকে তাহলে এটা "Niedriger Bestand" এই স্ট্রিং দিবে
-  // Status String
+  Status String?
 
   /// versorgungen এর সাথে রিলেশন হচ্ছে ID,  Artikelhersteller = hersteller, Rohling Hersteller = Artikelbezeichnung (balance)
   versorgungen Versorgungen[]
