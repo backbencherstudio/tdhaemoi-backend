@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
-import { log } from "console";
+import { PrismaClient, Prisma } from "@prisma/client";
+
 
 const prisma = new PrismaClient();
 
@@ -18,18 +18,16 @@ export const getAllVersorgungen = async (req: Request, res: Response) => {
       });
     }
 
-    const filters: any = {};
+    const filters: Prisma.VersorgungenWhereInput = {
+      createdBy: req.user.id,
+    };
 
     if (status) {
-      filters.status = status;
+      filters.status = status as Prisma.VersorgungenWhereInput["status"];
     }
 
-    // Handle diagnosis_status filter
-    if (diagnosis_status) {
-      filters.diagnosis_status = diagnosis_status;
-    } else {
-      // If no diagnosis_status specified, only show items with NULL diagnosis_status
-      filters.diagnosis_status = null;
+    if (typeof diagnosis_status === "string" && diagnosis_status.length) {
+      filters.diagnosis_status = diagnosis_status as Prisma.VersorgungenWhereInput["diagnosis_status"];
     }
 
     const totalCount = await prisma.versorgungen.count({
@@ -46,19 +44,23 @@ export const getAllVersorgungen = async (req: Request, res: Response) => {
       include: {
         store: {
           select: {
-            // only json
             groessenMengen: true,
           },
         },
       },
     });
 
+    const formattedVersorgungen = versorgungenList.map(({ store, ...rest }) => ({
+      ...rest,
+      groessenMengen: store?.groessenMengen ?? null,
+    }));
+
     const totalPages = Math.ceil(totalCount / limitNumber);
 
     res.status(200).json({
       success: true,
       message: "Versorgungen fetched successfully",
-      data: versorgungenList,
+      data: formattedVersorgungen,
       pagination: {
         totalItems: totalCount,
         totalPages,
@@ -84,7 +86,7 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       artikelHersteller,
       versorgung,
       material,
-      // langenempfehlung,
+      langenempfehlung,
       status,
       diagnosis_status,
       storeId,
@@ -98,7 +100,6 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       "artikelHersteller",
       "versorgung",
       "material",
-      // "langenempfehlung",
       "status",
       "storeId",
     ].find((field) => !req.body[field]);
@@ -155,44 +156,26 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       }
     }
 
-    const versorgungenData = {
+    const versorgungenData: Prisma.VersorgungenCreateInput = {
       name,
       rohlingHersteller,
       artikelHersteller,
       versorgung,
       material,
-      // langenempfehlung,
+      langenempfehlung: langenempfehlung ?? Prisma.JsonNull,
       status,
       diagnosis_status: diagnosis_status || null,
       createdBy: req.user.id,
-      storeId,
+      store: storeId
+        ? {
+            connect: {
+              id: storeId,
+            },
+          }
+        : undefined,
     };
 
 
-//     model customer_versorgungen {
-//   id                String                       @id @default(uuid())
-//   name              String
-//   rohlingHersteller String
-//   artikelHersteller String
-//   versorgung        String
-//   material          String
-//   langenempfehlung  Json
-//   status            versorgungenStatus
-//   diagnosis_status  versorgungenDiagnosisStatus?
-
-//   customerId String
-//   customer   customers @relation("customerVersorgungen", fields: [customerId], references: [id])
-
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   @@unique([customerId, status, diagnosis_status])
-//   @@index([id, name])
-//   @@index([customerId])
-//   @@index([status])
-//   @@index([createdAt])
-// }
-//     // i need to
     const newVersorgungen = await prisma.versorgungen.create({
       data: versorgungenData,
       select: {
@@ -202,12 +185,12 @@ export const createVersorgungen = async (req: Request, res: Response) => {
         artikelHersteller: true,
         versorgung: true,
         material: true,
-        // langenempfehlung: true,
+        langenempfehlung: true,
         status: true,
         diagnosis_status: true,
-        storeId: true,
         createdAt: true,
         updatedAt: true,
+        storeId: true,
         store: {
           select: {
             groessenMengen: true,
@@ -216,10 +199,16 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       },
     });
 
+    const { store: newVersorgungenStore, ...newVersorgungenRest } = newVersorgungen;
+    const formattedResponse = {
+      ...newVersorgungenRest,
+      groessenMengen: newVersorgungenStore?.groessenMengen ?? null,
+    };
+
     res.status(201).json({
       success: true,
       message: "Versorgungen created successfully",
-      data: newVersorgungen,
+      data: formattedResponse,
     });
   } catch (error) {
     console.error("Create Versorgungen error:", error);
@@ -235,8 +224,8 @@ export const patchVersorgungen = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const existingVersorgungen = await prisma.versorgungen.findUnique({
-      where: { id },
+    const existingVersorgungen = await prisma.versorgungen.findFirst({
+      where: { id, createdBy: req.user.id },
     });
 
     if (!existingVersorgungen) {
@@ -246,23 +235,46 @@ export const patchVersorgungen = async (req: Request, res: Response) => {
       });
     }
 
-    const updatedVersorgungenData = Object.fromEntries(
-      Object.entries(req.body).filter(([key, value]) => value !== undefined)
-    );
+    const { storeId, ...rest } = req.body;
 
-    updatedVersorgungenData.updatedBy = req.user.id;
+    const updatedVersorgungenData: Prisma.VersorgungenUpdateInput = {
+      ...rest,
+      updatedBy: req.user.id,
+      store:
+        storeId !== undefined
+          ? storeId
+            ? {
+                connect: {
+                  id: storeId,
+                },
+              }
+            : {
+                disconnect: true,
+              }
+          : undefined,
+    };
 
     const updatedVersorgungen = await prisma.versorgungen.update({
       where: { id },
       data: updatedVersorgungenData,
+      include: {
+        store: {
+          select: {
+            groessenMengen: true,
+          },
+        },
+      },
     });
 
-    console.log(updatedVersorgungenData);
+    const { store: updatedVersorgungenStore, ...updatedVersorgungenRest } = updatedVersorgungen;
 
     res.status(200).json({
       success: true,
       message: "Versorgungen updated successfully",
-      data: updatedVersorgungen,
+      data: {
+        ...updatedVersorgungenRest,
+        groessenMengen: updatedVersorgungenStore?.groessenMengen ?? null,
+      },
     });
   } catch (error) {
     console.error("Patch Versorgungen error:", error);
@@ -278,8 +290,8 @@ export const deleteVersorgungen = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const existingVersorgungen = await prisma.versorgungen.findUnique({
-      where: { id },
+    const existingVersorgungen = await prisma.versorgungen.findFirst({
+      where: { id, createdBy: req.user.id },
     });
 
     if (!existingVersorgungen) {

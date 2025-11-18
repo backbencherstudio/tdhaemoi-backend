@@ -87,9 +87,6 @@ router.post(
 );
 
 
-
-
-
 router.patch(
   "/update-screener-file/:customerId/:screenerId",
   verifyUser("PARTNER", "ADMIN"),

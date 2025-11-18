@@ -12,361 +12,74 @@ import {
 
 const prisma = new PrismaClient();
 
-// export const createOrder = async (req: Request, res: Response) => {
-//   try {
-//     const { customerId, versorgungId } = req.body;
-//     const partnerId = req.user.id;
+const extractLengthValue = (value: any): number | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
 
-//     if (!customerId || !versorgungId) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Customer ID and Versorgung ID are required",
-//       });
-//     }
+  if (typeof value === "object" && !Array.isArray(value)) {
+    if (Object.prototype.hasOwnProperty.call(value, "length")) {
+      const lengthNumber = Number((value as any).length);
+      return Number.isFinite(lengthNumber) ? lengthNumber : null;
+    }
+  }
 
-//     const [customer, versorgung] = await Promise.all([
-//       prisma.customers.findUnique({
-//         where: { id: customerId },
-//         select: {
-//           id: true,
-//           vorname: true,
-//           nachname: true,
-//           fußanalyse: true,
-//           einlagenversorgung: true,
-//         },
-//       }),
-//       prisma.versorgungen.findUnique({
-//         where: { id: versorgungId },
-//       }),
-//     ]);
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
 
-//     if (!customer) {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "Customer not found" });
-//     }
-//     if (!versorgung) {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "Versorgung not found" });
-//     }
+const determineSizeFromGroessenMengen = (
+  groessenMengen: any,
+  targetLength: number
+): string | null => {
+  if (!groessenMengen || typeof groessenMengen !== "object") {
+    return null;
+  }
 
-//     if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
-//       return res.status(400).json({
-//         success: false,
-//         message:
-//           "fußanalyse or einlagenversorgung price is not set for this customer",
-//       });
-//     }
+  let closestSizeKey: string | null = null;
+  let smallestDiff = Infinity;
 
-//     const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
+  for (const [sizeKey, sizeData] of Object.entries(
+    groessenMengen as Record<string, any>
+  )) {
+    const lengthValue = extractLengthValue(sizeData);
+    if (lengthValue === null) {
+      continue;
+    }
+    const diff = Math.abs(targetLength - lengthValue);
+    if (diff < smallestDiff) {
+      smallestDiff = diff;
+      closestSizeKey = sizeKey;
+    }
+  }
 
-//     const order = await prisma.$transaction(async (tx) => {
-//       const customerProduct = await tx.customerProduct.create({
-//         data: {
-//           name: versorgung.name,
-//           rohlingHersteller: versorgung.rohlingHersteller,
-//           artikelHersteller: versorgung.artikelHersteller,
-//           versorgung: versorgung.versorgung,
-//           material: versorgung.material,
-//           langenempfehlung: versorgung.langenempfehlung,
-//           status: versorgung.status,
-//           diagnosis_status: versorgung.diagnosis_status,
-//         },
-//       });
+  return closestSizeKey;
+};
 
-//       const newOrder = await tx.customerOrders.create({
-//         data: {
-//           customerId,
-//           partnerId,
-//           fußanalyse: customer.fußanalyse,
-//           einlagenversorgung: customer.einlagenversorgung,
-//           totalPrice,
-//           orderStatus: 'Sarted',
-//           productId: customerProduct.id,
-//           statusUpdate: new Date(),
-//         },
-//         include: {
-//           product: true,
-//           customer: {
-//             select: {
-//               id: true,
-//               vorname: true,
-//               nachname: true,
-//               email: true,
-//               telefonnummer: true,
-//               customerNumber: true,
-//             },
-//           },
-//           partner: {
-//             select: {
-//               id: true,
-//               name: true,
-//               email: true,
-//               image: true,
-//               role: true,
-//             },
-//           },
-//         },
-//       });
+//-------------------------
+// Compute larger fuss length (+5) and match nearest size from langenempfehlung
 
-//       await tx.customerHistorie.create({
-//         data: {
-//           customerId,
-//           category: "Bestellungen",
-//           eventId: newOrder.id,
-//           note: "New order created",
-//           system_note: "New order created",
-//           paymentIs: totalPrice.toString(),
-//         },
-//       });
-
-//       return newOrder;
-//     });
-
-//     const formattedOrder = {
-//       ...order,
-//       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
-//       partner: order.partner
-//         ? {
-//             ...order.partner,
-//             image: order.partner.image
-//               ? getImageUrl(`/uploads/${order.partner.image}`)
-//               : null,
-//           }
-//         : null,
-//     };
-
-//     return res.status(201).json({
-//       success: true,
-//       message: "Order created successfully",
-//       data: formattedOrder,
-//     });
-//   } catch (error: any) {
-//     console.error("Create Order Error:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
+//  "groessenMengen": {
+//     "35": {
+//         "length": 225,
+//         "quantity": 5
+//     },
+//     "36": {
+//         "length": 230,
+//         "quantity": 2
+//     },
+//     "37": {
+//         "length": 235,
+//         "quantity": 1
+//     },
+//     "38": {
+//         "length": 240,
+//         "quantity": 5
+//     },
 //   }
-// };
+// we need to just update this quantity, i need to less one
 
-// export const createOrder = async (req: Request, res: Response) => {
-//   try {
-//     const { customerId, versorgungId } = req.body;
-//     const partnerId = req.user.id;
-
-//     // Basic input validation
-//     if (!customerId || !versorgungId) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Customer ID and Versorgung ID are required",
-//       });
-//     }
-
-//     // Parallel validation and data fetching
-//     const [customer, versorgung, partner] = await Promise.all([
-//       prisma.customers.findUnique({
-//         where: { id: customerId },
-//         select: {
-//           id: true,
-//           vorname: true,
-//           nachname: true,
-//           email: true,
-//           telefonnummer: true,
-//           customerNumber: true,
-//           fußanalyse: true,
-//           einlagenversorgung: true,
-//         },
-//       }),
-//       prisma.versorgungen.findUnique({
-//         where: { id: versorgungId },
-//         select: {
-//           id: true,
-//           name: true,
-//           rohlingHersteller: true,
-//           artikelHersteller: true,
-//           versorgung: true,
-//           material: true,
-//           langenempfehlung: true,
-//           status: true,
-//           diagnosis_status: true,
-//         },
-//       }),
-//       prisma.user.findUnique({
-//         where: { id: partnerId },
-//         select: {
-//           id: true,
-//           name: true,
-//           email: true,
-//           image: true,
-//           role: true,
-//         },
-//       }),
-//     ]);
-
-//     // Early validation returns
-//     if (!customer) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Customer not found"
-//       });
-//     }
-//     if (!versorgung) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Versorgung not found"
-//       });
-//     }
-//     if (!partner) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Partner not found"
-//       });
-//     }
-//     if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "fußanalyse or einlagenversorgung price is not set for this customer",
-//       });
-//     }
-
-//     const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
-
-//     // Single optimized transaction - include history creation INSIDE the transaction
-//     const order = await prisma.$transaction(async (tx) => {
-//       // Create customer product with only necessary fields
-//       const customerProduct = await tx.customerProduct.create({
-//         data: {
-//           name: versorgung.name,
-//           rohlingHersteller: versorgung.rohlingHersteller,
-//           artikelHersteller: versorgung.artikelHersteller,
-//           versorgung: versorgung.versorgung,
-//           material: versorgung.material,
-//           langenempfehlung: versorgung.langenempfehlung,
-//           status: versorgung.status,
-//           diagnosis_status: versorgung.diagnosis_status,
-//         },
-//         select: {
-//           id: true,
-//           name: true,
-//           createdAt: true,
-//           updatedAt: true,
-//         },
-//       });
-
-//       // Create order with minimal include
-//       const newOrder = await tx.customerOrders.create({
-//         data: {
-//           customerId,
-//           partnerId,
-//           fußanalyse: customer.fußanalyse,
-//           einlagenversorgung: customer.einlagenversorgung,
-//           totalPrice,
-//           productId: customerProduct.id,
-//           statusUpdate: new Date(),
-//         },
-//         select: {
-//           id: true,
-//           customerId: true,
-//           partnerId: true,
-//           fußanalyse: true,
-//           einlagenversorgung: true,
-//           totalPrice: true,
-//           productId: true,
-//           orderStatus: true,
-//           statusUpdate: true,
-//           createdAt: true,
-//           updatedAt: true,
-//         },
-//       });
-
-//       // Create history INSIDE the transaction (not after it)
-//       await tx.customerHistorie.create({
-//         data: {
-//           customerId,
-//           category: "Bestellungen",
-//           eventId: newOrder.id,
-//           note: "New order created",
-//           system_note: "New order created",
-//           paymentIs: totalPrice.toString(),
-//         },
-//       });
-
-//       return {
-//         ...newOrder,
-//         customer: {
-//           id: customer.id,
-//           vorname: customer.vorname,
-//           nachname: customer.nachname,
-//           email: customer.email,
-//           telefonnummer: customer.telefonnummer,
-//           customerNumber: customer.customerNumber,
-//         },
-//         product: {
-//           id: customerProduct.id,
-//           name: customerProduct.name,
-//           rohlingHersteller: versorgung.rohlingHersteller,
-//           artikelHersteller: versorgung.artikelHersteller,
-//           versorgung: versorgung.versorgung,
-//           material: versorgung.material,
-//           langenempfehlung: versorgung.langenempfehlung,
-//           status: versorgung.status,
-//           diagnosis_status: versorgung.diagnosis_status,
-//           createdAt: customerProduct.createdAt,
-//           updatedAt: customerProduct.updatedAt,
-//         },
-//         partner: {
-//           id: partner.id,
-//           name: partner.name,
-//           email: partner.email,
-//           image: partner.image,
-//           role: partner.role,
-//         },
-//       };
-//     });
-
-//     // Format image URL outside transaction for better performance
-//     const formattedOrder = {
-//       ...order,
-//       partner: {
-//         ...order.partner,
-//         image: order.partner.image ? getImageUrl(`/uploads/${order.partner.image}`) : null,
-//       },
-//     };
-
-//     return res.status(201).json({
-//       success: true,
-//       message: "Order created successfully",
-//       data: formattedOrder,
-//     });
-
-//   } catch (error: any) {
-//     console.error("Create Order Error:", error);
-
-//     // Specific error handling
-//     if (error.code === 'P2002') {
-//       return res.status(409).json({
-//         success: false,
-//         message: "Order already exists for this product",
-//       });
-//     }
-
-//     if (error.code === 'P2003') {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Invalid reference ID provided",
-//       });
-//     }
-
-//     return res.status(500).json({
-//       success: false,
-//       message: "Internal server error",
-//       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
-//     });
-//   }
-// };
+//----------------------------
 
 export const createOrder = async (req: Request, res: Response) => {
   try {
@@ -434,7 +147,6 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
 
-    // Compute larger fuss length (+5) and match nearest size from langenempfehlung
     if (customer.fusslange1 == null || customer.fusslange2 == null) {
       return res.status(400).json({
         success: false,
@@ -447,30 +159,10 @@ export const createOrder = async (req: Request, res: Response) => {
       Number(customer.fusslange2) + 5
     );
 
-    let matchedSizeKey: string | null = null;
-    if (
-      versorgung.langenempfehlung &&
-      typeof versorgung.langenempfehlung === "object"
-    ) {
-      let smallestDiff = Infinity;
-      for (const [sizeKey, sizeVal] of Object.entries(
-        versorgung.langenempfehlung as any
-      )) {
-        const numericVal = Number(sizeVal as any);
-        const diff = Math.abs(largerFusslange - numericVal);
-        if (diff < smallestDiff) {
-          smallestDiff = diff;
-          matchedSizeKey = sizeKey;
-        }
-      }
-    }
-
-    if (!matchedSizeKey) {
-      return res.status(400).json({
-        success: false,
-        message: "Unable to determine nearest size from langenempfehlung",
-      });
-    }
+    let matchedSizeKey: string | null = determineProductSize(
+      customer,
+      versorgung
+    );
 
     const order = await prisma.$transaction(async (tx) => {
       const customerProduct = await tx.customerProduct.create({
@@ -517,39 +209,53 @@ export const createOrder = async (req: Request, res: Response) => {
             string,
             any
           >;
-          
-          const sizeValue = sizes[matchedSizeKey];
-          let currentQty: number;
-          let length: number | undefined;
 
+          const targetLength =
+            Math.max(Number(customer.fusslange1), Number(customer.fusslange2)) +
+            5;
+
+          const storeMatchedSizeKey = determineSizeFromGroessenMengen(
+            sizes,
+            targetLength
+          );
+
+          if (!storeMatchedSizeKey) {
+            throw new Error("NO_MATCHED_SIZE_IN_STORE");
+          }
+
+          const sizeValue = sizes[storeMatchedSizeKey];
+          let currentQty: number;
           // Handle new format: { quantity: number, length: number }
-          if (sizeValue && typeof sizeValue === "object" && "quantity" in sizeValue) {
+          if (
+            sizeValue &&
+            typeof sizeValue === "object" &&
+            "quantity" in sizeValue
+          ) {
             currentQty = Number(sizeValue.quantity ?? 0);
-            length = sizeValue.length ? Number(sizeValue.length) : undefined;
-          } 
+          }
           // Handle old format: number (backward compatibility)
           else if (typeof sizeValue === "number") {
             currentQty = sizeValue;
-            length = undefined;
-          } 
-          else {
+          } else {
             currentQty = 0;
-            length = undefined;
           }
 
-          const newQty = currentQty > 0 ? currentQty - 1 : 0;
-          
-          // Update with new format structure
-          if (length !== undefined) {
-            sizes[matchedSizeKey] = {
+          const newQty = Math.max(currentQty - 1, 0);
+
+          if (
+            sizeValue &&
+            typeof sizeValue === "object" &&
+            "quantity" in sizeValue
+          ) {
+            sizes[storeMatchedSizeKey] = {
+              ...sizeValue,
               quantity: newQty,
-              length: length,
             };
+          } else if (typeof sizeValue === "number") {
+            sizes[storeMatchedSizeKey] = newQty;
           } else {
-            // If old format, keep old format or convert to new format
-            sizes[matchedSizeKey] = {
+            sizes[storeMatchedSizeKey] = {
               quantity: newQty,
-              length: 0, // Default length if not available
             };
           }
 
@@ -565,13 +271,14 @@ export const createOrder = async (req: Request, res: Response) => {
               changeType: "sales",
               quantity: currentQty > 0 ? 1 : 0,
               newStock: newQty,
-              reason: `Order size ${matchedSizeKey}`,
-              // text: `Order created for customer ${customerId}, size ${matchedSizeKey}`,
+              reason: `Order size ${storeMatchedSizeKey}`,
               partnerId: store.userId,
               customerId: customerId,
               orderId: newOrder.id,
             },
           });
+
+          matchedSizeKey = storeMatchedSizeKey;
         }
       }
 
@@ -595,115 +302,287 @@ export const createOrder = async (req: Request, res: Response) => {
       orderId: order.id,
       matchedSize: order.matchedSizeKey,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "NO_MATCHED_SIZE_IN_STORE") {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Unable to determine nearest size from groessenMengen for this store",
+      });
+    }
     console.error("Create Order Error:", error);
     return res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error.message,
+      error: error?.message,
     });
   }
 };
 
-// export const getAllOrders = async (req: Request, res: Response) => {
-//   try {
-//     const page = parseInt(req.query.page as string) || 1;
-//     const limit = parseInt(req.query.limit as string) || 10;
-//     const skip = (page - 1) * limit;
+// Helper Functions
+const fetchCustomerData = async (customerId: string) => {
+  return prisma.customers.findUnique({
+    where: { id: customerId },
+    select: {
+      fußanalyse: true,
+      einlagenversorgung: true,
+      fusslange1: true,
+      fusslange2: true,
+    },
+  });
+};
 
-//     const where: any = {};
+const fetchVersorgungData = async (versorgungId: string) => {
+  return prisma.versorgungen.findUnique({
+    where: { id: versorgungId },
+    select: {
+      name: true,
+      rohlingHersteller: true,
+      artikelHersteller: true,
+      versorgung: true,
+      material: true,
+      langenempfehlung: true,
+      status: true,
+      diagnosis_status: true,
+      storeId: true,
+    },
+  });
+};
 
-//     if (req.query.customerId) {
-//       where.customerId = req.query.customerId as string;
-//     }
+const fetchWerkstattzettelData = async (werkstattzettelId?: string) => {
+  if (!werkstattzettelId) return null;
+  return prisma.werkstattzettel.findUnique({
+    where: { id: werkstattzettelId },
+  });
+};
 
-//     if (req.query.partnerId) {
-//       where.partnnerId = req.query.partnerId as string;
-//     }
+const validateData = (customer: any, versorgung: any, werkstattzettel: any) => {
+  if (!customer || !versorgung) {
+    return {
+      success: false,
+      message: "Customer or Versorgung not found",
+      status: 404,
+    };
+  }
 
-//     if (req.query.orderStatus) {
-//       where.orderStatus = req.query.orderStatus as string;
-//     }
+  if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
+    return {
+      success: false,
+      message:
+        "fußanalyse or einlagenversorgung price is not set for this customer",
+      status: 400,
+    };
+  }
 
-//     const [orders, totalCount] = await Promise.all([
-//       prisma.customerOrders.findMany({
-//         where,
-//         skip,
-//         take: limit,
-//         orderBy: { createdAt: "desc" },
-//         select: {
-//           id: true,
-//           fußanalyse: true,
-//           einlagenversorgung: true,
-//           orderStatus: true,
-//           statusUpdate: true,
-//           invoice: true,
-//           createdAt: true,
-//           updatedAt: true,
-//           customer: {
-//             select: {
-//               id: true,
-//               vorname: true,
-//               nachname: true,
-//               email: true,
-//               telefonnummer: true,
-//               wohnort: true,
-//               customerNumber: true,
-//             },
-//           },
-//           //   partner: {
-//           //     select: {
-//           //       id: true,
-//           //       name: true,
-//           //       email: true,
-//           //     },
-//           //   },
-//           //   product: {
-//           //     select: {
-//           //       id: true,
-//           //       name: true,
-//           //       status: true,
-//           //       diagnosis_status: true,
-//           //     },
-//           //   },
-//           product: true,
-//         },
-//       }),
-//       prisma.customerOrders.count({ where }),
-//     ]);
+  if (werkstattzettel === undefined) {
+    return {
+      success: false,
+      message: "werkstattzettel id not found",
+      status: 400,
+    };
+  }
 
-//     // Format orders with invoice URL
-//     const formattedOrders = orders.map((order) => ({
-//       ...order,
-//       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
-//     }));
+  if (customer.fusslange1 == null || customer.fusslange2 == null) {
+    return {
+      success: false,
+      message: "Customer fusslange1 or fusslange2 not found",
+      status: 400,
+    };
+  }
 
-//     const totalPages = Math.ceil(totalCount / limit);
-//     const hasNextPage = page < totalPages;
-//     const hasPrevPage = page > 1;
+  return null;
+};
 
-//     res.status(200).json({
-//       success: true,
-//       message: "Orders fetched successfully",
-//       data: formattedOrders,
-//       pagination: {
-//         totalItems: totalCount,
-//         totalPages,
-//         currentPage: page,
-//         itemsPerPage: limit,
-//         hasNextPage,
-//         hasPrevPage,
-//       },
-//     });
-//   } catch (error: any) {
-//     console.error("Get All Orders Error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
+const calculateTotalPrice = (customer: any): number => {
+  return (customer.fußanalyse || 0) + (customer.einlagenversorgung || 0);
+};
+
+const determineProductSize = (
+  customer: any,
+  versorgung: any
+): string | null => {
+  const largerFusslange = Math.max(
+    Number(customer.fusslange1) + 5,
+    Number(customer.fusslange2) + 5
+  );
+
+  if (
+    !versorgung.langenempfehlung ||
+    typeof versorgung.langenempfehlung !== "object"
+  ) {
+    return null;
+  }
+
+  let matchedSizeKey: string | null = null;
+  let smallestDiff = Infinity;
+
+  for (const [sizeKey, sizeData] of Object.entries(
+    versorgung.langenempfehlung as any
+  )) {
+    const lengthValue = extractLengthValue(sizeData);
+    if (lengthValue === null) {
+      continue;
+    }
+    const diff = Math.abs(largerFusslange - lengthValue);
+    if (diff < smallestDiff) {
+      smallestDiff = diff;
+      matchedSizeKey = sizeKey;
+    }
+  }
+
+  return matchedSizeKey;
+};
+
+const createOrderTransaction = async (
+  tx: any,
+  params: {
+    customerId: string;
+    partnerId: string;
+    werkstattzettelId?: string;
+    customer: any;
+    versorgung: any;
+    totalPrice: number;
+    matchedSizeKey: string;
+  }
+) => {
+  const {
+    customerId,
+    partnerId,
+    werkstattzettelId,
+    customer,
+    versorgung,
+    totalPrice,
+    matchedSizeKey,
+  } = params;
+
+  // Create customer product
+  const customerProduct = await tx.customerProduct.create({
+    data: {
+      name: versorgung.name,
+      rohlingHersteller: versorgung.rohlingHersteller,
+      artikelHersteller: versorgung.artikelHersteller,
+      versorgung: versorgung.versorgung,
+      material: versorgung.material,
+      langenempfehlung: versorgung.langenempfehlung,
+      status: versorgung.status,
+      diagnosis_status: versorgung.diagnosis_status,
+    },
+  });
+
+  // Create order
+  const newOrder = await tx.customerOrders.create({
+    data: {
+      customerId,
+      partnerId,
+      werkstattzettelId,
+      fußanalyse: customer.fußanalyse,
+      einlagenversorgung: customer.einlagenversorgung,
+      totalPrice,
+      productId: customerProduct.id,
+      statusUpdate: new Date(),
+    },
+    select: { id: true },
+  });
+
+  // Update store stock if store exists
+  if (versorgung.storeId) {
+    await updateStoreStock(tx, {
+      storeId: versorgung.storeId,
+      matchedSizeKey,
+      customerId,
+      orderId: newOrder.id,
+    });
+  }
+
+  // Create customer history
+  await tx.customerHistorie.create({
+    data: {
+      customerId,
+      category: "Bestellungen",
+      eventId: newOrder.id,
+      note: "New order created",
+      system_note: "New order created",
+      paymentIs: totalPrice.toString(),
+    },
+  });
+
+  return { ...newOrder, matchedSizeKey };
+};
+
+const updateStoreStock = async (
+  tx: any,
+  params: {
+    storeId: string;
+    matchedSizeKey: string;
+    customerId: string;
+    orderId: string;
+  }
+) => {
+  const { storeId, matchedSizeKey, customerId, orderId } = params;
+
+  const store = await tx.stores.findUnique({
+    where: { id: storeId },
+    select: { id: true, groessenMengen: true, userId: true },
+  });
+
+  if (
+    !store ||
+    !store.groessenMengen ||
+    typeof store.groessenMengen !== "object"
+  ) {
+    return;
+  }
+
+  const sizes = { ...(store.groessenMengen as any) };
+  const sizeData = sizes[matchedSizeKey];
+
+  if (!sizeData) {
+    return; // Size not found in store
+  }
+
+  let currentQuantity: number;
+  let currentLength: number;
+
+  // Handle both data formats
+  if (sizeData && typeof sizeData === "object" && "quantity" in sizeData) {
+    currentQuantity = Number(sizeData.quantity ?? 0);
+    currentLength = Number(sizeData.length ?? 0);
+  } else if (typeof sizeData === "number") {
+    currentQuantity = sizeData;
+    currentLength = 0;
+  } else {
+    return; // Invalid data format
+  }
+
+  // Decrement quantity by 1 (minimum 0)
+  const newQuantity = Math.max(currentQuantity - 1, 0);
+
+  // Update with consistent format
+  sizes[matchedSizeKey] = {
+    quantity: newQuantity,
+    length: currentLength,
+  };
+
+  // Update store
+  await tx.stores.update({
+    where: { id: store.id },
+    data: { groessenMengen: sizes },
+  });
+
+  // Create stock history
+  await tx.storesHistory.create({
+    data: {
+      storeId: store.id,
+      changeType: "sales",
+      quantity: 1,
+      newStock: newQuantity,
+      reason: `Order size ${matchedSizeKey}`,
+      partnerId: store.userId,
+      customerId: customerId,
+      orderId: orderId,
+    },
+  });
+};
 
 export const getAllOrders = async (req: Request, res: Response) => {
   try {

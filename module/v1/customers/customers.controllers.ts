@@ -1484,78 +1484,6 @@ export const undoAssignVersorgungToCustomer = async (
 // };
 
 export const searchCustomers = async (req: Request, res: Response) => {
-  
-// model customers {
-//   id             String  @id @default(uuid())
-//   customerNumber Int     @unique @default(autoincrement())
-//   vorname        String
-//   nachname       String
-//   email          String  @unique
-//   telefonnummer  String?
-//   wohnort        String?
-
-//   gender       String?
-//   geburtsdatum String?
-//   straße      String?
-//   land         String?
-//   ort          String?
-//   telefon      String?
-
-//   screenerFile screener_file[]
-
-//   // this all data come form a single csv file
-//   fusslange1   String? //B58   (.csv)
-//   fusslange2   String? //C58   (.csv)
-//   fussbreite1  String? //B73   (.csv)
-//   fussbreite2  String? //C73   (.csv)
-//   kugelumfang1 String? //B102  (.csv)
-//   kugelumfang2 String? //C102  (.csv)
-//   rist1        String? //B105  (.csv)
-//   rist2        String? //C105  (.csv)
-//   zehentyp1    String? //B136  (.csv)
-//   zehentyp2    String? //C136  (.csv)
-//   archIndex1   String? //B120  (.csv)
-//   archIndex2   String? //C120  (.csv)
-
-//   createdBy String
-//   updatedBy String?
-
-//   // Relation to KundenHistorie
-//   customerHistorie customerHistorie[]
-
-//   // Relation to UserAnswer
-//   einlagenAnswers       einlagenAnswers[]
-//   versorgungen          customer_versorgungen[] @relation("customerVersorgungen")
-//   ausfuhrliche_diagnose String?
-//   customerOrders        customerOrders[]
-//   werkstattzettel       Werkstattzettel?
-//   custom_shafts         custom_shafts[]
-
-//   kundeSteuernummer String? // Kunde Steuernummer
-//   diagnose          String? // Diagnose
-//   kodexeMassschuhe  String? // Kodexe Massschuhe
-//   kodexeEinlagen    String? // Kodexe Einlagen
-//   sonstiges         String? // Sonstiges
-
-//   fußanalyse        Float? //ইনসোল $
-//   einlagenversorgung Float? //Foot analysis $
-
-//   createdAt      DateTime         @default(now())
-//   updatedAt      DateTime         @updatedAt
-//   StoresHistory  StoresHistory[]
-//   customer_files customer_files[]
-
-//   @@index([vorname, nachname])
-//   @@index([telefonnummer])
-//   @@index([wohnort])
-//   @@index([email])
-//   @@index([id, vorname])
-//   @@index([id, email])
-//   @@index([createdAt])
-// }
-
-// i need to search customers only base on user
-
   try {
     const {
       search,
@@ -1567,12 +1495,17 @@ export const searchCustomers = async (req: Request, res: Response) => {
       limit = 10,
       page = 1,
     } = req.query;
+    
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
     const limitNumber = Math.min(
       Math.max(parseInt(limit as string) || 10, 1),
       100
     );
     const pageNumber = Math.max(parseInt(page as string) || 1, 1);
     const skip = (pageNumber - 1) * limitNumber;
+
     if (!search && !email && !phone && !location && !id && !name) {
       return res.status(200).json({
         success: true,
@@ -1585,13 +1518,16 @@ export const searchCustomers = async (req: Request, res: Response) => {
         },
       });
     }
-    const whereConditions: any = {};
+
+    // Base where conditions for search criteria
+    const searchConditions: any = {};
+
     if (name && typeof name === "string") {
       const nameQuery = name.trim();
       if (nameQuery) {
         const nameParts = nameQuery.split(/\s+/).filter(Boolean);
         if (nameParts.length > 1) {
-          whereConditions.AND = [
+          searchConditions.AND = [
             { vorname: { contains: nameParts[0], mode: "insensitive" } },
             {
               nachname: {
@@ -1601,17 +1537,18 @@ export const searchCustomers = async (req: Request, res: Response) => {
             },
           ];
         } else {
-          whereConditions.OR = [
+          searchConditions.OR = [
             { vorname: { contains: nameQuery, mode: "insensitive" } },
             { nachname: { contains: nameQuery, mode: "insensitive" } },
           ];
         }
       }
     }
+
     if (search && typeof search === "string") {
       const searchQuery = search.trim();
       if (searchQuery) {
-        whereConditions.OR = [
+        searchConditions.OR = [
           { vorname: { contains: searchQuery, mode: "insensitive" } },
           { nachname: { contains: searchQuery, mode: "insensitive" } },
           { email: { contains: searchQuery, mode: "insensitive" } },
@@ -1620,29 +1557,46 @@ export const searchCustomers = async (req: Request, res: Response) => {
         ];
       }
     }
+
     if (email && typeof email === "string" && email.trim() && !search) {
-      whereConditions.email = { contains: email.trim(), mode: "insensitive" };
+      searchConditions.email = { contains: email.trim(), mode: "insensitive" };
     }
+
     if (phone && typeof phone === "string" && phone.trim() && !search) {
-      whereConditions.telefonnummer = {
+      searchConditions.telefonnummer = {
         contains: phone.trim(),
         mode: "insensitive",
       };
     }
-    if (
-      location &&
-      typeof location === "string" &&
-      location.trim() &&
-      !search
-    ) {
-      whereConditions.wohnort = {
+
+    if (location && typeof location === "string" && location.trim() && !search) {
+      searchConditions.wohnort = {
         contains: location.trim(),
         mode: "insensitive",
       };
     }
+
     if (id && typeof id === "string" && id.trim()) {
-      whereConditions.id = id.trim();
+      searchConditions.id = id.trim();
     }
+
+    let whereConditions: any = {};
+
+    if (userRole === "ADMIN") {
+      if (Object.keys(searchConditions).length > 0) {
+        whereConditions = searchConditions;
+      }
+    } else {
+      if (Object.keys(searchConditions).length > 0) {
+        whereConditions.AND = [
+          { createdBy: userId },
+          searchConditions
+        ];
+      } else {
+        whereConditions.createdBy = userId;
+      }
+    }
+
     const [total, customers] = await prisma.$transaction([
       prisma.customers.count({ where: whereConditions }),
       prisma.customers.findMany({
@@ -1674,6 +1628,7 @@ export const searchCustomers = async (req: Request, res: Response) => {
         createdAt: customer.createdAt,
       })),
     };
+
     res.status(200).json(response);
   } catch (error: any) {
     console.error("Search Customers Error:", error);
@@ -1764,6 +1719,8 @@ export const searchCustomers = async (req: Request, res: Response) => {
 export const addScreenerFile = async (req: Request, res: Response) => {
   const { customerId } = req.params;
   const files = req.files as any;
+
+ 
 
   const cleanupFiles = () => {
     if (!files) return;
