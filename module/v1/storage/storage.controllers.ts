@@ -35,12 +35,11 @@ const calculateStatus = (
     // Handle new format: { quantity: number, length: number }
     if (sizeValue && typeof sizeValue === "object" && "quantity" in sizeValue) {
       quantity = Number(sizeValue.quantity ?? 0);
-    } 
+    }
     // Handle old format: number (backward compatibility)
     else if (typeof sizeValue === "number") {
       quantity = sizeValue;
-    } 
-    else {
+    } else {
       quantity = 0;
     }
 
@@ -233,7 +232,7 @@ export const updateStorage = async (req: Request, res: Response) => {
 
     // Remove Status from update data if present (it's calculated dynamically)
     delete updatedStorageData.Status;
-    // { user: { id: userId } 
+    // { user: { id: userId }
     const updatedStorage = await prisma.stores.update({
       where: { id, user: { id: userId } },
       data: updatedStorageData,
@@ -273,7 +272,7 @@ export const deleteStorage = async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    // { user: { id: userId } 
+    // { user: { id: userId }
     const deletedStorage = await prisma.stores.delete({
       where: { id, user: { id: userId } },
     });
@@ -308,7 +307,7 @@ export const getStorageChartData = async (req: Request, res: Response) => {
 
     const fromYearParam = req.query.fromYear as string | undefined;
     const toYearParam = req.query.toYear as string | undefined;
-    const yearParam = req.query.year as string | undefined; 
+    const yearParam = req.query.year as string | undefined;
     const fromYear = fromYearParam ? parseInt(fromYearParam, 10) : undefined;
     const toYear = toYearParam ? parseInt(toYearParam, 10) : undefined;
     const specificYear = yearParam ? parseInt(yearParam, 10) : undefined;
@@ -320,7 +319,6 @@ export const getStorageChartData = async (req: Request, res: Response) => {
 
     // If a specific year is requested, return monthly data for that year
     if (specificYear && !isNaN(specificYear)) {
-
       const monthNames = [
         "Jan",
         "Feb",
@@ -468,13 +466,13 @@ export const getStorageHistory = async (req: Request, res: Response) => {
             },
           },
         },
-        user: { 
-          select: { 
-            id: true, 
-            name: true, 
+        user: {
+          select: {
+            id: true,
+            name: true,
             email: true,
             busnessName: true,
-          } 
+          },
         },
       },
     });
@@ -512,23 +510,25 @@ export const getStorageHistory = async (req: Request, res: Response) => {
 export const getStoragePerformer = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
 
-    const performer = await prisma.storesHistory.findMany({
+    const performerHistoary = await prisma.storesHistory.findMany({
       where: { user: { id: userId } },
       orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
+    });
+
+    const performerStores = await prisma.stores.findMany({
+      where: { user: { id: userId } },
+      orderBy: { createdAt: "desc" },
     });
 
     res.status(200).json({
       success: true,
       message: "Storage performer fetched successfully",
-      data: performer,
+      data: {
+        performerStores,
+        performerHistoary,
+      }
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
