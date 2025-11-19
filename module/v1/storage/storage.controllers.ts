@@ -499,37 +499,102 @@ export const getStorageHistory = async (req: Request, res: Response) => {
   }
 };
 
-//  i need a group data top to low Performer = [
-//   { model: 'Modell B', verkaufe: 230, umsatzanteil: 12.7 },
-//   { model: 'Modell C', verkaufe: 210, umsatzanteil: 10.7 },
-//   { model: 'Modell A', verkaufe: 195, umsatzanteil: 8.2 },
-//   { model: 'Modell D', verkaufe: 160, umsatzanteil: 7.9 },
-//   { model: 'Modell E', verkaufe: 115, umsatzanteil: 6.1 }
-// ]
-
 export const getStoragePerformer = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
+    const type = (req.query.type as string) || "top"; // "top" or "low"
 
-    const performerHistoary = await prisma.storesHistory.findMany({
-      where: { user: { id: userId } },
-      orderBy: { createdAt: "desc" },
+    // Get all sales history for this partner
+    const salesHistory = await prisma.storesHistory.findMany({
+      where: {
+        partnerId: userId,
+        changeType: "sales",
+        orderId: { not: null }, // Only include entries with orders
+        store: {
+          userId: userId, // Ensure store belongs to this partner
+        },
+      },
+      include: {
+        store: {
+          select: {
+            id: true,
+            produktname: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            totalPrice: true,
+          },
+        },
+      },
     });
 
-    const performerStores = await prisma.stores.findMany({
-      where: { user: { id: userId } },
-      orderBy: { createdAt: "desc" },
-    });
+    // Group by produktname (model)
+    const modelStats = new Map<
+      string,
+      { verkaufe: number; umsatz: number }
+    >();
+
+    for (const history of salesHistory) {
+      if (!history.store || !history.order) continue;
+
+      const modelName = history.store.produktname;
+      const revenue = Number(history.order.totalPrice || 0);
+
+      if (!modelStats.has(modelName)) {
+        modelStats.set(modelName, { verkaufe: 0, umsatz: 0 });
+      }
+
+      const stats = modelStats.get(modelName)!;
+      stats.verkaufe += 1; // Count each sale
+      stats.umsatz += revenue; // Sum revenue
+    }
+
+    // Calculate total revenue for percentage calculation
+    const totalRevenue = Array.from(modelStats.values()).reduce(
+      (sum, stats) => sum + stats.umsatz,
+      0
+    );
+
+    // Find maximum verkaufe for progress bar calculation
+    const maxVerkaufe = Math.max(
+      ...Array.from(modelStats.values()).map((stats) => stats.verkaufe),
+      1
+    ); // Use 1 as minimum to avoid division by zero
+
+    // Convert to array format and calculate revenue share and progress
+    const performers = Array.from(modelStats.entries()).map(
+      ([model, stats]) => ({
+        model,
+        verkaufe: stats.verkaufe,
+        umsatzanteil:
+          totalRevenue > 0
+            ? Number(((stats.umsatz / totalRevenue) * 100).toFixed(1))
+            : 0,
+        progress: Number(
+          ((stats.verkaufe / maxVerkaufe) * 100).toFixed(1)
+        ), // Progress bar percentage (0-100)
+      })
+    );
+
+    // Sort based on type
+    if (type === "low") {
+      // Low performers: sort by verkaufe ascending
+      performers.sort((a, b) => a.verkaufe - b.verkaufe);
+    } else {
+      // Top performers: sort by verkaufe descending
+      performers.sort((a, b) => b.verkaufe - a.verkaufe);
+    }
 
     res.status(200).json({
       success: true,
-      message: "Storage performer fetched successfully",
-      data: {
-        performerStores,
-        performerHistoary,
-      }
+      message: `Storage ${type} performer fetched successfully`,
+      type: type,
+      data: performers,
     });
   } catch (error) {
+    console.error("getStoragePerformer error:", error);
     res.status(500).json({
       success: false,
       message: "Something went wrong",

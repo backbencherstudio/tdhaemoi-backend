@@ -326,6 +326,7 @@ export const getVersorgungenByDiagnosis = async (
   try {
     const { diagnosis_status } = req.params;
     const { page = 1, limit = 10, status } = req.query;
+    const partnerId = req.user.id;
 
     const pageNumber = parseInt(page as string, 10);
     const limitNumber = parseInt(limit as string, 10);
@@ -377,8 +378,9 @@ export const getVersorgungenByDiagnosis = async (
       where: filters,
     });
 
+    //restectade partner id
     const versorgungenList = await prisma.versorgungen.findMany({
-      where: filters,
+      where: { ...filters, createdBy: partnerId },
       skip: (pageNumber - 1) * limitNumber,
       take: limitNumber,
       orderBy: {
