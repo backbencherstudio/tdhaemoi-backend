@@ -3,6 +3,28 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+
+// model Employees {
+//   id              String  @id @default(uuid())
+//   accountName     String
+//   employeeName    String
+//   email           String  @unique
+//   password        String
+//   financialAccess Boolean @default(false)
+
+//   partnerId String
+//   user      User   @relation(fields: [partnerId], references: [id])
+
+//   WorkshopNote         WorkshopNote?
+//   appointmentEmployees AppointmentEmployee[]
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([createdAt])
+// }
+
+
 export const createEmployee = async (req: Request, res: Response) => {
   try {
     const { accountName, employeeName, email, password, financialAccess } =
@@ -24,12 +46,10 @@ export const createEmployee = async (req: Request, res: Response) => {
       where: { email },
     });
     if (existingUser) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Email already registered!",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered!",
+      });
     }
 
     const existingEmployee = await prisma.employees.findUnique({
@@ -72,7 +92,9 @@ export const createEmployee = async (req: Request, res: Response) => {
 
 export const getAllEmployees = async (req: Request, res: Response) => {
   try {
+    console.log("req.user", req.user);
     const { page = 1, limit = 10 } = req.query;
+    const partnerId = req.user.id;
 
     const pageNumber = parseInt(page as string, 10);
     const limitNumber = parseInt(limit as string, 10);
@@ -84,9 +106,16 @@ export const getAllEmployees = async (req: Request, res: Response) => {
       });
     }
 
-    const totalCount = await prisma.employees.count();
+    const totalCount = await prisma.employees.count({
+      where: {
+        partnerId,
+      },
+    });
     const employeesList = await prisma.employees.findMany({
       skip: (pageNumber - 1) * limitNumber,
+      where: {
+        partnerId,
+      },
       take: limitNumber,
       orderBy: {
         createdAt: "desc",
@@ -119,6 +148,7 @@ export const getAllEmployees = async (req: Request, res: Response) => {
 export const updateEmployee = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const partnerId = req.user.id;
 
     const existingEmployee = await prisma.employees.findUnique({
       where: { id },
@@ -130,13 +160,20 @@ export const updateEmployee = async (req: Request, res: Response) => {
         .json({ success: false, message: "Employee not found" });
     }
 
-    const updatedData = {
-      ...req.body,
-    };
+    // Check if the employee belongs to the requesting partner
+    if (existingEmployee.partnerId !== partnerId) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to update this employee",
+      });
+    }
+
+    // Prevent updating partnerId to ensure employees can't be transferred
+    const { partnerId: _, ...updateData } = req.body;
 
     const updatedEmployee = await prisma.employees.update({
       where: { id },
-      data: updatedData,
+      data: updateData,
     });
 
     res.status(200).json({
@@ -157,6 +194,7 @@ export const updateEmployee = async (req: Request, res: Response) => {
 export const deleteEmployee = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const partnerId = req.user.id;
 
     const existingEmployee = await prisma.employees.findUnique({
       where: { id },
@@ -166,6 +204,14 @@ export const deleteEmployee = async (req: Request, res: Response) => {
       return res
         .status(404)
         .json({ success: false, message: "Employee not found" });
+    }
+
+    // Check if the employee belongs to the requesting partner
+    if (existingEmployee.partnerId !== partnerId) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to delete this employee",
+      });
     }
 
     await prisma.employees.delete({
@@ -188,14 +234,9 @@ export const deleteEmployee = async (req: Request, res: Response) => {
 
 export const searchEmployees = async (req: Request, res: Response) => {
   try {
-    const { 
-      search, 
-      page = 1, 
-      limit = 10,
-      field = "all" 
-    } = req.query;
+    const { search, page = 1, limit = 10, field = "all" } = req.query;
 
-    if (!search || typeof search !== 'string' || search.trim() === '') {
+    if (!search || typeof search !== "string" || search.trim() === "") {
       return res.status(400).json({
         success: false,
         message: "Search search is required",
@@ -219,19 +260,22 @@ export const searchEmployees = async (req: Request, res: Response) => {
 
     if (field === "all" || !field) {
       whereCondition.OR = [
-        { employeeName: { contains: searchQuery, mode: 'insensitive' } },
-        { email: { contains: searchQuery, mode: 'insensitive' } },
-        { accountName: { contains: searchQuery, mode: 'insensitive' } },
+        { employeeName: { contains: searchQuery, mode: "insensitive" } },
+        { email: { contains: searchQuery, mode: "insensitive" } },
+        { accountName: { contains: searchQuery, mode: "insensitive" } },
       ];
     } else {
       const fieldMap: { [key: string]: string } = {
         name: "employeeName",
         email: "email",
-        account: "accountName"
+        account: "accountName",
       };
 
       const prismaField = fieldMap[field as string] || "employeeName";
-      whereCondition[prismaField] = { contains: searchQuery, mode: 'insensitive' };
+      whereCondition[prismaField] = {
+        contains: searchQuery,
+        mode: "insensitive",
+      };
     }
 
     const [employees, totalCount] = await Promise.all([
@@ -241,16 +285,17 @@ export const searchEmployees = async (req: Request, res: Response) => {
         take: limitNumber,
         orderBy: { createdAt: "desc" },
       }),
-      prisma.employees.count({ where: whereCondition })
+      prisma.employees.count({ where: whereCondition }),
     ]);
 
     const totalPages = Math.ceil(totalCount / limitNumber);
 
     res.status(200).json({
       success: true,
-      message: employees.length > 0 
-        ? "Employees found successfully" 
-        : "No employees found matching your search",
+      message:
+        employees.length > 0
+          ? "Employees found successfully"
+          : "No employees found matching your search",
       data: employees,
       pagination: {
         totalItems: totalCount,
@@ -258,15 +303,14 @@ export const searchEmployees = async (req: Request, res: Response) => {
         currentPage: pageNumber,
         itemsPerPage: limitNumber,
         hasNextPage: pageNumber < totalPages,
-        hasPrevPage: pageNumber > 1
+        hasPrevPage: pageNumber > 1,
       },
       search: {
         query: searchQuery,
         field: field || "all",
-        resultsCount: employees.length
-      }
+        resultsCount: employees.length,
+      },
     });
-
   } catch (error: any) {
     console.error("Search Employees error:", error);
     res.status(500).json({
