@@ -504,6 +504,30 @@ export const getStoragePerformer = async (req: Request, res: Response) => {
     const userId = req.user.id;
     const type = (req.query.type as string) || "top"; // "top" or "low"
 
+    // Get all stores for this partner first
+    const allStores = await prisma.stores.findMany({
+      where: {
+        userId: userId,
+      },
+      select: {
+        id: true,
+        produktname: true,
+      },
+    });
+
+    // Initialize all stores with 0 values
+    const modelStats = new Map<
+      string,
+      { verkaufe: number; umsatz: number }
+    >();
+
+    // Initialize all stores (even those without sales history)
+    for (const store of allStores) {
+      if (!modelStats.has(store.produktname)) {
+        modelStats.set(store.produktname, { verkaufe: 0, umsatz: 0 });
+      }
+    }
+
     // Get all sales history for this partner
     const salesHistory = await prisma.storesHistory.findMany({
       where: {
@@ -530,18 +554,14 @@ export const getStoragePerformer = async (req: Request, res: Response) => {
       },
     });
 
-    // Group by produktname (model)
-    const modelStats = new Map<
-      string,
-      { verkaufe: number; umsatz: number }
-    >();
-
+    // Update stats with actual sales data
     for (const history of salesHistory) {
       if (!history.store || !history.order) continue;
 
       const modelName = history.store.produktname;
       const revenue = Number(history.order.totalPrice || 0);
 
+      // Ensure the model exists in the map (should already exist, but safety check)
       if (!modelStats.has(modelName)) {
         modelStats.set(modelName, { verkaufe: 0, umsatz: 0 });
       }
@@ -558,10 +578,10 @@ export const getStoragePerformer = async (req: Request, res: Response) => {
     );
 
     // Find maximum verkaufe for progress bar calculation
-    const maxVerkaufe = Math.max(
-      ...Array.from(modelStats.values()).map((stats) => stats.verkaufe),
-      1
-    ); // Use 1 as minimum to avoid division by zero
+    const verkaufeValues = Array.from(modelStats.values()).map(
+      (stats) => stats.verkaufe
+    );
+    const maxVerkaufe = verkaufeValues.length > 0 ? Math.max(...verkaufeValues, 1) : 1; // Use 1 as minimum to avoid division by zero
 
     // Convert to array format and calculate revenue share and progress
     const performers = Array.from(modelStats.entries()).map(
@@ -572,9 +592,10 @@ export const getStoragePerformer = async (req: Request, res: Response) => {
           totalRevenue > 0
             ? Number(((stats.umsatz / totalRevenue) * 100).toFixed(1))
             : 0,
-        progress: Number(
-          ((stats.verkaufe / maxVerkaufe) * 100).toFixed(1)
-        ), // Progress bar percentage (0-100)
+        progress:
+          maxVerkaufe > 0
+            ? Number(((stats.verkaufe / maxVerkaufe) * 100).toFixed(1))
+            : 0, // Progress bar percentage (0-100)
       })
     );
 
