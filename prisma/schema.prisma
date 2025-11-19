@@ -38,10 +38,11 @@ model User {
   bestellubersicht       Bestellubersicht?
 
   // Mandatory one-to-one relationship
-  workshopNote  WorkshopNote?
-  stores        Stores[]
-  StoresHistory StoresHistory[]
-  custom_shafts custom_shafts[]
+  workshopNote     WorkshopNote?
+  stores           Stores[]
+  StoresHistory    StoresHistory[]
+  custom_shafts    custom_shafts[]
+  massschuheOrders massschuhe_order[]
 
   @@map("users")
 }
@@ -130,12 +131,14 @@ model appointment {
 }
 
 model AppointmentEmployee {
-  id            String      @id @default(uuid())
+  id            String @id @default(uuid())
   appointmentId String
-  appointment   appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  employeeId    String
-  employee      Employees   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  assignedTo    String // Employee name for this appointment
+
+  appointment appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  employeeId  String
+
+  employee   Employees @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  assignedTo String // Employee name for this appointment
 
   createdAt DateTime @default(now())
 
@@ -241,11 +244,14 @@ model Employees {
   partnerId String
   user      User   @relation(fields: [partnerId], references: [id])
 
-  WorkshopNote         WorkshopNote?
-  appointmentEmployees AppointmentEmployee[]
+  WorkshopNote WorkshopNote?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Many-to-many relation
+  // massschuheOrders massschuhe_order[] @relation("OrderEmployees")
+
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  appointmentEmployees AppointmentEmployee[]
 
   @@index([createdAt])
 }
@@ -297,8 +303,9 @@ model Versorgungen {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  storeId String?
-  store   Stores? @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId          String?
+  store            Stores?            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  massschuheOrders massschuhe_order[]
 
   @@index([id, name])
   @@index([createdAt])
@@ -395,10 +402,11 @@ model customers {
   fußanalyse        Float? //ইনসোল $
   einlagenversorgung Float? //Foot analysis $
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  StoresHistory  StoresHistory[]
-  customer_files customer_files[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  StoresHistory    StoresHistory[]
+  customer_files   customer_files[]
+  massschuheOrders massschuhe_order[]
 
   @@index([vorname, nachname])
   @@index([telefonnummer])
@@ -594,7 +602,9 @@ model Werkstattzettel {
   customerId String     @unique
   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
-  orders customerOrders[] @relation(name: "WerkstattzettelOrdersRelation")
+  //eeher i select orders or massschuhe orders not broth together
+  orders           customerOrders[]   @relation(name: "WerkstattzettelOrdersRelation")
+  massschuheOrders massschuhe_order[] @relation(name: "massschuhe_order_relation")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -797,6 +807,61 @@ enum custom_shafts_status {
   Zu_Kunde_abgeschickt
   Bei_uns_angekommen
   Beim_Kunden_angekommen
+}
+
+//---------------------------massschuhe_order---------------------
+model massschuhe_order {
+  id String @id @default(uuid())
+
+  customerId String
+  customer   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  partnerId String
+  user      User?  @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  ausführliche_diagnose String?
+  versorgung_laut_arzt   String?
+
+  //realtion with Versorgungen
+  // diagnose
+  versorgungenId String? // এটা diagnose এর সাথে রিলেশন হচ্ছে ID, এটা হচ্ছে versorgungenId
+  versorgungen   Versorgungen? @relation(fields: [versorgungenId], references: [id], onDelete: SetNull)
+
+  //employee relation but i need multiple employees
+  // // MANY TO MANY EMPLOYEES
+  // employees Employees[] @relation("OrderEmployees")
+
+  einlagentyp         String?
+  überzug            String?
+  menge               Int? //quantity
+  versorgung_note     String? //Hast du sonstige Anmerkungen oder Notizen zur Versorgung... ?
+  schuhmodell_wählen String? //জুতার মডেল নির্বাচন করুন ম্যানুয়ালি লিখুন (ব্র্যান্ড + মডেল + সাইজ)
+  kostenvoranschlag   Boolean? @default(false)
+
+  // price section
+  fußanalyse        Float?
+  einlagenversorgung Float?
+  totalPrice         Float
+
+  // i wanna relation this with werkstattzettel
+  werkstattzettel   Werkstattzettel? @relation(fields: [werkstattzettelId], references: [id], onDelete: SetNull, name: "massschuhe_order_relation")
+  werkstattzettelId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([partnerId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([werkstattzettelId])
+  @@index([versorgungenId])
+  @@index([einlagentyp])
+  @@index([überzug])
+  @@index([menge])
+  @@index([versorgung_note])
+  @@index([schuhmodell_wählen])
+  @@index([kostenvoranschlag])
 }
 
 // {
