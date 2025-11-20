@@ -1,8 +1,25 @@
 import express from "express";
 import { verifyUser } from "../../../middleware/verifyUsers";
-
-import upload from "../../../config/multer.config";
+ 
+import {
+  createMassschuheOrder,
+  getMassschuheOrder,
+  updateMassschuheOrder,
+  deleteMassschuheOrder,
+  getMassschuheOrderById
+} from "./massschuhe_order.controllers";
 
 const router = express.Router();
+
+router.post("/create", verifyUser("ADMIN", "PARTNER"), createMassschuheOrder);
+router.get("/", verifyUser("ADMIN", "PARTNER"), getMassschuheOrder);
+router.get("/get/:id", verifyUser("ADMIN", "PARTNER"), getMassschuheOrderById);
+
+router.put("/:id", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrder);
+router.patch("/:id", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrder);
+router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteMassschuheOrder);
+
+
+// router.post("/create", verifyUser("ADMIN", "PARTNER"), createMassschuheOrder);
 
 export default router;

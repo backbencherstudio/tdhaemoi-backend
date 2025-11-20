@@ -2,6 +2,8 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// The datasource `url` property is deprecated in Prisma 5+. Connection info should be moved
+// to prisma.config.ts, and the schema only retains the provider.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -42,6 +44,7 @@ model User {
   stores           Stores[]
   StoresHistory    StoresHistory[]
   custom_shafts    custom_shafts[]
+  // massschuheOrders massschuhe_order[]
   massschuheOrders massschuhe_order[]
 
   @@map("users")
@@ -252,6 +255,7 @@ model Employees {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
   appointmentEmployees AppointmentEmployee[]
+  werkstattzettels     Werkstattzettel[]
 
   @@index([createdAt])
 }
@@ -291,8 +295,10 @@ model Versorgungen {
   /// artikel Hersteller is come form "Stores in  hersteller" field
   artikelHersteller String
   versorgung        String
-  material          String
-  langenempfehlung  Json?
+
+  material String[]
+
+  langenempfehlung Json?
 
   status           versorgungenStatus
   diagnosis_status versorgungenDiagnosisStatus?
@@ -303,9 +309,10 @@ model Versorgungen {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  storeId          String?
-  store            Stores?            @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  massschuheOrders massschuhe_order[]
+  storeId        String?
+  store          Stores?          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  // massschuheOrders massschuhe_order[]
+  customerOrders customerOrders[]
 
   @@index([id, name])
   @@index([createdAt])
@@ -353,7 +360,7 @@ model customers {
   vorname        String
   nachname       String
   email          String  @unique
-  telefonnummer  String?
+  // telefonnummer  String?
   wohnort        String?
 
   gender       String?
@@ -402,14 +409,14 @@ model customers {
   fußanalyse        Float? //ইনসোল $
   einlagenversorgung Float? //Foot analysis $
 
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  StoresHistory    StoresHistory[]
-  customer_files   customer_files[]
-  massschuheOrders massschuhe_order[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  StoresHistory  StoresHistory[]
+  customer_files customer_files[]
+  // massschuheOrders massschuhe_order[]
 
   @@index([vorname, nachname])
-  @@index([telefonnummer])
+  // @@index([telefonnummer])
   @@index([wohnort])
   @@index([email])
   @@index([id, vorname])
@@ -555,6 +562,9 @@ model customerOrders {
   partnerId String?
   partner   User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull, name: "PartnerOrders")
 
+  versorgungId String? // Add this
+  Versorgungen Versorgungen? @relation(fields: [versorgungId], references: [id], onDelete: SetNull)
+
   fußanalyse        Float?
   einlagenversorgung Float?
   totalPrice         Float
@@ -572,6 +582,17 @@ model customerOrders {
   werkstattzettel   Werkstattzettel? @relation(fields: [werkstattzettelId], references: [id], onDelete: SetNull, name: "WerkstattzettelOrdersRelation")
   werkstattzettelId String?
   StoresHistory     StoresHistory[]
+
+  ausführliche_diagnose String?
+  versorgung_laut_arzt   String?
+  einlagentyp            String?
+  überzug               String?
+  menge                  Int? //quantity
+  versorgung_note        String? //Hast du sonstige Anmerkungen oder Notizen zur Versorgung... ?
+  schuhmodell_wählen    String? //জুতার মডেল নির্বাচন করুন ম্যানুয়ালি লিখুন (ব্র্যান্ড + মডেল + সাইজ)
+  kostenvoranschlag      Boolean? @default(false)
+  storeId                String?
+  store                  Stores?  @relation(fields: [storeId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
   @@index([partnerId])
@@ -595,6 +616,10 @@ model Werkstattzettel {
   versorgung         String? // Versorgung - Rohling 339821769, mit Pelotte
   bezahlt            Boolean? // Bezahlt - Ja (true/false)
 
+  //relation with employe but optional
+  employeeId String?
+  employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
   // Preise section
   fussanalysePreis        Float? // Fußanalyse - 100€
   einlagenversorgungPreis Float? // Einlagenversorgung - 50€
@@ -603,8 +628,8 @@ model Werkstattzettel {
   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   //eeher i select orders or massschuhe orders not broth together
-  orders           customerOrders[]   @relation(name: "WerkstattzettelOrdersRelation")
-  massschuheOrders massschuhe_order[] @relation(name: "massschuhe_order_relation")
+  orders customerOrders[] @relation(name: "WerkstattzettelOrdersRelation")
+  // massschuheOrders massschuhe_order[] @relation(name: "massschuhe_order_relation")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -683,8 +708,9 @@ model Stores {
 
   storesHistory StoresHistory[] // History of stock changes
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  customerOrders customerOrders[]
 
   @@index([id, produktname])
   @@map("stores")
@@ -810,58 +836,83 @@ enum custom_shafts_status {
 }
 
 //---------------------------massschuhe_order---------------------
+// model massschuhe_order {
+//   id String @id @default(uuid())
+
+//   customerId String
+//   customer   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+//   partnerId String
+//   user      User?  @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+//   ausführliche_diagnose String?
+//   versorgung_laut_arzt   String?
+
+//   //realtion with Versorgungen
+//   // diagnose
+//   versorgungenId String? // এটা diagnose এর সাথে রিলেশন হচ্ছে ID, এটা হচ্ছে versorgungenId
+//   versorgungen   Versorgungen? @relation(fields: [versorgungenId], references: [id], onDelete: SetNull)
+
+//   //employee relation but i need multiple employees
+//   // // MANY TO MANY EMPLOYEES
+//   // employees Employees[] @relation("OrderEmployees")
+
+//   einlagentyp         String?
+//   überzug            String?
+//   menge               Int? //quantity
+//   versorgung_note     String? //Hast du sonstige Anmerkungen oder Notizen zur Versorgung... ?
+//   schuhmodell_wählen String? //জুতার মডেল নির্বাচন করুন ম্যানুয়ালি লিখুন (ব্র্যান্ড + মডেল + সাইজ)
+//   kostenvoranschlag   Boolean? @default(false)
+
+//   // price section
+//   fußanalyse        Float?
+//   einlagenversorgung Float?
+//   totalPrice         Float
+
+//   // i wanna relation this with werkstattzettel
+//   werkstattzettel   Werkstattzettel? @relation(fields: [werkstattzettelId], references: [id], onDelete: SetNull, name: "massschuhe_order_relation")
+//   werkstattzettelId String?
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([customerId])
+//   @@index([partnerId])
+//   @@index([createdAt])
+//   @@index([updatedAt])
+//   @@index([werkstattzettelId])
+//   @@index([versorgungenId])
+//   @@index([einlagentyp])
+//   @@index([überzug])
+//   @@index([menge])
+//   @@index([versorgung_note])
+//   @@index([schuhmodell_wählen])
+//   @@index([kostenvoranschlag])
+// }
+
+//---------------------------massschuhe_order---------------------  
+
 model massschuhe_order {
   id String @id @default(uuid())
 
-  customerId String
-  customer   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  arztliche_diagnose    String?
+  usführliche_diagnose String?
+  rezeptnummer          String?
+  durchgeführt_von     String?
+  note                  String?
 
-  partnerId String
-  user      User?  @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  albprobe_geplant  Boolean? @default(false)
+  kostenvoranschlag Boolean? @default(false)
 
-  ausführliche_diagnose String?
-  versorgung_laut_arzt   String?
-
-  //realtion with Versorgungen
-  // diagnose
-  versorgungenId String? // এটা diagnose এর সাথে রিলেশন হচ্ছে ID, এটা হচ্ছে versorgungenId
-  versorgungen   Versorgungen? @relation(fields: [versorgungenId], references: [id], onDelete: SetNull)
-
-  //employee relation but i need multiple employees
-  // // MANY TO MANY EMPLOYEES
-  // employees Employees[] @relation("OrderEmployees")
-
-  einlagentyp         String?
-  überzug            String?
-  menge               Int? //quantity
-  versorgung_note     String? //Hast du sonstige Anmerkungen oder Notizen zur Versorgung... ?
-  schuhmodell_wählen String? //জুতার মডেল নির্বাচন করুন ম্যানুয়ালি লিখুন (ব্র্যান্ড + মডেল + সাইজ)
-  kostenvoranschlag   Boolean? @default(false)
-
-  // price section
-  fußanalyse        Float?
-  einlagenversorgung Float?
-  totalPrice         Float
-
-  // i wanna relation this with werkstattzettel
-  werkstattzettel   Werkstattzettel? @relation(fields: [werkstattzettelId], references: [id], onDelete: SetNull, name: "massschuhe_order_relation")
-  werkstattzettelId String?
+  //relation with users
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([customerId])
-  @@index([partnerId])
   @@index([createdAt])
   @@index([updatedAt])
-  @@index([werkstattzettelId])
-  @@index([versorgungenId])
-  @@index([einlagentyp])
-  @@index([überzug])
-  @@index([menge])
-  @@index([versorgung_note])
-  @@index([schuhmodell_wählen])
-  @@index([kostenvoranschlag])
 }
 
 // {

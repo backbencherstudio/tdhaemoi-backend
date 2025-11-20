@@ -81,9 +81,29 @@ const determineSizeFromGroessenMengen = (
 
 //----------------------------
 
+// einlagentyp         String?
+// überzug            String?
+// menge               Int? //quantity
+// versorgung_note     String? //Hast du sonstige Anmerkungen oder Notizen zur Versorgung... ?
+// schuhmodell_wählen String? //জুতার মডেল নির্বাচন করুন ম্যানুয়ালি লিখুন (ব্র্যান্ড + মডেল + সাইজ)
+// kostenvoranschlag   Boolean? @default(false)
+
 export const createOrder = async (req: Request, res: Response) => {
   try {
-    const { customerId, versorgungId, werkstattzettelId } = req.body;
+    const {
+      customerId,
+      versorgungId,
+      werkstattzettelId,
+
+      einlagentyp,
+      überzug,
+      menge,
+      versorgung_note,
+      schuhmodell_wählen,
+      kostenvoranschlag,
+      ausführliche_diagnose,
+      versorgung_laut_arzt,
+    } = req.body;
     const partnerId = req.user.id;
 
     console.log(customerId, versorgungId, partnerId, werkstattzettelId);
@@ -124,6 +144,7 @@ export const createOrder = async (req: Request, res: Response) => {
       }),
     ]);
 
+    console.log("============================", versorgung?.storeId);
     if (!customer || !versorgung) {
       return res
         .status(404)
@@ -189,6 +210,15 @@ export const createOrder = async (req: Request, res: Response) => {
           totalPrice,
           productId: customerProduct.id,
           statusUpdate: new Date(),
+          ausführliche_diagnose,
+          versorgung_laut_arzt,
+          einlagentyp,
+          überzug,
+          menge,
+          versorgung_note,
+          schuhmodell_wählen,
+          kostenvoranschlag,
+          storeId: versorgung?.storeId ?? "",
         },
         select: { id: true },
       });
@@ -648,7 +678,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
               vorname: true,
               nachname: true,
               email: true,
-              telefonnummer: true,
+              // telefonnummer: true,
               wohnort: true,
               customerNumber: true,
             },
@@ -801,14 +831,31 @@ export const getAllOrders = async (req: Request, res: Response) => {
 //   }
 // };
 
+// einlagentyp         String?
+// überzug            String?
+// menge               Int? //quantity
+// versorgung_note     String? //Hast du sonstige Anmerkungen oder Notizen zur Versorgung... ?
+// schuhmodell_wählen String? //জুতার মডেল নির্বাচন করুন ম্যানুয়ালি লিখুন (ব্র্যান্ড + মডেল + সাইজ)
+// kostenvoranschlag   Boolean? @default(false)
+
+// i need to select all data customerOrders fields select all not some specific fields
 export const getOrderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
     const order = (await prisma.customerOrders.findUnique({
       where: { id },
+      // all customerOrders data i need select all not some specific fields
       include: {
         werkstattzettel: true,
+        Versorgungen: true,
+        store: {
+          select: {
+            id: true,
+            produktname: true,
+            groessenMengen: true,
+          },
+        },
         customer: {
           select: {
             id: true,
@@ -816,13 +863,23 @@ export const getOrderById = async (req: Request, res: Response) => {
             vorname: true,
             nachname: true,
             email: true,
-            telefonnummer: true,
+            telefon: true,
             wohnort: true,
+            geburtsdatum: true,
+            gender: true,
+
             fusslange1: true,
             fusslange2: true,
-            gender: true,
-            geburtsdatum: true,
-
+            fussbreite1: true,
+            fussbreite2: true,
+            kugelumfang1: true,
+            kugelumfang2: true,
+            rist1: true,
+            rist2: true,
+            zehentyp1: true,
+            zehentyp2: true,
+            archIndex1: true,
+            archIndex2: true,
             screenerFile: {
               orderBy: { updatedAt: "desc" },
               take: 1,
@@ -865,6 +922,8 @@ export const getOrderById = async (req: Request, res: Response) => {
       },
     })) as any;
 
+    // i need to get versorgung using versorgungId
+
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -889,20 +948,60 @@ export const getOrderById = async (req: Request, res: Response) => {
       return Math.max(fusslange1, fusslange2);
     };
 
-    const findNearestSize = (
+    const findNearestStoreSize = (
+      value: number | null
+    ): { size: string | null; value: number | null } => {
+      if (
+        value === null ||
+        !order.store?.groessenMengen ||
+        typeof order.store.groessenMengen !== "object"
+      ) {
+        return { size: null, value: null };
+      }
+
+      let nearestSize: string | null = null;
+      let nearestValue: number | null = null;
+      let smallestDifference = Infinity;
+
+      for (const [sizeKey, sizeData] of Object.entries(
+        order.store.groessenMengen as Record<string, any>
+      )) {
+        const lengthValue = extractLengthValue(sizeData);
+        if (lengthValue === null) {
+          continue;
+        }
+
+        const difference = Math.abs(value - lengthValue);
+        if (difference < smallestDifference) {
+          smallestDifference = difference;
+          nearestSize = sizeKey;
+          nearestValue = lengthValue;
+        }
+      }
+
+      return { size: nearestSize, value: nearestValue };
+    };
+
+    const findNearestProductSize = (
       value: number | null
     ): { size: string | null; value: number | null } => {
       if (value === null || !order.product?.langenempfehlung) {
         return { size: null, value: null };
       }
 
-      const langenempfehlung = order.product.langenempfehlung;
-      let nearestSize = null;
-      let nearestValue = null;
+      const langenempfehlung = order.product.langenempfehlung as Record<
+        string,
+        any
+      >;
+      let nearestSize: string | null = null;
+      let nearestValue: number | null = null;
       let smallestDifference = Infinity;
 
       for (const [size, sizeValue] of Object.entries(langenempfehlung)) {
-        const numericValue = Number(sizeValue);
+        const numericValue = extractLengthValue(sizeValue);
+        if (numericValue === null) {
+          continue;
+        }
         const difference = Math.abs(value - numericValue);
 
         if (difference < smallestDifference) {
@@ -916,19 +1015,21 @@ export const getOrderById = async (req: Request, res: Response) => {
     };
 
     const largerFusslange = getLargerFusslange();
-    const nearestSize = findNearestSize(largerFusslange);
 
+    const storeNearestSize = findNearestStoreSize(largerFusslange);
+    const productNearestSize = findNearestProductSize(largerFusslange);
+    const nearestSize =
+      storeNearestSize.size !== null ? storeNearestSize : productNearestSize;
+    console.log("============================", nearestSize);
     const formattedOrder = {
       ...order,
       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
       customer: order.customer
         ? {
             ...order.customer,
-            // Keep original values
             fusslange1: order.customer.fusslange1,
             fusslange2: order.customer.fusslange2,
-            // Add calculated values
-            largerFusslange, // This is the larger value after adding 5
+            largerFusslange,
             recommendedSize: nearestSize,
           }
         : null,
@@ -943,6 +1044,7 @@ export const getOrderById = async (req: Request, res: Response) => {
               : null,
           }
         : null,
+      store: order.store ?? null,
     };
 
     res.status(200).json({
@@ -982,17 +1084,25 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
     const [orders, totalCount] = await Promise.all([
       prisma.customerOrders.findMany({
         where: { customerId },
+
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
+          Versorgungen: {
+            select: {
+              id: true,
+              name: true,
+              langenempfehlung: true,
+            },
+          },
           customer: {
             select: {
               id: true,
               vorname: true,
               nachname: true,
               email: true,
-              telefonnummer: true,
+              // telefonnummer: true,
               wohnort: true,
               customerNumber: true,
             },
@@ -1104,7 +1214,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
             vorname: true,
             nachname: true,
             email: true,
-            telefonnummer: true,
+            // telefonnummer: true,
             wohnort: true,
           },
         },
@@ -1228,7 +1338,7 @@ export const uploadInvoice = async (req: Request, res: Response) => {
             vorname: true,
             nachname: true,
             email: true,
-            telefonnummer: true,
+            // telefonnummer: true,
             wohnort: true,
           },
         },
@@ -1378,7 +1488,7 @@ export const uploadInvoiceOnly = async (req: Request, res: Response) => {
             vorname: true,
             nachname: true,
             email: true,
-            telefonnummer: true,
+            // telefonnummer: true,
             wohnort: true,
           },
         },
@@ -1448,7 +1558,7 @@ export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
             vorname: true,
             nachname: true,
             email: true,
-            telefonnummer: true,
+            // telefonnummer: true,
             wohnort: true,
           },
         },
@@ -1948,6 +2058,8 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
       bezahlt,
       fussanalysePreis,
       einlagenversorgungPreis,
+      employeeId,
+
       // orderId
     } = req.body;
 
@@ -1982,7 +2094,7 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
         message: "Customer not found",
       });
     }
-
+    // employeeId i need to add
     const werkstattzettel = await prisma.werkstattzettel.upsert({
       where: { customerId },
       update: {
@@ -1991,6 +2103,7 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
         wohnort,
         telefon,
         email,
+        employeeId,
         geschaeftsstandort: Array.isArray(geschaeftsstandort)
           ? geschaeftsstandort.join(", ")
           : geschaeftsstandort,
@@ -2012,6 +2125,7 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
         auftragsDatum: new Date(auftragsDatum),
         wohnort,
         telefon,
+        employeeId,
         email,
         geschaeftsstandort: Array.isArray(geschaeftsstandort)
           ? geschaeftsstandort.join(", ")
@@ -2038,7 +2152,7 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
             vorname: true,
             nachname: true,
             email: true,
-            telefonnummer: true,
+            // telefonnummer: true,
             wohnort: true,
           },
         },

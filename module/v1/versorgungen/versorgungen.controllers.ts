@@ -78,6 +78,23 @@ export const getAllVersorgungen = async (req: Request, res: Response) => {
   }
 };
 
+const normalizeMaterialInput = (input: unknown): string[] => {
+  if (Array.isArray(input)) {
+    return input
+      .map((item) => (typeof item === "string" ? item.trim() : String(item)))
+      .filter((item) => item.length > 0);
+  }
+
+  if (typeof input === "string") {
+    return input
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  }
+
+  return [];
+};
+
 export const createVersorgungen = async (req: Request, res: Response) => {
   try {
     const {
@@ -156,12 +173,21 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       }
     }
 
+    const normalizedMaterial = normalizeMaterialInput(material);
+
+    if (normalizedMaterial.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "material must contain at least one value",
+      });
+    }
+
     const versorgungenData: Prisma.VersorgungenCreateInput = {
       name,
       rohlingHersteller,
       artikelHersteller,
       versorgung,
-      material,
+      material: normalizedMaterial,
       langenempfehlung: langenempfehlung ?? Prisma.JsonNull,
       status,
       diagnosis_status: diagnosis_status || null,
@@ -235,10 +261,25 @@ export const patchVersorgungen = async (req: Request, res: Response) => {
       });
     }
 
-    const { storeId, ...rest } = req.body;
+    const { storeId, material: materialInput, ...rest } = req.body;
+
+    const normalizedMaterial =
+      materialInput !== undefined
+        ? normalizeMaterialInput(materialInput)
+        : undefined;
+
+    if (materialInput !== undefined && normalizedMaterial?.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "material must contain at least one value when provided",
+      });
+    }
 
     const updatedVersorgungenData: Prisma.VersorgungenUpdateInput = {
       ...rest,
+      ...(normalizedMaterial !== undefined
+        ? { material: normalizedMaterial }
+        : {}),
       updatedBy: req.user.id,
       store:
         storeId !== undefined

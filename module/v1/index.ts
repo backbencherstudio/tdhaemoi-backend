@@ -47,7 +47,7 @@ const moduleRoutes = [
   { path: "/bestellubersicht", route: bestellubersicht },
   { path: "/custom_shafts", route: custom_shafts },
   { path: "/customer-files", route: customer_files },
-  { path: "/massschuhe-order", route: massschuhe_order },
+  { path: "/massschuhe-order", route: massschuhe_order },  
 ];
 
 moduleRoutes.forEach(({ path, route }) => {
