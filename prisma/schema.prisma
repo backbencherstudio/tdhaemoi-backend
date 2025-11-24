@@ -256,6 +256,7 @@ model Employees {
   updatedAt            DateTime              @updatedAt
   appointmentEmployees AppointmentEmployee[]
   werkstattzettels     Werkstattzettel[]
+  massschuheOrders     massschuhe_order[]
 
   @@index([createdAt])
 }
@@ -409,11 +410,12 @@ model customers {
   fußanalyse        Float? //ইনসোল $
   einlagenversorgung Float? //Foot analysis $
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  StoresHistory  StoresHistory[]
-  customer_files customer_files[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  StoresHistory    StoresHistory[]
+  customer_files   customer_files[]
   // massschuheOrders massschuhe_order[]
+  massschuheOrders massschuhe_order[]
 
   @@index([vorname, nachname])
   // @@index([telefonnummer])
@@ -907,6 +909,12 @@ model massschuhe_order {
   //relation with users
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  employeeId String?
+  employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  customerId String?
+  customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

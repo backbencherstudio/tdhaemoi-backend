@@ -29,6 +29,21 @@ const targetCells = [
   "C120", // archIndex2
 ];
 
+const serializeMaterialField = (material: any): string => {
+  if (Array.isArray(material)) {
+    return material
+      .map((item) => (item == null ? "" : String(item).trim()))
+      .filter((item) => item.length > 0)
+      .join(", ");
+  }
+
+  if (typeof material === "string") {
+    return material;
+  }
+
+  return material !== undefined && material !== null ? String(material) : "";
+};
+
 async function parseCSV(csvPath: string): Promise<any> {
   return new Promise((resolve, reject) => {
     console.log("Parsing CSV file:", csvPath);
@@ -85,7 +100,7 @@ export const createCustomers = async (req: Request, res: Response) => {
       vorname,
       nachname,
       email,
-      telefonnummer,
+      // telefonnummer,
       wohnort,
       ausfuhrliche_diagnose,
       kundeSteuernummer,
@@ -122,7 +137,7 @@ export const createCustomers = async (req: Request, res: Response) => {
           vorname,
           nachname,
           email,
-          telefonnummer: telefonnummer || null,
+          // telefonnummer: telefonnummer || null,
           wohnort: wohnort || null,
           ausfuhrliche_diagnose: ausfuhrliche_diagnose || null,
           kundeSteuernummer: kundeSteuernummer || null,
@@ -778,7 +793,7 @@ export const updateCustomer = async (req: Request, res: Response) => {
       vorname: vorname || existing.vorname,
       nachname: nachname || existing.nachname,
       email: email || existing.email,
-      telefonnummer: telefonnummer || existing.telefonnummer,
+      // telefonnummer: telefonnummer || existing.telefonnummer,
       wohnort: wohnort || existing.wohnort,
       ausfuhrliche_diagnose:
         ausfuhrliche_diagnose || existing.ausfuhrliche_diagnose,
@@ -1156,7 +1171,7 @@ export const assignVersorgungToCustomer = async (
       rohlingHersteller: versorgung.rohlingHersteller,
       artikelHersteller: versorgung.artikelHersteller,
       versorgung: versorgung.versorgung,
-      material: versorgung.material,
+      material: serializeMaterialField(versorgung.material),
       langenempfehlung: versorgung.langenempfehlung,
       status: versorgung.status,
       diagnosis_status: versorgung.diagnosis_status,
@@ -1552,7 +1567,7 @@ export const searchCustomers = async (req: Request, res: Response) => {
           { vorname: { contains: searchQuery, mode: "insensitive" } },
           { nachname: { contains: searchQuery, mode: "insensitive" } },
           { email: { contains: searchQuery, mode: "insensitive" } },
-          { telefonnummer: { contains: searchQuery, mode: "insensitive" } },
+          // { telefonnummer: { contains: searchQuery, mode: "insensitive" } },
           { wohnort: { contains: searchQuery, mode: "insensitive" } },
         ];
       }
@@ -1562,12 +1577,12 @@ export const searchCustomers = async (req: Request, res: Response) => {
       searchConditions.email = { contains: email.trim(), mode: "insensitive" };
     }
 
-    if (phone && typeof phone === "string" && phone.trim() && !search) {
-      searchConditions.telefonnummer = {
-        contains: phone.trim(),
-        mode: "insensitive",
-      };
-    }
+    // if (phone && typeof phone === "string" && phone.trim() && !search) {
+    //   searchConditions.telefonnummer = {
+    //     contains: phone.trim(),
+    //     mode: "insensitive",
+    //   };
+    // }
 
     if (location && typeof location === "string" && location.trim() && !search) {
       searchConditions.wohnort = {
@@ -1606,7 +1621,7 @@ export const searchCustomers = async (req: Request, res: Response) => {
           vorname: true,
           nachname: true,
           email: true,
-          telefonnummer: true,
+          // telefonnummer: true,
           wohnort: true,
           createdAt: true,
         },
@@ -1623,7 +1638,7 @@ export const searchCustomers = async (req: Request, res: Response) => {
         id: customer.id,
         name: `${customer.vorname} ${customer.nachname}`,
         email: customer.email,
-        phone: customer.telefonnummer,
+        // phone: customer.telefonnummer,
         location: customer.wohnort,
         createdAt: customer.createdAt,
       })),
@@ -2317,7 +2332,7 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
             vorname: true,
             nachname: true,
             email: true,
-            telefonnummer: true,
+            // telefonnummer: true,
             wohnort: true,
             customerNumber: true,
           },
@@ -2416,6 +2431,15 @@ export const filterCustomer = async (req: Request, res: Response) => {
       limit = "10",
       search,
     } = req.query;
+
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: user context missing",
+      });
+    }
+
+    const userId = req.user.id;
 
     const normalizeString = (value: unknown): string | undefined => {
       if (Array.isArray(value)) {
@@ -2608,7 +2632,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
           { vorname: { contains: normalizedSearch, mode: "insensitive" } },
           { nachname: { contains: normalizedSearch, mode: "insensitive" } },
           { email: { contains: normalizedSearch, mode: "insensitive" } },
-          { telefonnummer: { contains: normalizedSearch, mode: "insensitive" } },
+          // { telefonnummer: { contains: normalizedSearch, mode: "insensitive" } },
           { wohnort: { contains: normalizedSearch, mode: "insensitive" } },
         ],
       });
@@ -2619,9 +2643,9 @@ export const filterCustomer = async (req: Request, res: Response) => {
       : {};
 
     const [totalCount, customers] = await prisma.$transaction([
-      prisma.customers.count({ where }),
+      prisma.customers.count({ where: { ...where, createdBy: userId } }),
       prisma.customers.findMany({
-        where,
+        where: { ...where, createdBy: userId },
         skip,
         take: limitNumber,
         orderBy: { createdAt: "desc" },
@@ -2632,6 +2656,14 @@ export const filterCustomer = async (req: Request, res: Response) => {
               id: true,
               orderStatus: true,
               totalPrice: true,
+              createdAt: true,
+            },
+          },
+          massschuheOrders: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              id: true,
               createdAt: true,
             },
           },
@@ -2681,6 +2713,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
 
       const latestOrder = customer.customerOrders[0] || null;
       const latestScreener = formatScreener(customer.screenerFile[0]);
+      const latestMassschuheOrder = customer.massschuheOrders?.[0] || null;
 
       return {
         id: customer.id,
@@ -2688,13 +2721,14 @@ export const filterCustomer = async (req: Request, res: Response) => {
         vorname: customer.vorname,
         nachname: customer.nachname,
         email: customer.email,
-        telefonnummer: customer.telefonnummer,
+        // telefonnummer: customer.telefonnummer,
         wohnort: customer.wohnort,
         createdAt: customer.createdAt,
         totalOrders: customer.customerOrders.length,
         completedOrders: completedOrdersCount,
         latestOrder,
         latestScreener,
+        latestMassschuheOrder,
       };
     });
 

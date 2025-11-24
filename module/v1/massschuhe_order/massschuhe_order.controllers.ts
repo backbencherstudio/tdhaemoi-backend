@@ -611,6 +611,8 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
     const {
+      employeeId,
+      customerId,
       arztliche_diagnose,
       usführliche_diagnose,
       rezeptnummer,
@@ -621,6 +623,8 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
     } = req.body;
 
     const missingField = [
+      "employeeId",
+      "customerId",
       "arztliche_diagnose",
       "usführliche_diagnose",
       "rezeptnummer",
@@ -632,6 +636,30 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         message: `${missingField} is required!`,
+      });
+    }
+
+    const customer = await prisma.customers.findUnique({
+      where: { id: customerId },
+      select: { id: true },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    const employee = await prisma.employees.findUnique({
+      where: { id: employeeId },
+      select: { id: true },
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
       });
     }
 
@@ -666,17 +694,21 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
       return false;
     };
 
+    const createData = {
+      arztliche_diagnose,
+      usführliche_diagnose,
+      rezeptnummer,
+      durchgeführt_von,
+      note,
+      albprobe_geplant: convertToBoolean(albprobe_geplant),
+      kostenvoranschlag: convertToBoolean(kostenvoranschlag),
+      userId,
+      employeeId,
+      customerId,
+    } as Prisma.massschuhe_orderUncheckedCreateInput;
+
     const massschuheOrder = await prisma.massschuhe_order.create({
-      data: {
-        arztliche_diagnose,
-        usführliche_diagnose,
-        rezeptnummer,
-        durchgeführt_von,
-        note,
-        albprobe_geplant: convertToBoolean(albprobe_geplant),
-        kostenvoranschlag: convertToBoolean(kostenvoranschlag),
-        userId,
-      },
+      data: createData,
     });
 
     return res.status(201).json({
@@ -788,6 +820,8 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = req.user.id;
     const {
+      employeeId,
+      customerId,
       arztliche_diagnose,
       usführliche_diagnose,
       rezeptnummer,
@@ -865,9 +899,50 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
     if (kostenvoranschlag !== undefined)
       updateData.kostenvoranschlag = convertToBoolean(kostenvoranschlag);
 
-    // Prevent updating userId
-    if (req.body.userId !== undefined) {
-      delete updateData.userId;
+    if (customerId !== undefined) {
+      if (!customerId) {
+        return res.status(400).json({
+          success: false,
+          message: "customerId cannot be empty",
+        });
+      }
+
+      const customer = await prisma.customers.findUnique({
+        where: { id: customerId },
+        select: { id: true },
+      });
+
+      if (!customer) {
+        return res.status(404).json({
+          success: false,
+          message: "Customer not found",
+        });
+      }
+
+      updateData.customerId = customerId;
+    }
+
+    if (employeeId !== undefined) {
+      if (!employeeId) {
+        return res.status(400).json({
+          success: false,
+          message: "employeeId cannot be empty",
+        });
+      }
+
+      const employee = await prisma.employees.findUnique({
+        where: { id: employeeId },
+        select: { id: true },
+      });
+
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          message: "Employee not found",
+        });
+      }
+
+      updateData.employeeId = employeeId;
     }
 
     const updatedOrder = await prisma.massschuhe_order.update({

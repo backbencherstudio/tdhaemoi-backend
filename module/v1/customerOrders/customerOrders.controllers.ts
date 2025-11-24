@@ -88,6 +88,37 @@ const determineSizeFromGroessenMengen = (
 // schuhmodell_wählen String? //জুতার মডেল নির্বাচন করুন ম্যানুয়ালি লিখুন (ব্র্যান্ড + মডেল + সাইজ)
 // kostenvoranschlag   Boolean? @default(false)
 
+const serializeMaterial = (material: any): string => {
+  if (Array.isArray(material)) {
+    return material
+      .map((item) => (item == null ? "" : String(item).trim()))
+      .filter((item) => item.length > 0)
+      .join(", ");
+  }
+
+  if (typeof material === "string") {
+    return material;
+  }
+
+  return material !== undefined && material !== null ? String(material) : "";
+};
+
+const deserializeMaterial = (material: any): string[] | null => {
+  if (Array.isArray(material)) {
+    return material;
+  }
+
+  if (typeof material === "string") {
+    const items = material
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+    return items.length ? items : null;
+  }
+
+  return null;
+};
+
 export const createOrder = async (req: Request, res: Response) => {
   try {
     const {
@@ -192,7 +223,7 @@ export const createOrder = async (req: Request, res: Response) => {
           rohlingHersteller: versorgung.rohlingHersteller,
           artikelHersteller: versorgung.artikelHersteller,
           versorgung: versorgung.versorgung,
-          material: versorgung.material,
+          material: serializeMaterial(versorgung.material),
           langenempfehlung: versorgung.langenempfehlung,
           status: versorgung.status,
           diagnosis_status: versorgung.diagnosis_status,
@@ -492,7 +523,7 @@ const createOrderTransaction = async (
       rohlingHersteller: versorgung.rohlingHersteller,
       artikelHersteller: versorgung.artikelHersteller,
       versorgung: versorgung.versorgung,
-      material: versorgung.material,
+      material: serializeMaterial(versorgung.material),
       langenempfehlung: versorgung.langenempfehlung,
       status: versorgung.status,
       diagnosis_status: versorgung.diagnosis_status,
@@ -614,7 +645,11 @@ const updateStoreStock = async (
   });
 };
 
-export const getAllOrders = async (req: Request, res: Response) => {
+//---------------------------------------------------------
+// Get all orders V1
+//---------------------------------------------------------
+
+export const getAllOrders_v1 = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -722,6 +757,213 @@ export const getAllOrders = async (req: Request, res: Response) => {
         hasNextPage,
         hasPrevPage,
         filter: days ? `Last ${days} days` : "All time",
+      },
+    });
+  } catch (error: any) {
+    console.error("Get All Orders Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+//---------------------------------------------------------
+// Get all orders V2
+//---------------------------------------------------------
+export const getAllOrders = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const days = parseInt(req.query.days as string);
+    const search = req.query.search as string; // New search parameter
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    // Date filter
+    if (days && !isNaN(days)) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      where.createdAt = {
+        gte: startDate,
+      };
+    }
+
+    // Customer filter
+    if (req.query.customerId) {
+      where.customerId = req.query.customerId as string;
+    }
+
+    // Partner filter
+    if (req.query.partnerId) {
+      where.partnerId = req.query.partnerId as string;
+    }
+
+    // 🔹 OrderStatus filter
+    if (req.query.orderStatus) {
+      const statuses = (req.query.orderStatus as string)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      if (statuses.length === 1) {
+        where.orderStatus = statuses[0];
+      } else if (statuses.length > 1) {
+        where.orderStatus = { in: statuses };
+      }
+    }
+
+    // 🔍 Search functionality
+    if (search && search.trim() !== "") {
+      const searchTerm = search.trim();
+      
+      // Create OR conditions for search
+      where.OR = [
+        // Search by order ID (exact match or partial)
+        {
+          id: {
+            contains: searchTerm,
+            mode: 'insensitive'
+          }
+        },
+        // Search by customer number (exact match)
+        {
+          customer: {
+            customerNumber: isNaN(Number(searchTerm)) ? undefined : parseInt(searchTerm)
+          }
+        },
+        // Search by customer name (partial match, case insensitive)
+        {
+          customer: {
+            OR: [
+              {
+                vorname: {
+                  contains: searchTerm,
+                  mode: 'insensitive'
+                }
+              },
+              {
+                nachname: {
+                  contains: searchTerm,
+                  mode: 'insensitive'
+                }
+              },
+              // Search by full name (combining vorname and nachname)
+              {
+                AND: [
+                  {
+                    vorname: {
+                      contains: searchTerm.split(' ')[0],
+                      mode: 'insensitive'
+                    }
+                  },
+                  {
+                    nachname: {
+                      contains: searchTerm.split(' ')[1] || searchTerm.split(' ')[0],
+                      mode: 'insensitive'
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        // Search by customer email (partial match)
+        {
+          customer: {
+            email: {
+              contains: searchTerm,
+              mode: 'insensitive'
+            }
+          }
+        }
+      ].filter(condition => {
+        // Filter out invalid conditions (like when searchTerm is not a number for customerNumber)
+        if (condition.customer?.customerNumber === undefined) {
+          delete condition.customer?.customerNumber;
+        }
+        return true;
+      });
+    }
+
+    const [orders, totalCount] = await Promise.all([
+      prisma.customerOrders.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          fußanalyse: true,
+          einlagenversorgung: true,
+          totalPrice: true,
+          orderStatus: true,
+          statusUpdate: true,
+          invoice: true,
+          createdAt: true,
+          updatedAt: true,
+          customer: {
+            select: {
+              id: true,
+              vorname: true,
+              nachname: true,
+              email: true,
+              wohnort: true,
+              customerNumber: true,
+            },
+          },
+          product: true,
+          werkstattzettel: {
+            select: {
+              id: true,
+              auftragsDatum: true,
+              fertigstellungBis: true,
+              versorgung: true,
+              bezahlt: true,
+            },
+          },
+        },
+      }),
+      prisma.customerOrders.count({ where }),
+    ]);
+
+    // Format invoices
+    const formattedOrders = orders.map((order) => ({
+      ...order,
+      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+    }));
+
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    // Build response message based on filters
+    let message = "All orders fetched successfully";
+    if (req.query.orderStatus) {
+      message = `Orders with status: ${req.query.orderStatus}`;
+    }
+    if (search) {
+      message = `Orders matching search: "${search}"`;
+    }
+    if (req.query.orderStatus && search) {
+      message = `Orders with status: ${req.query.orderStatus} matching search: "${search}"`;
+    }
+
+    res.status(200).json({
+      success: true,
+      message,
+      data: formattedOrders,
+      pagination: {
+        totalItems: totalCount,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage,
+        filter: days ? `Last ${days} days` : "All time",
+        search: search || null,
       },
     });
   } catch (error: any) {
@@ -1044,6 +1286,18 @@ export const getOrderById = async (req: Request, res: Response) => {
               : null,
           }
         : null,
+      product: order.product
+        ? {
+            ...order.product,
+            material: deserializeMaterial(order.product.material),
+          }
+        : null,
+      Versorgungen: order.Versorgungen
+        ? {
+            ...order.Versorgungen,
+            material: deserializeMaterial(order.Versorgungen.material),
+          }
+        : null,
       store: order.store ?? null,
     };
 
@@ -1093,6 +1347,7 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
             select: {
               id: true,
               name: true,
+              material: true,
               langenempfehlung: true,
             },
           },
@@ -1249,6 +1504,141 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const updateMultipleOrderStatuses = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { orderIds, orderStatus } = req.body;
+
+    // Validate required fields
+    if (!orderIds || !orderStatus) {
+      return res.status(400).json({
+        success: false,
+        message: "Order IDs and order status are required",
+      });
+    }
+
+    // Validate orderIds is an array
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Order IDs must be a non-empty array",
+      });
+    }
+
+    // Validate order status
+    const validOrderStatuses = new Set([
+      "Einlage_vorbereiten",
+      "Einlage_in_Fertigung",
+      "Einlage_verpacken",
+      "Einlage_Abholbereit",
+      "Einlage_versandt",
+      "Ausgeführte_Einlagen",
+    ]);
+
+    if (!validOrderStatuses.has(orderStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order status",
+        error: `Order status must be one of: ${Array.from(
+          validOrderStatuses
+        ).join(", ")}`,
+        validStatuses: Array.from(validOrderStatuses),
+      });
+    }
+
+    // Check if all orders exist
+    const existingOrders = await prisma.customerOrders.findMany({
+      where: {
+        id: {
+          in: orderIds,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const existingOrderIds = existingOrders.map((order) => order.id);
+    const nonExistingOrderIds = orderIds.filter(
+      (id) => !existingOrderIds.includes(id)
+    );
+
+    if (nonExistingOrderIds.length > 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Some orders not found",
+        nonExistingOrderIds,
+        existingOrderIds,
+      });
+    }
+
+    // Update multiple orders in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Update all orders
+      const updateResult = await tx.customerOrders.updateMany({
+        where: {
+          id: {
+            in: orderIds,
+          },
+        },
+        data: {
+          orderStatus,
+          statusUpdate: new Date(),
+        },
+      });
+
+      // Get the updated orders with their details
+      const updatedOrders = await tx.customerOrders.findMany({
+        where: {
+          id: {
+            in: orderIds,
+          },
+        },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              customerNumber: true,
+              vorname: true,
+              nachname: true,
+              email: true,
+              wohnort: true,
+            },
+          },
+          product: true,
+        },
+      });
+
+      return {
+        updateCount: updateResult.count,
+        updatedOrders,
+      };
+    });
+
+    // Format orders with invoice URLs
+    const formattedOrders = result.updatedOrders.map((order) => ({
+      ...order,
+      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully updated ${result.updateCount} order(s) to status: ${orderStatus}`,
+      data: formattedOrders,
+      updatedCount: result.updateCount,
+    });
+  } catch (error: any) {
+    console.error("Update Multiple Order Statuses Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while updating order statuses",
       error: error.message,
     });
   }
@@ -1724,6 +2114,123 @@ export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
 //     });
 //   }
 // };
+
+export const deleteMultipleOrders = async (req: Request, res: Response) => {
+  try {
+    const { orderIds } = req.body;
+
+    // Validate required field
+    if (!orderIds) {
+      return res.status(400).json({
+        success: false,
+        message: "Order IDs are required",
+      });
+    }
+
+    // Validate orderIds is an array
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Order IDs must be a non-empty array",
+      });
+    }
+
+    // Check if all orders exist
+    const existingOrders = await prisma.customerOrders.findMany({
+      where: {
+        id: {
+          in: orderIds
+        }
+      },
+      select: {
+        id: true,
+        invoice: true
+      }
+    });
+
+    const existingOrderIds = existingOrders.map(order => order.id);
+    const nonExistingOrderIds = orderIds.filter(id => !existingOrderIds.includes(id));
+
+    if (nonExistingOrderIds.length > 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Some orders not found",
+        nonExistingOrderIds,
+        existingOrderIds
+      });
+    }
+
+    // Delete multiple orders in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // First, delete associated customer history records
+      await tx.customerHistorie.deleteMany({
+        where: {
+          eventId: {
+            in: orderIds
+          },
+          category: "Bestellungen"
+        }
+      });
+
+      // Delete store history records associated with these orders
+      await tx.storesHistory.deleteMany({
+        where: {
+          orderId: {
+            in: orderIds
+          }
+        }
+      });
+
+      // Then delete the orders
+      const deleteResult = await tx.customerOrders.deleteMany({
+        where: {
+          id: {
+            in: orderIds
+          }
+        }
+      });
+
+      return {
+        deleteCount: deleteResult.count
+      };
+    });
+
+    // Delete invoice files from filesystem
+    const fileDeletionPromises = existingOrders.map(async (order) => {
+      if (order.invoice) {
+        const invoicePath = path.join(process.cwd(), "uploads", order.invoice);
+        if (fs.existsSync(invoicePath)) {
+          try {
+            fs.unlinkSync(invoicePath);
+            console.log(`Deleted invoice file: ${invoicePath}`);
+          } catch (err) {
+            console.error(`Failed to delete invoice file: ${invoicePath}`, err);
+            // Don't fail the whole request if file deletion fails
+          }
+        }
+      }
+    });
+
+    await Promise.allSettled(fileDeletionPromises);
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully deleted ${result.deleteCount} order(s)`,
+      data: {
+        deletedCount: result.deleteCount,
+        deletedOrderIds: existingOrderIds
+      }
+    });
+
+  } catch (error: any) {
+    console.error("Delete Multiple Orders Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while deleting orders",
+      error: error.message,
+    });
+  }
+};
 
 export const deleteOrder = async (req: Request, res: Response) => {
   try {

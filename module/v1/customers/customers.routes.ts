@@ -37,12 +37,14 @@ router.post(
   ]),
   createCustomers
 );
+
 router.get(
   "/einlagen-in-produktion", getEinlagenInProduktion
 )
+
 router.get("/", verifyUser("ADMIN", "PARTNER"), getAllCustomers);
 router.get("/search", verifyUser("ADMIN", "PARTNER"), searchCustomers);
-router.get("/filter-customers", filterCustomer);
+router.get("/filter-customers", verifyUser("ADMIN", "PARTNER"), filterCustomer);
 
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteCustomer);
 
@@ -86,7 +88,6 @@ router.post(
   addScreenerFile
 );
 
-
 router.patch(
   "/update-screener-file/:customerId/:screenerId",
   verifyUser("PARTNER", "ADMIN"),
@@ -112,13 +113,11 @@ router.delete(
 
 router.get(
   "/screener-file/:screenerId",
-  // verifyUser("PARTNER", "ADMIN"),
+  verifyUser("PARTNER", "ADMIN"),
   getScreenerFileById
 );
 
 router.get("/:id", verifyUser("PARTNER", "ADMIN"), getCustomerById);
-
-
 
 export default router;
 
