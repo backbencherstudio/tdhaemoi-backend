@@ -388,7 +388,27 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       Passenden_schnursenkel_price,
     } = req.body;
 
-    // Early validation
+    // Validate mutual exclusivity between customerId and other_customer_number
+    const hasCustomerId = !!customerId;
+    const hasOtherCustomerNumber =
+      other_customer_number && other_customer_number.trim().length > 0;
+
+    if (!hasCustomerId && !hasOtherCustomerNumber) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Provide either customerId or other_customer_number (exactly one is required)",
+      });
+    }
+
+    if (hasCustomerId && hasOtherCustomerNumber) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Provide only one identifier: either customerId or other_customer_number, not both",
+      });
+    }
+
     if (!mabschaftKollektionId) {
       return res.status(400).json({
         success: false,
@@ -396,12 +416,12 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       });
     }
 
-    if (customerId) {
-      const customer = await prisma.customers.findUnique({
+    if (hasCustomerId) {
+      const customerExists = await prisma.customers.findUnique({
         where: { id: customerId },
         select: { id: true },
       });
-      if (!customer) {
+      if (!customerExists) {
         return res.status(404).json({
           success: false,
           message: "Customer not found",
@@ -411,7 +431,7 @@ export const createTustomShafts = async (req: Request, res: Response) => {
 
     // Run validations in parallel
     const [customer, kollektion] = await Promise.all([
-      customerId
+      hasCustomerId
         ? prisma.customers.findUnique({
             where: { id: customerId },
             select: { id: true }, // Only select what you need
@@ -427,7 +447,7 @@ export const createTustomShafts = async (req: Request, res: Response) => {
     ]);
 
     // Validate results
-    if (customerId && !customer) {
+    if (hasCustomerId && !customer) {
       return res.status(404).json({
         success: false,
         message: "Customer not found",
@@ -446,6 +466,7 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       image3d_1: files.image3d_1?.[0]?.filename || null,
       image3d_2: files.image3d_2?.[0]?.filename || null,
       customerId: customer ? customerId : null,
+      other_customer_number: !customer ? other_customer_number || null : null,
       maßschaftKollektionId: kollektion ? mabschaftKollektionId : null,
       lederfarbe: lederfarbe || null,
       innenfutter: innenfutter || null,
