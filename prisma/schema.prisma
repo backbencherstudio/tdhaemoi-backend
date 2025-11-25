@@ -558,6 +558,8 @@ model customer_versorgungen {
 model customerOrders {
   id String @id @default(uuid())
 
+  orderNumber Int @unique @default(autoincrement())
+
   customerId String?
   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
@@ -574,7 +576,8 @@ model customerOrders {
   product   customerProduct? @relation(fields: [productId], references: [id])
   productId String?          @unique
 
-  orderStatus  OrderStatus @default(Sarted)
+  orderStatus  OrderStatus @default(Warten_auf_Versorgungsstart)
+  // orderStatus  String?
   statusUpdate DateTime?
   invoice      String?
 
@@ -596,12 +599,19 @@ model customerOrders {
   storeId                String?
   store                  Stores?  @relation(fields: [storeId], references: [id], onDelete: SetNull)
 
+  priority Priority? @default(Normal)
+
   @@index([customerId])
   @@index([partnerId])
   @@index([createdAt])
   @@index([totalPrice])
   @@index([customerId, partnerId])
   @@index([customerId, createdAt])
+}
+
+enum Priority {
+  Dringend
+  Normal
 }
 
 model Werkstattzettel {
@@ -666,13 +676,11 @@ model customerProduct {
 }
 
 enum OrderStatus {
-  Sarted
-  Einlage_vorbereiten
-  Einlage_in_Fertigung
-  Einlage_verpacken
-  Einlage_Abholbereit
-  Einlage_versandt
-  Ausgeführte_Einlagen
+  Warten_auf_Versorgungsstart
+  In_Fertigung
+  Verpacken_Qualitätssicherung
+  Abholbereit_Versandt
+  Ausgeführt
 }
 
 model Stores {

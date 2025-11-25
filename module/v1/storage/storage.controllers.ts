@@ -447,6 +447,7 @@ export const getStorageHistory = async (req: Request, res: Response) => {
             nachname: true,
             email: true,
             // telefonnummer: true,
+            telefon: true,
             wohnort: true,
           },
         },

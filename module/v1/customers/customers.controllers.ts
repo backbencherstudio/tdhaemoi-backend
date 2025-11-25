@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PrismaClient, Prisma, OrderStatus } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import fs from "fs";
 import iconv from "iconv-lite";
 import csvParser from "csv-parser";
@@ -8,7 +8,7 @@ import path from "path";
 
 const prisma = new PrismaClient();
 
-const COMPLETED_ORDER_STATUSES: OrderStatus[] = [
+const COMPLETED_ORDER_STATUSES: any= [
   "Ausgeführte_Einlagen",
   "Einlage_versandt",
   "Einlage_Abholbereit",
@@ -100,7 +100,7 @@ export const createCustomers = async (req: Request, res: Response) => {
       vorname,
       nachname,
       email,
-      // telefonnummer,
+      telefon,
       wohnort,
       ausfuhrliche_diagnose,
       kundeSteuernummer,
@@ -137,7 +137,7 @@ export const createCustomers = async (req: Request, res: Response) => {
           vorname,
           nachname,
           email,
-          // telefonnummer: telefonnummer || null,
+          telefon: telefon || null,
           wohnort: wohnort || null,
           ausfuhrliche_diagnose: ausfuhrliche_diagnose || null,
           kundeSteuernummer: kundeSteuernummer || null,
@@ -186,6 +186,18 @@ export const createCustomers = async (req: Request, res: Response) => {
             threed_model_right: files.threed_model_right?.[0]?.filename || null,
             picture_16: files.picture_16?.[0]?.filename || null,
             csvFile: csvFileName,
+            fusslange1: csvData.B58 || null,
+            fusslange2: csvData.C58 || null,
+            fussbreite1: csvData.B73 || null,
+            fussbreite2: csvData.C73 || null,
+            kugelumfang1: csvData.B102 || null,
+            kugelumfang2: csvData.C102 || null,
+            rist1: csvData.B105 || null,
+            rist2: csvData.C105 || null,
+            archIndex1: csvData.B120 || null,
+            archIndex2: csvData.C120 || null,
+            zehentyp1: csvData.B136 || null,
+            zehentyp2: csvData.C136 || null,
           },
         });
         screenerFileId = screenerFile.id;
@@ -255,6 +267,18 @@ export const createCustomers = async (req: Request, res: Response) => {
           : null,
         createdAt: screener.createdAt,
         updatedAt: screener.updatedAt,
+        fusslange1: screener.fusslange1,
+        fusslange2: screener.fusslange2,
+        fussbreite1: screener.fussbreite1,
+        fussbreite2: screener.fussbreite2,
+        kugelumfang1: screener.kugelumfang1,
+        kugelumfang2: screener.kugelumfang2,
+        rist1: screener.rist1,
+        rist2: screener.rist2,
+        archIndex1: screener.archIndex1,
+        archIndex2: screener.archIndex2,
+        zehentyp1: screener.zehentyp1,
+        zehentyp2: screener.zehentyp2,
       })),
     };
 
@@ -759,7 +783,7 @@ export const updateCustomer = async (req: Request, res: Response) => {
       vorname,
       nachname,
       email,
-      telefonnummer,
+      telefon,
       wohnort,
       fusslange1,
       fusslange2,
@@ -786,7 +810,6 @@ export const updateCustomer = async (req: Request, res: Response) => {
       straße,
       land,
       ort,
-      telefon,
     } = req.body;
 
     const updateData = {
@@ -1017,11 +1040,136 @@ export const updateCustomerSpecialFields = async (
 // };
 
 //optimize code of getCustomerById
+
+//----------------------------------------end optimize code of getCustomerById--------------------------------------------------
+//----------------------------------------getCustomerById--------------------------------------------------
+
+// export const getCustomerById = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params;
+//     const userId = req.user.id;
+
+//     // 1. Fetch customer first
+//     const customer = await prisma.customers.findUnique({ where: { id } });
+
+//     if (!customer) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Customer not found",
+//       });
+//     }
+
+//     // 2. Fetch related data in parallel
+//     const [
+//       versorgungen,
+//       einlagenAnswers,
+//       screenerFiles,
+//       customerHistories,
+//       werkstattzettel,
+//       partner,
+//       workshopNote,
+//     ] = await Promise.all([
+//       prisma.customer_versorgungen.findMany({ where: { customerId: id } }),
+//       prisma.einlagenAnswers.findMany({
+//         where: { customerId: id },
+//         orderBy: [{ category: "asc" }, { questionId: "asc" }],
+//       }),
+//       prisma.screener_file.findMany({
+//         where: { customerId: id },
+//         orderBy: { createdAt: "desc" },
+//       }),
+//       prisma.customerHistorie.findMany({ where: { customerId: id } }),
+//       prisma.werkstattzettel.findUnique({ where: { customerId: id } }),
+//       prisma.user.findUnique({ where: { id: customer.createdBy } }),
+//       prisma.workshopNote.findUnique({ where: { userId: userId } }),
+//     ]);
+
+//     // 3. Group einlagenAnswers by category
+//     const einlagenAnswersByCategory = new Map();
+//     einlagenAnswers.forEach((answer) => {
+//       if (!einlagenAnswersByCategory.has(answer.category)) {
+//         einlagenAnswersByCategory.set(answer.category, {
+//           category: answer.category,
+//           answers: [],
+//         });
+//       }
+//       einlagenAnswersByCategory.get(answer.category).answers.push({
+//         questionId: parseInt(answer.questionId),
+//         selected: answer.answer,
+//       });
+//     });
+
+//     // 4. Process screenerFiles images
+//     const processedScreenerFiles = screenerFiles.map((screener) => {
+//       const result = { ...screener };
+//       const imageFields = [
+//         "picture_10",
+//         "picture_23",
+//         "picture_11",
+//         "picture_24",
+//         "threed_model_left",
+//         "threed_model_right",
+//         "picture_17",
+//         "picture_16",
+//         "csvFile",
+//       ];
+
+//       imageFields.forEach((field) => {
+//         if (result[field]) {
+//           result[field] = getImageUrl(`/uploads/${result[field]}`);
+//         }
+//       });
+
+//       return result;
+//     });
+
+//     // 5. Process customer histories images
+//     const processedHistories = customerHistories.map((history) => ({
+//       ...history,
+//       url: history.url ? getImageUrl(history.url) : null,
+//     }));
+
+//     const processedPartner = partner
+//       ? {
+//           ...partner,
+//           image: partner.image
+//             ? getImageUrl(`/uploads/${partner.image}`)
+//             : null,
+//         }
+//       : null;
+
+//     const customerWithImages = {
+//       ...customer,
+//       versorgungen,
+//       einlagenAnswers: Array.from(einlagenAnswersByCategory.values()),
+//       screenerFile: processedScreenerFiles,
+//       customerHistorie: processedHistories,
+//       werkstattzettel,
+//       partner: processedPartner,
+//       workshopNote, // included fetched user
+//     };
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Customer fetched successfully",
+//       data: [customerWithImages],
+//     });
+//   } catch (error: any) {
+//     console.error("Get Customer By ID Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    console.log(222222222222222222, userId);
+    const { date: screenerDate } = req.query; // Get date query parameter
 
     // 1. Fetch customer first
     const customer = await prisma.customers.findUnique({ where: { id } });
@@ -1033,7 +1181,22 @@ export const getCustomerById = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Fetch related data in parallel
+    // 2. Build screener file query based on date filter
+    let screenerFileQuery: any = {
+      where: { customerId: id },
+      orderBy: { createdAt: "desc" },
+    };
+
+    // If date query parameter is provided, filter by exact date time
+    if (screenerDate) {
+      const targetDate = new Date(screenerDate as string);
+      if (!isNaN(targetDate.getTime())) {
+        // Filter by exact date time (not by day range)
+        screenerFileQuery.where.createdAt = targetDate;
+      }
+    }
+
+    // 3. Fetch related data in parallel
     const [
       versorgungen,
       einlagenAnswers,
@@ -1042,23 +1205,27 @@ export const getCustomerById = async (req: Request, res: Response) => {
       werkstattzettel,
       partner,
       workshopNote,
+      allScreenerDates, // Get all available dates for the dropdown
     ] = await Promise.all([
       prisma.customer_versorgungen.findMany({ where: { customerId: id } }),
       prisma.einlagenAnswers.findMany({
         where: { customerId: id },
         orderBy: [{ category: "asc" }, { questionId: "asc" }],
       }),
-      prisma.screener_file.findMany({
-        where: { customerId: id },
-        orderBy: { createdAt: "desc" },
-      }),
+      prisma.screener_file.findMany(screenerFileQuery),
       prisma.customerHistorie.findMany({ where: { customerId: id } }),
       prisma.werkstattzettel.findUnique({ where: { customerId: id } }),
       prisma.user.findUnique({ where: { id: customer.createdBy } }),
       prisma.workshopNote.findUnique({ where: { userId: userId } }),
+      // Get all screener dates for dropdown options (full ISO strings)
+      prisma.screener_file.findMany({
+        where: { customerId: id },
+        select: { createdAt: true },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
 
-    // 3. Group einlagenAnswers by category
+    // 4. Group einlagenAnswers by category
     const einlagenAnswersByCategory = new Map();
     einlagenAnswers.forEach((answer) => {
       if (!einlagenAnswersByCategory.has(answer.category)) {
@@ -1073,7 +1240,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
       });
     });
 
-    // 4. Process screenerFiles images
+    // 5. Process screenerFiles images
     const processedScreenerFiles = screenerFiles.map((screener) => {
       const result = { ...screener };
       const imageFields = [
@@ -1097,7 +1264,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
       return result;
     });
 
-    // 5. Process customer histories images
+    // 6. Process customer histories images
     const processedHistories = customerHistories.map((history) => ({
       ...history,
       url: history.url ? getImageUrl(history.url) : null,
@@ -1112,6 +1279,11 @@ export const getCustomerById = async (req: Request, res: Response) => {
         }
       : null;
 
+    // 7. Extract full ISO date strings for dropdown (including time)
+    const availableDates = allScreenerDates.map(screener => 
+      screener.createdAt.toISOString()
+    );
+
     const customerWithImages = {
       ...customer,
       versorgungen,
@@ -1120,13 +1292,16 @@ export const getCustomerById = async (req: Request, res: Response) => {
       customerHistorie: processedHistories,
       werkstattzettel,
       partner: processedPartner,
-      workshopNote, // included fetched user
+      workshopNote,
     };
 
     res.status(200).json({
       success: true,
-      message: "Customer fetched successfully",
+      message: screenerDate 
+        ? `Customer fetched successfully with screener data for ${screenerDate}` 
+        : "Customer fetched successfully",
       data: [customerWithImages],
+      availableDates: availableDates, // Full ISO strings with time
     });
   } catch (error: any) {
     console.error("Get Customer By ID Error:", error);
@@ -1137,7 +1312,6 @@ export const getCustomerById = async (req: Request, res: Response) => {
     });
   }
 };
-
 //----------------------------------------end getCustomerById--------------------------------------------------
 
 export const assignVersorgungToCustomer = async (
@@ -1567,7 +1741,7 @@ export const searchCustomers = async (req: Request, res: Response) => {
           { vorname: { contains: searchQuery, mode: "insensitive" } },
           { nachname: { contains: searchQuery, mode: "insensitive" } },
           { email: { contains: searchQuery, mode: "insensitive" } },
-          // { telefonnummer: { contains: searchQuery, mode: "insensitive" } },
+          { telefon: { contains: searchQuery, mode: "insensitive" } },
           { wohnort: { contains: searchQuery, mode: "insensitive" } },
         ];
       }
@@ -1622,6 +1796,7 @@ export const searchCustomers = async (req: Request, res: Response) => {
           nachname: true,
           email: true,
           // telefonnummer: true,
+          telefon: true,
           wohnort: true,
           createdAt: true,
         },
@@ -1638,7 +1813,7 @@ export const searchCustomers = async (req: Request, res: Response) => {
         id: customer.id,
         name: `${customer.vorname} ${customer.nachname}`,
         email: customer.email,
-        // phone: customer.telefonnummer,
+        phone: customer.telefon,
         location: customer.wohnort,
         createdAt: customer.createdAt,
       })),
@@ -2333,6 +2508,7 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
             nachname: true,
             email: true,
             // telefonnummer: true,
+            telefon: true,
             wohnort: true,
             customerNumber: true,
           },
@@ -2376,22 +2552,38 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
     }));
 
     // Get status counts for statistics
-    const statusCounts = await prisma.customerOrders.groupBy({
-      by: ["orderStatus"],
-      where: {
-        orderStatus: {
-          in: [
-            "Einlage_vorbereiten",
-            "Einlage_in_Fertigung",
-            "Einlage_verpacken",
-            "Einlage_Abholbereit",
-          ],
-        },
-      },
-      _count: {
-        id: true,
-      },
-    });
+    //-----------------------------------------------------------------------------------------------------------------------------
+    // const statusCounts: any = await prisma.customerOrders.groupBy({
+    //   by: ["orderStatus"] as any,
+    //   where: {
+    //     orderStatus: {
+    //       in: [
+    //         "Einlage_vorbereiten",
+    //         "Einlage_in_Fertigung",
+    //         "Einlage_verpacken",
+    //         "Einlage_Abholbereit",
+    //       ],
+    //     },
+    //   },
+    //   _count: {
+    //     id: true,
+    //   },
+    // });
+
+    // Using raw query to avoid TypeScript circular reference issue with Prisma groupBy
+    // Note: Table name matches Prisma model name (customerOrders)
+    const statusCounts = await prisma.$queryRaw<Array<{ orderStatus: string; count: bigint }>>`
+      SELECT "orderStatus", COUNT(id) as count
+      FROM "customerOrders"
+      WHERE "orderStatus" IN ('Einlage_vorbereiten', 'Einlage_in_Fertigung', 'Einlage_verpacken', 'Einlage_Abholbereit')
+      GROUP BY "orderStatus"
+    `;
+    
+    // Transform to match expected format
+    const formattedStatusCounts = statusCounts.map(item => ({
+      orderStatus: item.orderStatus,
+      _count: { id: Number(item.count) }
+    }));
 
     res.status(200).json({
       success: true,
@@ -2399,7 +2591,7 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
       data: formattedOrders,
       statistics: {
         totalActiveOrders: orders.length,
-        statusBreakdown: statusCounts.reduce((acc, item) => {
+        statusBreakdown: formattedStatusCounts.reduce((acc, item) => {
           acc[item.orderStatus] = item._count.id;
           return acc;
         }, {} as Record<string, number>),
@@ -2632,6 +2824,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
           { vorname: { contains: normalizedSearch, mode: "insensitive" } },
           { nachname: { contains: normalizedSearch, mode: "insensitive" } },
           { email: { contains: normalizedSearch, mode: "insensitive" } },
+          { telefon: { contains: normalizedSearch, mode: "insensitive" } },
           // { telefonnummer: { contains: normalizedSearch, mode: "insensitive" } },
           { wohnort: { contains: normalizedSearch, mode: "insensitive" } },
         ],

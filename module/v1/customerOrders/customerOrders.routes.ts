@@ -7,6 +7,7 @@ import {
   getOrderById,
   updateOrderStatus,
   updateMultipleOrderStatuses,
+  updateOrderPriority,
   uploadInvoice,
   uploadInvoiceOnly,
   sendInvoiceToCustomer,
@@ -16,6 +17,7 @@ import {
   getLast40DaysOrderStats,
   createWerkstattzettel,
   getEinlagenInProduktion,
+  getLast30DaysOrderEinlagen
 } from "./customerOrders.controllers";
 import upload from "../../../config/multer.config";
 
@@ -38,6 +40,12 @@ router.patch(
   "/status/multiple/update",
   verifyUser("ADMIN", "PARTNER"),
   updateMultipleOrderStatuses
+);
+
+router.patch(
+  "/update/priority/:id",
+  verifyUser("ADMIN", "PARTNER"),
+  updateOrderPriority
 );
 
 router.post(
@@ -79,6 +87,8 @@ router.post(
   verifyUser("ADMIN", "PARTNER"),
   createWerkstattzettel
 );
+
+router.get("/lest30days/einlagen", verifyUser("ADMIN", "PARTNER"), getLast30DaysOrderEinlagen);
 
 
 
