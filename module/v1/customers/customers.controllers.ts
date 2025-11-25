@@ -514,6 +514,8 @@ export const getAllCustomers = async (req: Request, res: Response) => {
     const search = (req.query.search as string) || "";
     const skip = (page - 1) * limit;
 
+    const partnerId = req.user?.id;
+
     const whereCondition: any = {};
     if (search) {
       whereCondition.OR = [
@@ -525,7 +527,10 @@ export const getAllCustomers = async (req: Request, res: Response) => {
 
     const [customers, totalCount] = await Promise.all([
       prisma.customers.findMany({
-        where: whereCondition,
+        where: {
+          ...whereCondition,
+          createdBy: partnerId,
+        },
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
@@ -537,7 +542,12 @@ export const getAllCustomers = async (req: Request, res: Response) => {
           },
         },
       }),
-      prisma.customers.count({ where: whereCondition }),
+      prisma.customers.count({
+        where: {
+          ...whereCondition,
+          createdBy: partnerId,
+        },
+      }),
     ]);
 
     const customersWithImages = customers.map((c) => ({

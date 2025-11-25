@@ -20,10 +20,14 @@ import {
   getLast30DaysOrderEinlagen
 } from "./customerOrders.controllers";
 import upload from "../../../config/multer.config";
-
+ 
 const router = express.Router();
 
-router.get("/einlagen-in-produktion", getEinlagenInProduktion);
+router.get(
+  "/einlagen-in-produktion",
+  verifyUser("ADMIN", "PARTNER"),
+  getEinlagenInProduktion
+);
 
 router.post("/create", verifyUser("ADMIN", "PARTNER"), createOrder);
 router.get("/", verifyUser("ADMIN", "PARTNER"), getAllOrders);

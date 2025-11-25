@@ -988,6 +988,9 @@ export const getAllOrders = async (req: Request, res: Response) => {
     const days = parseInt(req.query.days as string);
     const skip = (page - 1) * limit;
 
+    const partnerId = req.user?.id;
+    const userRole = req.user?.role;
+
     // New search parameters
     const customerNumber = req.query.customerNumber as string;
     const orderNumber = req.query.orderNumber as string;
@@ -1009,8 +1012,10 @@ export const getAllOrders = async (req: Request, res: Response) => {
       where.customerId = req.query.customerId as string;
     }
 
-    // Partner filter
-    if (req.query.partnerId) {
+    // Partner scoping
+    if (userRole === "PARTNER") {
+      where.partnerId = partnerId;
+    } else if (req.query.partnerId) {
       where.partnerId = req.query.partnerId as string;
     }
 
@@ -2697,6 +2702,9 @@ export const deleteOrder = async (req: Request, res: Response) => {
 export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
   try {
     let { year, month, status, includeAll } = req.query;
+    const partnerId = req.user?.id;
+    const userRole = req.user?.role;
+    const requestedPartnerId = req.query.partnerId as string | undefined;
 
     const now = new Date();
 
@@ -2738,6 +2746,13 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
       };
     }
 
+    const partnerFilter: any = {};
+    if (userRole === "PARTNER") {
+      partnerFilter.partnerId = partnerId;
+    } else if (requestedPartnerId) {
+      partnerFilter.partnerId = requestedPartnerId;
+    }
+
     const allOrders = await prisma.customerOrders.findMany({
       where: {
         createdAt: {
@@ -2745,6 +2760,7 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
           lte: endDate,
         },
         ...statusFilter,
+        ...partnerFilter,
       },
       select: {
         totalPrice: true,
@@ -3025,27 +3041,43 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
 // Ausgeführte_Einlagen
 export const getEinlagenInProduktion = async (req: Request, res: Response) => {
   try {
+    const partnerId = req.user?.id;
+    const userRole = req.user?.role;
+    const requestedPartnerId = req.query.partnerId as string | undefined;
+
+    const partnerFilter: any = {};
+    if (userRole === "PARTNER") {
+      partnerFilter.partnerId = partnerId;
+    } else if (requestedPartnerId) {
+      partnerFilter.partnerId = requestedPartnerId;
+    }
+
+    const activeStatuses = [
+      "In_Fertigung",
+      "Verpacken_Qualitätssicherung",
+      "Abholbereit_Versandt",
+    ];
+
     const count = await prisma.customerOrders.count({
       where: {
+        ...partnerFilter,
         orderStatus: {
-          in: [
-            "In_Fertigung",
-            "Verpacken_Qualitätssicherung",
-            "Abholbereit_Versandt",
-          ],
+          in: activeStatuses,
         },
       },
     });
 
+
+
     const einlagen = await prisma.customerOrders.findMany({
       where: {
+        ...partnerFilter,
         orderStatus: {
           in: ["Ausgeführt"],
         },
         createdAt: {
           gte: new Date(new Date().setDate(new Date().getDate() - 30)),
         },
-        // partnerId: partnerId,
       },
       select: {
         totalPrice: true,
@@ -3053,14 +3085,15 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
     });
 
     const totalPrice = einlagen.reduce(
-      (acc, order) => acc + order.totalPrice,
+      (acc, order) => acc + (order.totalPrice || 0),
       0
     );
 
     res.status(200).json({
       success: true,
       data: count,
-      totalPrice: totalPrice,
+      totalPrice,
+    
     });
   } catch (error: any) {
     console.error("Get Active Orders Count Error:", error);
@@ -3079,6 +3112,15 @@ export const getLast30DaysOrderEinlagen = async (
   try {
     // i need only this user data not other, thare are other more data
     const partnerId = req.user?.id;
+    const userRole = req.user?.role;
+    const requestedPartnerId = req.query.partnerId as string | undefined;
+
+    const partnerFilter: any = {};
+    if (userRole === "PARTNER") {
+      partnerFilter.partnerId = partnerId;
+    } else if (requestedPartnerId) {
+      partnerFilter.partnerId = requestedPartnerId;
+    }
 
     const einlagen = await prisma.customerOrders.findMany({
       where: {
@@ -3088,7 +3130,7 @@ export const getLast30DaysOrderEinlagen = async (
         createdAt: {
           gte: new Date(new Date().setDate(new Date().getDate() - 30)),
         },
-        // partnerId: partnerId,
+        ...partnerFilter,
       },
       select: {
         totalPrice: true,
