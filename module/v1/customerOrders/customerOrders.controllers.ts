@@ -1609,6 +1609,11 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
               customerNumber: true,
             },
           },
+          werkstattzettel: {
+            select: {
+              geschaeftsstandort: true,
+            },
+          },
           // partner: {
           //   select: {
           //     id: true,
