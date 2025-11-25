@@ -76,7 +76,6 @@ export const createMaßschaftKollektion = async (
   }
 };
 
-
 export const getAllMaßschaftKollektion = async (
   req: Request,
   res: Response
@@ -114,7 +113,7 @@ export const getAllMaßschaftKollektion = async (
     // If empty → show **all** categories
     if (category) {
       whereCondition.catagoary = {
-        equals: category,               // exact match (case-insensitive)
+        equals: category, // exact match (case-insensitive)
         mode: "insensitive",
       };
     }
@@ -372,6 +371,7 @@ export const createTustomShafts = async (req: Request, res: Response) => {
   try {
     const {
       customerId,
+      other_customer_number,
       mabschaftKollektionId,
       lederfarbe,
       innenfutter,
@@ -389,11 +389,24 @@ export const createTustomShafts = async (req: Request, res: Response) => {
     } = req.body;
 
     // Early validation
-    if (!customerId && !mabschaftKollektionId) {
+    if (!mabschaftKollektionId) {
       return res.status(400).json({
         success: false,
-        message: "Either customerId or maßschaftKollektionId must be provided",
+        message: "maßschaftKollektionId must be provided",
       });
+    }
+
+    if (customerId) {
+      const customer = await prisma.customers.findUnique({
+        where: { id: customerId },
+        select: { id: true },
+      });
+      if (!customer) {
+        return res.status(404).json({
+          success: false,
+          message: "Customer not found",
+        });
+      }
     }
 
     // Run validations in parallel

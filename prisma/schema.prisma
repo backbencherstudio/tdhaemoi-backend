@@ -797,7 +797,11 @@ model maßschaft_kollektion {
 
 model custom_shafts {
   id                String  @id @default(uuid())
-  orderNumber       String?
+
+  orderNumber       String?      // if this 
+  other_customer_number String?  // else this bot togather at a time for a customer
+
+
   image3d_1         String?
   image3d_2         String?
   customerId        String?
@@ -911,16 +915,16 @@ model massschuhe_order {
   durchgeführt_von     String?
   note                  String?
 
-  albprobe_geplant  Boolean? @default(false)
-  kostenvoranschlag Boolean? @default(false)
+  albprobe_geplant   Boolean? @default(false)
+  kostenvoranschlag  Boolean? @default(false)
   //-------------------------------------------------
   //workload section
-  delivery_date     String?
-  telefon           String?
-  filiale           String? //location
-  kunde             String? //customer name
-  email             String?
-
+  delivery_date      String?
+  telefon            String?
+  filiale            String? //location
+  kunde              String? //customer name
+  email              String?
+  button_text        String?
   // PREISAUSWAHL
   fußanalyse        Float?
   einlagenversorgung Float?

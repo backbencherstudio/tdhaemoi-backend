@@ -249,7 +249,7 @@ export const createOrder = async (req: Request, res: Response) => {
           versorgung_note,
           schuhmodell_wählen,
           kostenvoranschlag,
-          storeId: versorgung?.storeId ?? "",
+          storeId: versorgung?.storeId ?? null,
         },
         select: { id: true },
       });
@@ -1565,6 +1565,7 @@ export const getOrderById = async (req: Request, res: Response) => {
 export const getOrdersByCustomerId = async (req: Request, res: Response) => {
   try {
     const { customerId } = req.params;
+    const userId = req.user.id;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
@@ -1583,7 +1584,7 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
 
     const [orders, totalCount] = await Promise.all([
       prisma.customerOrders.findMany({
-        where: { customerId },
+        where: { customerId, partnerId: userId },
 
         skip,
         take: limit,
@@ -1619,7 +1620,7 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
           product: true,
         },
       }),
-      prisma.customerOrders.count({ where: { customerId } }),
+      prisma.customerOrders.count({ where: { customerId, partnerId: userId } }),
     ]);
 
     const formattedOrders = orders.map((order) => ({

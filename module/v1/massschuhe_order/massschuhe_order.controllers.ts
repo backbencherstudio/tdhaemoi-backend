@@ -607,6 +607,53 @@ const prisma = new PrismaClient();
 // userId String?
 // user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+
+
+
+
+
+// model massschuhe_order {
+//   id String @id @default(uuid())
+
+//   arztliche_diagnose    String?
+//   usführliche_diagnose String?
+//   rezeptnummer          String?
+//   durchgeführt_von     String?
+//   note                  String?
+
+//   albprobe_geplant   Boolean? @default(false)
+//   kostenvoranschlag  Boolean? @default(false)
+//   //-------------------------------------------------
+//   //workload section
+//   delivery_date      String?
+//   telefon            String?
+//   filiale            String? //location
+//   kunde              String? //customer name
+//   email              String?
+//   button_text        String?
+//   // PREISAUSWAHL
+//   fußanalyse        Float?
+//   einlagenversorgung Float?
+//   customer_note      String?
+//   //-------------------------------------------------
+
+//   //relation with users
+//   userId String?
+//   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+//   employeeId String?
+//   employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+//   customerId String?
+//   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([createdAt])
+//   @@index([updatedAt])
+// }
+
 export const createMassschuheOrder = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
@@ -620,6 +667,17 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
       note,
       albprobe_geplant,
       kostenvoranschlag,
+
+      delivery_date,
+      telefon,
+      filiale,
+      kunde,
+      email,
+      button_text,
+      fußanalyse,
+      einlagenversorgung,
+      customer_note,
+      
     } = req.body;
 
     const missingField = [
@@ -705,6 +763,16 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
       userId,
       employeeId,
       customerId,
+
+      delivery_date,
+      telefon,
+      filiale,
+      kunde,
+      email,
+      button_text,
+      fußanalyse,
+      einlagenversorgung,
+      customer_note,
     } as Prisma.massschuhe_orderUncheckedCreateInput;
 
     const massschuheOrder = await prisma.massschuhe_order.create({
@@ -815,6 +883,71 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
   }
 };
 
+export const getMassschuheOrderByCustomerId = async (req: Request, res: Response) => {
+  try {
+    const { customerId } = req.params;
+   // add pagination
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      customerId,
+    };
+    const [totalItems, massschuheOrders] = await Promise.all([
+      prisma.massschuhe_order.count({ where }),
+      prisma.massschuhe_order.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.customers.findUnique({
+        where: { id: customerId },
+        select: { id: true },
+      }),
+    ]);
+    const totalPages = Math.ceil(totalItems / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    const customer = await prisma.customers.findUnique({
+      where: { id: customerId },
+      select: { id: true },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Massschuhe order fetched successfully",
+      data: massschuheOrders,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage,
+      },
+    });
+
+  } catch (error) {
+    console.error("Get Massschuhe Order By Customer Id Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching massschuhe order by customer id",
+      error: error.message,
+    });
+  }
+}
+
+
 export const updateMassschuheOrder = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -829,6 +962,16 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
       note,
       albprobe_geplant,
       kostenvoranschlag,
+
+      delivery_date,
+      telefon,
+      filiale,
+      kunde,
+      email,
+      button_text,
+      fußanalyse,
+      einlagenversorgung,
+      customer_note,
     } = req.body;
 
     // Check if order exists and belongs to the user
@@ -898,6 +1041,18 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
       updateData.albprobe_geplant = convertToBoolean(albprobe_geplant);
     if (kostenvoranschlag !== undefined)
       updateData.kostenvoranschlag = convertToBoolean(kostenvoranschlag);
+
+    //-------------------------------------------------
+    if (delivery_date !== undefined) updateData.delivery_date = delivery_date;
+    if (telefon !== undefined) updateData.telefon = telefon;
+    if (filiale !== undefined) updateData.filiale = filiale;
+    if (kunde !== undefined) updateData.kunde = kunde;
+    if (email !== undefined) updateData.email = email;
+    if (button_text !== undefined) updateData.button_text = button_text;
+    if (fußanalyse !== undefined) updateData.fußanalyse = fußanalyse;
+    if (einlagenversorgung !== undefined) updateData.einlagenversorgung = einlagenversorgung;
+    if (customer_note !== undefined) updateData.customer_note = customer_note;
+    //-------------------------------------------------
 
     if (customerId !== undefined) {
       if (!customerId) {
