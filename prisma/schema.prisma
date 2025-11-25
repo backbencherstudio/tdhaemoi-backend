@@ -913,6 +913,19 @@ model massschuhe_order {
 
   albprobe_geplant  Boolean? @default(false)
   kostenvoranschlag Boolean? @default(false)
+  //-------------------------------------------------
+  //workload section
+  delivery_date     String?
+  telefon           String?
+  filiale           String? //location
+  kunde             String? //customer name
+  email             String?
+
+  // PREISAUSWAHL
+  fußanalyse        Float?
+  einlagenversorgung Float?
+  customer_note      String?
+  //-------------------------------------------------
 
   //relation with users
   userId String?
