@@ -44,6 +44,16 @@ const serializeMaterialField = (material: any): string => {
   return material !== undefined && material !== null ? String(material) : "";
 };
 
+// Get next customer number for a partner (starts from 1000)
+const getNextCustomerNumberForPartner = async (tx: any, createdBy: string): Promise<number> => {
+  const maxCustomer = await tx.customers.findFirst({
+    where: { createdBy },
+    orderBy: { customerNumber: "desc" },
+    select: { customerNumber: true },
+  });
+  return maxCustomer ? maxCustomer.customerNumber + 1 : 1000;
+};
+
 async function parseCSV(csvPath: string): Promise<any> {
   return new Promise((resolve, reject) => {
     console.log("Parsing CSV file:", csvPath);
@@ -132,11 +142,14 @@ export const createCustomers = async (req: Request, res: Response) => {
     let screenerFileId = null;
 
     const customerWithScreener = await prisma.$transaction(async (tx) => {
+      const customerNumber = await getNextCustomerNumberForPartner(tx, req.user.id);
+
       const newCustomer = await tx.customers.create({
         data: {
           vorname,
           nachname,
           email,
+          customerNumber,
           telefon: telefon || null,
           wohnort: wohnort || null,
           ausfuhrliche_diagnose: ausfuhrliche_diagnose || null,

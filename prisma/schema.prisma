@@ -357,7 +357,7 @@ model customer_price {
 
 model customers {
   id             String  @id @default(uuid())
-  customerNumber Int     @unique @default(autoincrement())
+  customerNumber Int     // Unique per createdBy, not globally
   vorname        String
   nachname       String
   email          String  @unique
@@ -417,6 +417,7 @@ model customers {
   // massschuheOrders massschuhe_order[]
   massschuheOrders massschuhe_order[]
 
+  @@unique([createdBy, customerNumber]) // Unique per partner
   @@index([vorname, nachname])
   // @@index([telefonnummer])
   @@index([wohnort])
