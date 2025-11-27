@@ -10,7 +10,8 @@ import {
   updateMaßschaftKollektion,
   getTustomShafts,
   getSingleCustomShaft,
-  updateCustomShaftStatus
+  updateCustomShaftStatus,
+  deleteCustomShaft
 } from "./custom_shafts.controllers";
 
 const router = express.Router();
@@ -41,6 +42,12 @@ router.patch(
   "/update-status/:id",
   verifyUser("PARTNER", "ADMIN"),
   updateCustomShaftStatus
+);
+
+router.delete(
+  "/delete/:id",
+  verifyUser("PARTNER", "ADMIN"),
+  deleteCustomShaft
 );
 
 //------------------------------------------

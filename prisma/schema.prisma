@@ -357,7 +357,7 @@ model customer_price {
 
 model customers {
   id             String  @id @default(uuid())
-  customerNumber Int     // Unique per createdBy, not globally
+  customerNumber Int // Unique per createdBy, not globally
   vorname        String
   nachname       String
   email          String  @unique
@@ -798,11 +798,10 @@ model maßschaft_kollektion {
 }
 
 model custom_shafts {
-  id                String  @id @default(uuid())
+  id String @id @default(uuid())
 
-  orderNumber       String?      // if this 
-  other_customer_number String?  // else this bot togather at a time for a customer
-
+  orderNumber           String? // if this 
+  other_customer_number String? // else this bot togather at a time for a customer
 
   image3d_1         String?
   image3d_2         String?

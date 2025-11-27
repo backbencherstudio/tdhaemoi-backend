@@ -308,8 +308,12 @@ export const deleteMaßschaftKollektion = async (
 ) => {
   try {
     const { id } = req.params;
+    // i wanna remove form every whare that is using this kollektion
     const existingKollektion = await prisma.maßschaft_kollektion.findUnique({
       where: { id },
+    });
+    const customShafts = await prisma.custom_shafts.findMany({
+      where: { maßschaftKollektionId: id },
     });
 
     if (!existingKollektion) {
@@ -388,6 +392,15 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       Passenden_schnursenkel_price,
     } = req.body;
 
+    console.log("osen_einsetzen_price", osen_einsetzen_price);
+    console.log("osen_einsetzen_price type", typeof osen_einsetzen_price);
+
+    console.log("passenden_schnursenkel_price", Passenden_schnursenkel_price);
+    console.log(
+      "passenden_schnursenkel_price type",
+      typeof Passenden_schnursenkel_price
+    );
+
     // Validate mutual exclusivity between customerId and other_customer_number
     const hasCustomerId = !!customerId;
     const hasOtherCustomerNumber =
@@ -462,12 +475,10 @@ export const createTustomShafts = async (req: Request, res: Response) => {
     }
 
     // Prepare data object
-    const shaftData = {
+    const shaftData: any = {
       image3d_1: files.image3d_1?.[0]?.filename || null,
       image3d_2: files.image3d_2?.[0]?.filename || null,
-      customerId: customer ? customerId : null,
       other_customer_number: !customer ? other_customer_number || null : null,
-      maßschaftKollektionId: kollektion ? mabschaftKollektionId : null,
       lederfarbe: lederfarbe || null,
       innenfutter: innenfutter || null,
       schafthohe: schafthohe || null,
@@ -478,7 +489,6 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       nahtfarbe: nahtfarbe || null,
       nahtfarbe_text: nahtfarbe_text || null,
       lederType: lederType || null,
-      partnerId: id,
       orderNumber: `MS-${new Date().getFullYear()}-${Math.floor(
         10000 + Math.random() * 90000
       )}`,
@@ -489,6 +499,28 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       Passenden_schnursenkel_price: Passenden_schnursenkel_price
         ? parseFloat(Passenden_schnursenkel_price)
         : null,
+    };
+
+    if (customer) {
+      shaftData.customer = {
+        connect: {
+          id: customerId,
+        },
+      };
+    }
+
+    if (kollektion) {
+      shaftData.maßschaft_kollektion = {
+        connect: {
+          id: mabschaftKollektionId,
+        },
+      };
+    }
+
+    shaftData.user = {
+      connect: {
+        id,
+      },
     };
 
     // Create the custom shaft
@@ -1062,6 +1094,47 @@ export const updateCustomShaftStatus = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong while updating custom shaft status",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteCustomShaft = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const existingCustomShaft = await prisma.custom_shafts.findUnique({
+      where: { id },
+    });
+    if (!existingCustomShaft) {
+      return res.status(404).json({
+        success: false,
+        message: "Custom shaft not found",
+      });
+    }
+    await prisma.custom_shafts.delete({
+      where: { id },
+    });
+
+    // also i need to remove the files from the disk
+    if (existingCustomShaft.image3d_1) {
+      fs.unlinkSync(`uploads/${existingCustomShaft.image3d_1}`);
+    }
+    if (existingCustomShaft.image3d_2) {
+      fs.unlinkSync(`uploads/${existingCustomShaft.image3d_2}`);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Custom shaft deleted successfully",
+      data: {
+        id,
+      }
+    });
+  } catch (error: any) {
+    console.error("Delete Custom Shaft Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while deleting custom shaft",
       error: error.message,
     });
   }

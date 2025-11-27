@@ -677,6 +677,7 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
       fußanalyse,
       einlagenversorgung,
       customer_note,
+      location
       
     } = req.body;
 
@@ -773,10 +774,25 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
       fußanalyse,
       einlagenversorgung,
       customer_note,
+      location,
     } as Prisma.massschuhe_orderUncheckedCreateInput;
 
     const massschuheOrder = await prisma.massschuhe_order.create({
       data: createData,
+    });
+
+    // //naw i wanna make a stores history for the customer
+    await prisma.storesHistory.create({
+      data: {
+        storeId: "",
+        changeType: "sales",
+        // quantity: currentQty > 0 ? 1 : 0,
+        newStock: 0,
+        reason: `massschuhe order created`,
+        partnerId: userId,
+        customerId,
+        orderId: massschuheOrder.id,
+      },
     });
 
     return res.status(201).json({
@@ -972,6 +988,7 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
       fußanalyse,
       einlagenversorgung,
       customer_note,
+      location,
     } = req.body;
 
     // Check if order exists and belongs to the user
@@ -1052,6 +1069,7 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
     if (fußanalyse !== undefined) updateData.fußanalyse = fußanalyse;
     if (einlagenversorgung !== undefined) updateData.einlagenversorgung = einlagenversorgung;
     if (customer_note !== undefined) updateData.customer_note = customer_note;
+    if (location !== undefined) updateData.location = location;
     //-------------------------------------------------
 
     if (customerId !== undefined) {
