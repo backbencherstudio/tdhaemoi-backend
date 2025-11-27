@@ -119,6 +119,32 @@ const deserializeMaterial = (material: any): string[] | null => {
   return null;
 };
 
+// Get next order number for a partner (starts from 1000)
+const getNextOrderNumberForPartner = async (tx: any, partnerId: string): Promise<number> => {
+  const maxOrder = await tx.customerOrders.findFirst({
+    where: { partnerId },
+    orderBy: { orderNumber: "desc" },
+    select: { orderNumber: true },
+  });
+  return maxOrder ? maxOrder.orderNumber + 1 : 1000;
+};
+
+// Helper to get quantity from size data (handles both old and new formats)
+const getQuantity = (sizeData: any): number => {
+  if (sizeData && typeof sizeData === "object" && "quantity" in sizeData) {
+    return Number(sizeData.quantity ?? 0);
+  }
+  return typeof sizeData === "number" ? sizeData : 0;
+};
+
+// Helper to update size data with new quantity
+const updateSizeQuantity = (sizeData: any, newQty: number): any => {
+  if (sizeData && typeof sizeData === "object" && "quantity" in sizeData) {
+    return { ...sizeData, quantity: newQty };
+  }
+  return typeof sizeData === "number" ? newQty : { quantity: newQty };
+};
+
 export const createOrder = async (req: Request, res: Response) => {
   try {
     const {
@@ -230,11 +256,13 @@ export const createOrder = async (req: Request, res: Response) => {
         },
       });
 
-      // Create order first so we can use its ID in StoresHistory
+      const orderNumber = await getNextOrderNumberForPartner(tx, partnerId);
+
       const newOrder = await tx.customerOrders.create({
         data: {
           customerId,
           partnerId,
+          orderNumber,
           werkstattzettelId,
           fußanalyse: customer.fußanalyse,
           einlagenversorgung: customer.einlagenversorgung,
@@ -254,78 +282,31 @@ export const createOrder = async (req: Request, res: Response) => {
         select: { id: true },
       });
 
-      // Decrement store stock for the matched size (if storeId present)
+      // Update store stock if needed
       if (versorgung.storeId) {
         const store = await tx.stores.findUnique({
           where: { id: versorgung.storeId },
           select: { id: true, groessenMengen: true, userId: true },
         });
 
-        if (
-          store &&
-          store.groessenMengen &&
-          typeof store.groessenMengen === "object"
-        ) {
-          const sizes = { ...(store.groessenMengen as any) } as Record<
-            string,
-            any
-          >;
+        if (store?.groessenMengen && typeof store.groessenMengen === "object") {
+          const sizes = { ...(store.groessenMengen as any) } as Record<string, any>;
+          const targetLength = Math.max(Number(customer.fusslange1), Number(customer.fusslange2)) + 5;
+          const storeMatchedSizeKey = determineSizeFromGroessenMengen(sizes, targetLength);
 
-          const targetLength =
-            Math.max(Number(customer.fusslange1), Number(customer.fusslange2)) +
-            5;
-
-          const storeMatchedSizeKey = determineSizeFromGroessenMengen(
-            sizes,
-            targetLength
-          );
-
-          if (!storeMatchedSizeKey) {
-            throw new Error("NO_MATCHED_SIZE_IN_STORE");
-          }
+          if (!storeMatchedSizeKey) throw new Error("NO_MATCHED_SIZE_IN_STORE");
 
           const sizeValue = sizes[storeMatchedSizeKey];
-          let currentQty: number;
-          // Handle new format: { quantity: number, length: number }
-          if (
-            sizeValue &&
-            typeof sizeValue === "object" &&
-            "quantity" in sizeValue
-          ) {
-            currentQty = Number(sizeValue.quantity ?? 0);
-          }
-          // Handle old format: number (backward compatibility)
-          else if (typeof sizeValue === "number") {
-            currentQty = sizeValue;
-          } else {
-            currentQty = 0;
-          }
-
+          const currentQty = getQuantity(sizeValue);
           const newQty = Math.max(currentQty - 1, 0);
 
-          if (
-            sizeValue &&
-            typeof sizeValue === "object" &&
-            "quantity" in sizeValue
-          ) {
-            sizes[storeMatchedSizeKey] = {
-              ...sizeValue,
-              quantity: newQty,
-            };
-          } else if (typeof sizeValue === "number") {
-            sizes[storeMatchedSizeKey] = newQty;
-          } else {
-            sizes[storeMatchedSizeKey] = {
-              quantity: newQty,
-            };
-          }
+          sizes[storeMatchedSizeKey] = updateSizeQuantity(sizeValue, newQty);
 
           await tx.stores.update({
             where: { id: store.id },
             data: { groessenMengen: sizes },
           });
 
-          // Create StoresHistory with customerId and orderId
           await tx.storesHistory.create({
             data: {
               storeId: store.id,
@@ -334,7 +315,7 @@ export const createOrder = async (req: Request, res: Response) => {
               newStock: newQty,
               reason: `Order size ${storeMatchedSizeKey}`,
               partnerId: store.userId,
-              customerId: customerId,
+              customerId,
               orderId: newOrder.id,
             },
           });
@@ -454,36 +435,26 @@ const validateData = (customer: any, versorgung: any, werkstattzettel: any) => {
   return null;
 };
 
-const calculateTotalPrice = (customer: any): number => {
-  return (customer.fußanalyse || 0) + (customer.einlagenversorgung || 0);
-};
+const calculateTotalPrice = (customer: any): number =>
+  (customer.fußanalyse || 0) + (customer.einlagenversorgung || 0);
 
-const determineProductSize = (
-  customer: any,
-  versorgung: any
-): string | null => {
+const determineProductSize = (customer: any, versorgung: any): string | null => {
   const largerFusslange = Math.max(
     Number(customer.fusslange1) + 5,
     Number(customer.fusslange2) + 5
   );
 
-  if (
-    !versorgung.langenempfehlung ||
-    typeof versorgung.langenempfehlung !== "object"
-  ) {
+  if (!versorgung.langenempfehlung || typeof versorgung.langenempfehlung !== "object") {
     return null;
   }
 
   let matchedSizeKey: string | null = null;
   let smallestDiff = Infinity;
 
-  for (const [sizeKey, sizeData] of Object.entries(
-    versorgung.langenempfehlung as any
-  )) {
+  for (const [sizeKey, sizeData] of Object.entries(versorgung.langenempfehlung as any)) {
     const lengthValue = extractLengthValue(sizeData);
-    if (lengthValue === null) {
-      continue;
-    }
+    if (lengthValue === null) continue;
+
     const diff = Math.abs(largerFusslange - lengthValue);
     if (diff < smallestDiff) {
       smallestDiff = diff;
@@ -530,11 +501,13 @@ const createOrderTransaction = async (
     },
   });
 
-  // Create order
+  const orderNumber = await getNextOrderNumberForPartner(tx, partnerId);
+
   const newOrder = await tx.customerOrders.create({
     data: {
       customerId,
       partnerId,
+      orderNumber,
       werkstattzettelId,
       fußanalyse: customer.fußanalyse,
       einlagenversorgung: customer.einlagenversorgung,
@@ -572,12 +545,7 @@ const createOrderTransaction = async (
 
 const updateStoreStock = async (
   tx: any,
-  params: {
-    storeId: string;
-    matchedSizeKey: string;
-    customerId: string;
-    orderId: string;
-  }
+  params: { storeId: string; matchedSizeKey: string; customerId: string; orderId: string }
 ) => {
   const { storeId, matchedSizeKey, customerId, orderId } = params;
 
@@ -586,61 +554,30 @@ const updateStoreStock = async (
     select: { id: true, groessenMengen: true, userId: true },
   });
 
-  if (
-    !store ||
-    !store.groessenMengen ||
-    typeof store.groessenMengen !== "object"
-  ) {
-    return;
-  }
+  if (!store?.groessenMengen || typeof store.groessenMengen !== "object") return;
 
   const sizes = { ...(store.groessenMengen as any) };
   const sizeData = sizes[matchedSizeKey];
+  if (!sizeData) return;
 
-  if (!sizeData) {
-    return; // Size not found in store
-  }
+  const currentQty = getQuantity(sizeData);
+  const currentLength = sizeData?.length ? Number(sizeData.length) : 0;
+  const newQty = Math.max(currentQty - 1, 0);
 
-  let currentQuantity: number;
-  let currentLength: number;
+  sizes[matchedSizeKey] = { quantity: newQty, length: currentLength };
 
-  // Handle both data formats
-  if (sizeData && typeof sizeData === "object" && "quantity" in sizeData) {
-    currentQuantity = Number(sizeData.quantity ?? 0);
-    currentLength = Number(sizeData.length ?? 0);
-  } else if (typeof sizeData === "number") {
-    currentQuantity = sizeData;
-    currentLength = 0;
-  } else {
-    return; // Invalid data format
-  }
+  await tx.stores.update({ where: { id: store.id }, data: { groessenMengen: sizes } });
 
-  // Decrement quantity by 1 (minimum 0)
-  const newQuantity = Math.max(currentQuantity - 1, 0);
-
-  // Update with consistent format
-  sizes[matchedSizeKey] = {
-    quantity: newQuantity,
-    length: currentLength,
-  };
-
-  // Update store
-  await tx.stores.update({
-    where: { id: store.id },
-    data: { groessenMengen: sizes },
-  });
-
-  // Create stock history
   await tx.storesHistory.create({
     data: {
       storeId: store.id,
       changeType: "sales",
       quantity: 1,
-      newStock: newQuantity,
+      newStock: newQty,
       reason: `Order size ${matchedSizeKey}`,
       partnerId: store.userId,
-      customerId: customerId,
-      orderId: orderId,
+      customerId,
+      orderId,
     },
   });
 };

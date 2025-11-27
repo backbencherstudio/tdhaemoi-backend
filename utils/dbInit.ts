@@ -13,45 +13,56 @@ export async function ensureCustomerNumberSequenceMinimum(prisma: PrismaClient) 
 }
 
 export async function ensureOrderNumberSequenceMinimum(prisma: PrismaClient) {
-  console.log("Setting orderNumber sequence minimum...");
+  console.log("Ensuring order numbers start from 1000 per partner...");
   try {
-    // Try with quoted table name first (preserves case: customerOrders)
-    await prisma.$executeRawUnsafe(`
-      SELECT setval(
-        pg_get_serial_sequence('public."customerOrders"', 'orderNumber'),
-        GREATEST(
-          (SELECT COALESCE(MAX("orderNumber"), 0) FROM public."customerOrders"),
-          9999
-        ),
-        true
-      )
-    `);
-    console.log("Order number sequence set successfully");
-  } catch (error: any) {
-    // If quoted version fails, try lowercase (customerorders)
-    if (error?.code === 'P2010' || error?.meta?.code === '42P01') {
-      try {
-        await prisma.$executeRawUnsafe(`
-          SELECT setval(
-            pg_get_serial_sequence('public.customerorders', 'orderNumber'),
-            GREATEST(
-              (SELECT COALESCE(MAX("orderNumber"), 0) FROM public.customerorders),
-              9999
-            ),
-            true
-          )
-        `);
-        console.log("Order number sequence set successfully");
-      } catch (error2: any) {
-        // If both fail, table likely doesn't exist yet (migration not run)
-        if (error2?.code === 'P2010' || error2?.meta?.code === '42P01') {
-          console.log("customerOrders table or sequence not found yet. Run migration first.");
-        } else {
-          console.error("Error setting orderNumber sequence:", error2);
+    // Get all unique partners who have orders
+    const partnersWithOrders = await prisma.customerOrders.findMany({
+      where: {
+        partnerId: { not: null },
+      },
+      select: {
+        partnerId: true,
+      },
+      distinct: ["partnerId"],
+    });
+
+    // For each partner, ensure their order numbers start from at least 1000
+    for (const partner of partnersWithOrders) {
+      if (!partner.partnerId) continue;
+
+      const maxOrder = await prisma.customerOrders.findFirst({
+        where: { partnerId: partner.partnerId },
+        orderBy: { orderNumber: "desc" },
+        select: { orderNumber: true },
+      });
+
+      // If the max order number is less than 1000, we need to update existing orders
+      // This is a one-time migration to ensure all existing orders have numbers >= 1000
+      if (maxOrder && maxOrder.orderNumber < 1000) {
+        // Update all orders for this partner to start from 1000
+        const orders = await prisma.customerOrders.findMany({
+          where: { partnerId: partner.partnerId },
+          orderBy: { orderNumber: "asc" },
+          select: { id: true, orderNumber: true },
+        });
+
+        // Update orders starting from 1000
+        for (let i = 0; i < orders.length; i++) {
+          await prisma.customerOrders.update({
+            where: { id: orders[i].id },
+            data: { orderNumber: 1000 + i },
+          });
         }
+
+        console.log(
+          `Updated order numbers for partner ${partner.partnerId} to start from 1000`
+        );
       }
-    } else {
-      console.error("Error setting orderNumber sequence:", error);
     }
+
+    console.log("Order number minimum check completed");
+  } catch (error: any) {
+    console.error("Error ensuring order number minimum:", error);
+    // Don't throw - this is a migration helper, not critical for startup
   }
 }
