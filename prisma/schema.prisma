@@ -839,7 +839,7 @@ model custom_shafts {
   partnerId String?
   user      User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull)
 
-  status custom_shafts_status? @default(Neu)
+  status custom_shafts_status? @default(Bestellung_eingegangen)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -851,6 +851,14 @@ model custom_shafts {
   @@index([createdAt])
 }
 
+// enum custom_shafts_status {
+//   Bestellung_eingegangen
+//   In_Produktion
+//   Qualitätskontrolle
+//   Versandt
+//   Ausgeführte_Einlagen
+// }
+
 enum custom_shafts_status {
   Neu
   Zu_Produzent_abgeschickt
@@ -858,7 +866,14 @@ enum custom_shafts_status {
   Zu_Kunde_abgeschickt
   Bei_uns_angekommen
   Beim_Kunden_angekommen
+
+  Bestellung_eingegangen
+  In_Produktion
+  Qualitätskontrolle
+  Versandt
+  Ausgeführte
 }
+
 
 //---------------------------massschuhe_order---------------------
 // model massschuhe_order {

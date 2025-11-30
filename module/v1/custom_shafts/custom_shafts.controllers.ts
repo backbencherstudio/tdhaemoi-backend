@@ -632,16 +632,15 @@ export const getTustomShafts = async (req: Request, res: Response) => {
     const whereCondition: any = {};
 
     const validStatuses = [
-      "Neu",
-      "Zu_Produzent_abgeschickt",
-      "In_Bearbeitung",
-      "Zu_Kunde_abgeschickt",
-      "Bei_uns_angekommen",
-      "Beim_Kunden_angekommen",
-    ];
+      "Bestellung_eingegangen",
+      "In_Produktion",
+      "Qualitätskontrolle",
+      "Versandt",
+      "Ausgeführte",
+    ] as const;
 
     // Safe status validation
-    if (status && !validStatuses.includes(status.toString())) {
+    if (status && !validStatuses.includes(status.toString() as any)) {
       return res.status(400).json({
         success: false,
         message: "Invalid status value",
@@ -940,15 +939,14 @@ export const updateCustomShaftStatus = async (req: Request, res: Response) => {
     }
 
     const validStatuses = [
-      "Neu",
-      "Zu_Produzent_abgeschickt",
-      "In_Bearbeitung",
-      "Zu_Kunde_abgeschickt",
-      "Bei_uns_angekommen",
-      "Beim_Kunden_angekommen",
-    ];
+      "Bestellung_eingegangen",
+      "In_Produktion",
+      "Qualitätskontrolle",
+      "Versandt",
+      "Ausgeführte",
+    ] as const;
 
-    if (!validStatuses.includes(status)) {
+    if (!validStatuses.includes(status as any)) {
       return res.status(400).json({
         success: false,
         message: "Invalid status value",
@@ -997,7 +995,7 @@ export const updateCustomShaftStatus = async (req: Request, res: Response) => {
     const updatedCustomShaft = await prisma.custom_shafts.update({
       where: { id },
       data: {
-        status: status,
+        status: status as any,
         updatedAt: new Date(),
       },
       include: {
@@ -1128,7 +1126,7 @@ export const deleteCustomShaft = async (req: Request, res: Response) => {
       message: "Custom shaft deleted successfully",
       data: {
         id,
-      }
+      },
     });
   } catch (error: any) {
     console.error("Delete Custom Shaft Error:", error);
