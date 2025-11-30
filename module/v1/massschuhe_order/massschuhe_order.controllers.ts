@@ -781,19 +781,36 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
       data: createData,
     });
 
-    // //naw i wanna make a stores history for the customer
-    await prisma.storesHistory.create({
+    //create a customer history entry
+    await prisma.customerHistorie.create({
       data: {
-        storeId: "",
-        changeType: "sales",
-        // quantity: currentQty > 0 ? 1 : 0,
-        newStock: 0,
-        reason: `massschuhe order created`,
-        partnerId: userId,
         customerId,
-        orderId: massschuheOrder.id,
+        category: "Bestellungen",
+        note: "Massschuhe order created",
+        eventId: massschuheOrder.id,
+        system_note: "Massschuhe order created",
       },
     });
+
+    // Create a stores history entry only when a valid store exists for this partner
+    // const partnerStore = await prisma.stores.findFirst({
+    //   where: { userId },
+    //   select: { id: true, userId: true },
+    // });
+
+    // if (partnerStore) {
+    //   await prisma.storesHistory.create({
+    //     data: {
+    //       storeId: partnerStore.id,
+    //       changeType: "sales",
+    //       newStock: 0,
+    //       reason: "massschuhe order created",
+    //       partnerId: partnerStore.userId,
+    //       customerId,
+    //       orderId: massschuheOrder.id,
+    //     },
+    //   });
+    // }
 
     return res.status(201).json({
       success: true,

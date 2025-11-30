@@ -13,8 +13,37 @@ export const manageWorkshopNote = async (req, res) => {
       showCompanyLogo,
       autoShowAfterPrint,
       autoApplySupply,
-      
+      pickupLocation,
     } = req.body;
+
+    console.log(req.body);
+    console.log("================================");
+    console.log(completionDays);
+    console.log("================================");
+
+    //make request body
+    if (!employeeId) {
+      return res.status(400).json({
+        success: false,
+        message: "Employee ID is required",
+      });
+    }
+    if (!completionDays) {
+      return res.status(400).json({
+        success: false,
+        message: "Completion Days is required",
+      });
+    }
+
+    // Validate pickupLocation when sameAsBusiness is false
+    // if (sameAsBusiness === false) {
+    //   if (!pickupLocation || !Array.isArray(pickupLocation) || pickupLocation.length === 0) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "pickupLocation is required when sameAsBusiness is false",
+    //     });
+    //   }
+    // }
 
     let employeeName: string | null = null;
     let validEmployeeId: string | null = null;
@@ -37,6 +66,16 @@ export const manageWorkshopNote = async (req, res) => {
       select: { hauptstandort: true },
     });
 
+    // Determine pickupLocation based on sameAsBusiness
+    let finalPickupLocation: string[] = [];
+    if (sameAsBusiness === true || sameAsBusiness === undefined) {
+      // Use partner's hauptstandort if sameAsBusiness is true
+      finalPickupLocation = partner?.hauptstandort ?? [];
+    } else {
+      // Use provided pickupLocation when sameAsBusiness is false
+      finalPickupLocation = Array.isArray(pickupLocation) ? pickupLocation : [];
+    }
+
     const workshopNote = await prisma.workshopNote.upsert({
       where: { userId },
       create: {
@@ -44,7 +83,7 @@ export const manageWorkshopNote = async (req, res) => {
         employeeId: validEmployeeId,
         employeeName,
         completionDays: completionDays || "5 Werktage",
-        pickupLocation: sameAsBusiness ? partner?.hauptstandort?.[0] ?? null : null,
+        pickupLocation: finalPickupLocation as any,
         sameAsBusiness: sameAsBusiness ?? true,
         showCompanyLogo: showCompanyLogo ?? true,
         autoShowAfterPrint: autoShowAfterPrint ?? true,
@@ -54,7 +93,7 @@ export const manageWorkshopNote = async (req, res) => {
         employeeId: validEmployeeId,
         employeeName,
         completionDays: completionDays || "5 Werktage",
-        pickupLocation: sameAsBusiness ? partner?.hauptstandort?.[0] ?? null : null,
+        pickupLocation: finalPickupLocation as any,
         sameAsBusiness: sameAsBusiness ?? true,
         showCompanyLogo: showCompanyLogo ?? true,
         autoShowAfterPrint: autoShowAfterPrint ?? true,

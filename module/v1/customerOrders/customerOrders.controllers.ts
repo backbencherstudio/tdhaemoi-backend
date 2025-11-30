@@ -278,6 +278,7 @@ export const createOrder = async (req: Request, res: Response) => {
           schuhmodell_wählen,
           kostenvoranschlag,
           storeId: versorgung?.storeId ?? null,
+          bezahlt: werkstattzettel?.bezahlt ?? null,
         },
         select: { id: true },
       });
@@ -314,9 +315,11 @@ export const createOrder = async (req: Request, res: Response) => {
               quantity: currentQty > 0 ? 1 : 0,
               newStock: newQty,
               reason: `Order size ${storeMatchedSizeKey}`,
+
               partnerId: store.userId,
               customerId,
               orderId: newOrder.id,
+              status: "SELL_OUT"
             },
           });
 
@@ -1074,6 +1077,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
           createdAt: true,
           updatedAt: true,
           priority: true,
+          bezahlt: true,
           customer: {
             select: {
               id: true,
@@ -2882,7 +2886,7 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
           ? new Date(fertigstellungBis)
           : null,
         versorgung,
-        bezahlt: Boolean(bezahlt),
+        bezahlt: bezahlt !== undefined && bezahlt !== null ? String(bezahlt) : null,
         fussanalysePreis: fussanalysePreis
           ? parseFloat(fussanalysePreis)
           : null,
@@ -2905,7 +2909,7 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
           ? new Date(fertigstellungBis)
           : null,
         versorgung,
-        bezahlt: Boolean(bezahlt),
+        bezahlt: bezahlt !== undefined && bezahlt !== null ? String(bezahlt) : null,
         fussanalysePreis: fussanalysePreis
           ? parseFloat(fussanalysePreis)
           : null,
@@ -3012,30 +3016,24 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
 
 
 
-    const einlagen = await prisma.customerOrders.findMany({
+    const einlagen = await prisma.customerOrders.count({
       where: {
         ...partnerFilter,
         orderStatus: {
           in: ["Ausgeführt"],
         },
-        createdAt: {
-          gte: new Date(new Date().setDate(new Date().getDate() - 30)),
-        },
-      },
-      select: {
-        totalPrice: true,
       },
     });
 
-    const totalPrice = einlagen.reduce(
-      (acc, order) => acc + (order.totalPrice || 0),
-      0
-    );
+    // const totalPrice = einlagen.reduce(
+    //   (acc, order) => acc + (order.totalPrice || 0),
+    //   0
+    // );
 
     res.status(200).json({
       success: true,
       data: count,
-      totalPrice,
+      totalPrice: einlagen,
     
     });
   } catch (error: any) {

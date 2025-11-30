@@ -219,32 +219,152 @@ export const getSingleStorage = async (req: Request, res: Response) => {
   }
 };
 
+// export const updateStorage = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params;
+//     const userId = req.user.id;
+//     if (!userId) {
+//       return res.status(401).json({ message: "Unauthorized" });
+//     }
+//     const updatedStorageData = Object.fromEntries(
+//       Object.entries(req.body).filter(([_, value]) => value !== undefined)
+//     );
+
+//     // Remove Status from update data if present (it's calculated dynamically)
+//     delete updatedStorageData.Status;
+//     // { user: { id: userId }
+//     const updatedStorage = await prisma.stores.update({
+//       where: { id, user: { id: userId } },
+//       data: updatedStorageData,
+//     });
+
+//     // Add calculated Status to response
+//     const storageWithStatus = addStatusToStore(updatedStorage);
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Storage updated successfully",
+//       data: storageWithStatus,
+//     });
+//   } catch (error: any) {
+//     console.error("updateStorage error:", error);
+
+//     if (error.code === "P2025") {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Storage not found",
+//       });
+//     }
+
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error instanceof Error ? error.message : "Unknown error",
+//     });
+//   }
+// };
+
 export const updateStorage = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
-    if (!userId) {
+    const partnerId = req.user.id;
+
+    if (!partnerId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const updatedStorageData = Object.fromEntries(
-      Object.entries(req.body).filter(([_, value]) => value !== undefined)
+
+    // Remove undefined fields
+    const updatedData = Object.fromEntries(
+      Object.entries(req.body).filter(([_, v]) => v !== undefined)
     );
 
-    // Remove Status from update data if present (it's calculated dynamically)
-    delete updatedStorageData.Status;
-    // { user: { id: userId }
-    const updatedStorage = await prisma.stores.update({
-      where: { id, user: { id: userId } },
-      data: updatedStorageData,
+    // Status = auto generated, never user updated
+    delete updatedData.Status;
+
+    // Fetch old store data
+    const oldStore = await prisma.stores.findUnique({
+      where: { id },
     });
 
-    // Add calculated Status to response
-    const storageWithStatus = addStatusToStore(updatedStorage);
+    if (!oldStore || oldStore.userId !== partnerId) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Storage not found" });
+    }
 
-    res.status(200).json({
+    // Update the store
+    const newStore = await prisma.stores.update({
+      where: { id },
+      data: updatedData,
+    });
+
+    // Recalculate status
+    const storeWithStatus = addStatusToStore(newStore);
+
+    // -------------------------------------------------------------------
+    // ⭐ DETAILED CHANGE DETECTION (deep comparison)
+    // -------------------------------------------------------------------
+    const changes: string[] = [];
+
+    function compareValues(prefix: string, oldVal: any, newVal: any) {
+      // Primitive values
+      if (typeof oldVal !== "object" || oldVal === null || newVal === null) {
+        if (oldVal !== newVal) {
+          changes.push(`${prefix}: ${oldVal} → ${newVal}`);
+        }
+        return;
+      }
+    
+      // Handle groessenMengen separately
+      if (prefix === "groessenMengen") {
+        for (const size of Object.keys({ ...oldVal, ...newVal })) {
+          const oldSize = oldVal[size];
+          const newSize = newVal[size];
+    
+          if (!oldSize || !newSize) continue;
+    
+          if (oldSize.length !== newSize.length) {
+            changes.push(`groessenMengen.${size}.length: ${oldSize.length} → ${newSize.length}`);
+          }
+          if (oldSize.quantity !== newSize.quantity) {
+            changes.push(`groessenMengen.${size}.quantity: ${oldSize.quantity} → ${newSize.quantity}`);
+          }
+        }
+        return;
+      }
+    
+      // Generic deep object comparison (other objects)
+      for (const key of Object.keys({ ...oldVal, ...newVal })) {
+        compareValues(`${prefix}.${key}`, oldVal[key], newVal[key]);
+      }
+    }
+    
+    // Only check the fields that were updated
+    for (const key of Object.keys(updatedData)) {
+      const oldVal = (oldStore as any)[key];
+      const newVal = (newStore as any)[key];
+    
+      compareValues(key, oldVal, newVal);
+    }
+    
+    // Create history entry
+    await prisma.storesHistory.create({
+      data: {
+        storeId: id,
+        changeType: "updateStock",
+        partnerId,
+        reason: "Store updated",
+        text: changes.length > 0 ? changes.join(", ") : "No main changes detected",
+        status: "STOCK_UPDATE",
+      },
+    });
+    
+    // -------------------------------------------------------------------
+
+    return res.status(200).json({
       success: true,
       message: "Storage updated successfully",
-      data: storageWithStatus,
+      data: storeWithStatus,
     });
   } catch (error: any) {
     console.error("updateStorage error:", error);
@@ -256,10 +376,10 @@ export const updateStorage = async (req: Request, res: Response) => {
       });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Something went wrong",
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error.message,
     });
   }
 };
@@ -305,88 +425,77 @@ export const getStorageChartData = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
 
-    const fromYearParam = req.query.fromYear as string | undefined;
-    const toYearParam = req.query.toYear as string | undefined;
-    const yearParam = req.query.year as string | undefined;
-    const fromYear = fromYearParam ? parseInt(fromYearParam, 10) : undefined;
-    const toYear = toYearParam ? parseInt(toYearParam, 10) : undefined;
-    const specificYear = yearParam ? parseInt(yearParam, 10) : undefined;
-
+    // Get all stores with their current stock quantities
     const stores = await prisma.stores.findMany({
       where: { userId },
-      select: { purchase_price: true, selling_price: true, createdAt: true },
+      select: {
+        groessenMengen: true,
+        purchase_price: true,
+        selling_price: true,
+      },
     });
 
-    // If a specific year is requested, return monthly data for that year
-    if (specificYear && !isNaN(specificYear)) {
-      const monthNames = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
+    // Initialize totals
+    let totalEinkaufspreis = 0;
+    let totalVerkaufspreis = 0;
 
-      const monthToSums = new Array(12)
-        .fill(null)
-        .map(() => ({ einkauf: 0, verkauf: 0 }));
+    // Calculate inventory value for each product
+    for (const store of stores) {
+      const groessenMengen = store.groessenMengen as Record<string, any>;
+      const purchasePrice = Number(store.purchase_price || 0);
+      const sellingPrice = Number(store.selling_price || 0);
 
-      for (const s of stores) {
-        const d = new Date(s.createdAt);
-        const y = d.getFullYear();
-        if (y !== specificYear) continue;
-        const m = d.getMonth(); // 0-11
-        monthToSums[m].einkauf += Number(s.purchase_price || 0);
-        monthToSums[m].verkauf += Number(s.selling_price || 0);
+      // Calculate total quantity for this product
+      let totalQuantity = 0;
+
+      if (groessenMengen && typeof groessenMengen === "object") {
+        const sizeKeys = Object.keys(groessenMengen);
+
+        for (const sizeKey of sizeKeys) {
+          const sizeValue = groessenMengen[sizeKey];
+          let quantity: number;
+
+          // Handle new format: { quantity: number, length: number }
+          if (
+            sizeValue &&
+            typeof sizeValue === "object" &&
+            "quantity" in sizeValue
+          ) {
+            quantity = Number(sizeValue.quantity ?? 0);
+          }
+          // Handle old format: number (backward compatibility)
+          else if (typeof sizeValue === "number") {
+            quantity = sizeValue;
+          } else {
+            quantity = 0;
+          }
+
+          totalQuantity += quantity;
+        }
       }
 
-      const data = monthToSums.map((sums, idx) => ({
-        month: monthNames[idx],
-        Einkaufspreis: Math.round(sums.einkauf),
-        Verkaufspreis: Math.round(sums.verkauf),
-        Gewinn: Math.round(sums.verkauf - sums.einkauf),
-      }));
+      // Calculate values for this product
+      const productEinkaufspreis = totalQuantity * purchasePrice;
+      const productVerkaufspreis = totalQuantity * sellingPrice;
 
-      return res.status(200).json({
-        success: true,
-        message: "Storage chart data (monthly) fetched successfully",
-        year: specificYear,
-        data,
-      });
+      // Add to totals
+      totalEinkaufspreis += productEinkaufspreis;
+      totalVerkaufspreis += productVerkaufspreis;
     }
 
-    // Default: yearly aggregation (optionally filtered by fromYear/toYear)
-    const yearToSums = new Map<string, { einkauf: number; verkauf: number }>();
+    // Calculate profit
+    const totalGewinn = totalVerkaufspreis - totalEinkaufspreis;
 
-    for (const s of stores) {
-      const year = new Date(s.createdAt).getFullYear();
-      if ((fromYear && year < fromYear) || (toYear && year > toYear)) continue;
-      const key = String(year);
-      const entry = yearToSums.get(key) || { einkauf: 0, verkauf: 0 };
-      entry.einkauf += Number(s.purchase_price || 0);
-      entry.verkauf += Number(s.selling_price || 0);
-      yearToSums.set(key, entry);
-    }
-
-    const data = Array.from(yearToSums.entries())
-      .map(([year, sums]) => ({
-        year,
-        Einkaufspreis: Math.round(sums.einkauf),
-        Verkaufspreis: Math.round(sums.verkauf),
-        Gewinn: Math.round(sums.verkauf - sums.einkauf),
-      }))
-      .sort((a, b) => Number(a.year) - Number(b.year));
+    // Return current inventory value (single aggregated result)
+    const data = {
+      Einkaufspreis: Math.round(totalEinkaufspreis),
+      Verkaufspreis: Math.round(totalVerkaufspreis),
+      Gewinn: Math.round(totalGewinn),
+    };
 
     res.status(200).json({
       success: true,
-      message: "Storage chart data fetched successfully",
+      message: "Storage chart data (current inventory value) fetched successfully",
       data,
     });
   } catch (error) {
@@ -517,10 +626,7 @@ export const getStoragePerformer = async (req: Request, res: Response) => {
     });
 
     // Initialize all stores with 0 values
-    const modelStats = new Map<
-      string,
-      { verkaufe: number; umsatz: number }
-    >();
+    const modelStats = new Map<string, { verkaufe: number; umsatz: number }>();
 
     // Initialize all stores (even those without sales history)
     for (const store of allStores) {
@@ -582,7 +688,8 @@ export const getStoragePerformer = async (req: Request, res: Response) => {
     const verkaufeValues = Array.from(modelStats.values()).map(
       (stats) => stats.verkaufe
     );
-    const maxVerkaufe = verkaufeValues.length > 0 ? Math.max(...verkaufeValues, 1) : 1; // Use 1 as minimum to avoid division by zero
+    const maxVerkaufe =
+      verkaufeValues.length > 0 ? Math.max(...verkaufeValues, 1) : 1; // Use 1 as minimum to avoid division by zero
 
     // Convert to array format and calculate revenue share and progress
     const performers = Array.from(modelStats.entries()).map(

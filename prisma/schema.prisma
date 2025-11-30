@@ -271,9 +271,9 @@ model WorkshopNote {
   employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
 
   employeeName   String?
-  completionDays String  @default("5 Werktage")
-  pickupLocation String?
-  sameAsBusiness Boolean @default(true)
+  completionDays String   @default("5 Werktage")
+  pickupLocation String[]
+  sameAsBusiness Boolean  @default(true)
 
   showCompanyLogo    Boolean @default(true)
   autoShowAfterPrint Boolean @default(true)
@@ -597,8 +597,10 @@ model customerOrders {
   versorgung_note        String? //Hast du sonstige Anmerkungen oder Notizen zur Versorgung... ?
   schuhmodell_wählen    String? //জুতার মডেল নির্বাচন করুন ম্যানুয়ালি লিখুন (ব্র্যান্ড + মডেল + সাইজ)
   kostenvoranschlag      Boolean? @default(false)
-  storeId                String?
-  store                  Stores?  @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  bezahlt                String? // Bezahlt - string naw
+
+  storeId String?
+  store   Stores? @relation(fields: [storeId], references: [id], onDelete: SetNull)
 
   priority Priority? @default(Normal)
 
@@ -628,7 +630,7 @@ model Werkstattzettel {
   mitarbeiter        String? // Mitarbeiter - Johannes
   fertigstellungBis  DateTime? // Fertigstellung bis - mm/dd/yyyy
   versorgung         String? // Versorgung - Rohling 339821769, mit Pelotte
-  bezahlt            Boolean? // Bezahlt - Ja (true/false)
+  bezahlt            String? // Bezahlt - strinhg naw
 
   //relation with employe but optional
   employeeId String?
@@ -748,6 +750,8 @@ model StoresHistory {
   orderId String? // Optional: Link to order if applicable
   order   customerOrders? @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
+  status StoresHistoryStatus?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -759,6 +763,11 @@ model StoresHistory {
   @@map("storeshistory")
 }
 
+enum StoresHistoryStatus {
+  SELL_OUT
+  STOCK_UPDATE
+}
+
 enum ChangeType {
   // INCOMING // e.g., deliveries
   // OUTGOING // e.g., sales, reservations
@@ -766,6 +775,7 @@ enum ChangeType {
   // TRANSFER // between storage locations 
   sales
   createStock
+  updateStock
 }
 
 model Bestellubersicht {
@@ -930,6 +940,7 @@ model massschuhe_order {
   fußanalyse        Float?
   einlagenversorgung Float?
   customer_note      String?
+  location           String?
   //-------------------------------------------------
 
   //relation with users
@@ -969,3 +980,5 @@ model massschuhe_order {
 // }
 
 // https://chatgpt.com/share/688ca13d-c468-800c-8159-f0c30dccecbf8
+
+//---------------------------------------------------------------------------
