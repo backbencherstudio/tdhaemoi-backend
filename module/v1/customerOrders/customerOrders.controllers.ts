@@ -2700,20 +2700,48 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
       partnerFilter.partnerId = requestedPartnerId;
     }
 
-    const allOrders = await prisma.customerOrders.findMany({
-      where: {
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
+    const [allOrders, ordersInProduction, completedOrders] = await Promise.all([
+      prisma.customerOrders.findMany({
+        where: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+          ...statusFilter,
+          ...partnerFilter,
         },
-        ...statusFilter,
-        ...partnerFilter,
-      },
-      select: {
-        totalPrice: true,
-        createdAt: true,
-      },
-    });
+        select: {
+          totalPrice: true,
+          createdAt: true,
+        },
+      }),
+      // Count orders in production (from getEinlagenInProduktion)
+      prisma.customerOrders.count({
+        where: {
+          ...partnerFilter,
+          orderStatus: {
+            in: [
+              "In_Fertigung",
+              "Verpacken_Qualitätssicherung",
+              "Abholbereit_Versandt",
+            ],
+          },
+        },
+      }),
+      // Get count of completed orders (within date range) - this is quantity, not price
+      prisma.customerOrders.count({
+        where: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+          ...partnerFilter,
+          orderStatus: {
+            in: ["Ausgeführt"],
+          },
+        },
+      }),
+    ]);
 
     const dateRange: string[] = [];
     const cursor = new Date(startDate);
@@ -2787,6 +2815,8 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
           endDate: endDate.toISOString(),
           daysInRange,
         },
+        count: ordersInProduction,
+        totalPrice: completedOrders, // This is actually the count of completed orders (quantity)
       },
     });
   } catch (error: any) {
@@ -3100,3 +3130,5 @@ export const getLast30DaysOrderEinlagen = async (
     });
   }
 };
+
+
