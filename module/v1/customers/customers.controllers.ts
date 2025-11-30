@@ -2825,7 +2825,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
         customerOrders: {
           some: {
             orderStatus: {
-              in: COMPLETED_ORDER_STATUSES,
+              in: ["Ausgeführt"],
             },
           },
         },
@@ -2890,10 +2890,10 @@ export const filterCustomer = async (req: Request, res: Response) => {
             select: {
               id: true,
               customerId: true,
-              picture_10: true,
-              picture_23: true,
-              picture_11: true,
-              picture_24: true,
+              // picture_10: true,
+              // picture_23: true,
+              // picture_11: true,
+              // picture_24: true,
               createdAt: true,
             },
           },
@@ -2908,18 +2908,18 @@ export const filterCustomer = async (req: Request, res: Response) => {
         ? {
             id: screener.id,
             createdAt: screener.createdAt,
-            picture_10: screener.picture_10
-              ? getImageUrl(`/uploads/${screener.picture_10}`)
-              : null,
-            picture_23: screener.picture_23
-              ? getImageUrl(`/uploads/${screener.picture_23}`)
-              : null,
-            picture_11: screener.picture_11
-              ? getImageUrl(`/uploads/${screener.picture_11}`)
-              : null,
-            picture_24: screener.picture_24
-              ? getImageUrl(`/uploads/${screener.picture_24}`)
-              : null,
+            // picture_10: screener.picture_10
+            //   ? getImageUrl(`/uploads/${screener.picture_10}`)
+            //   : null,
+            // picture_23: screener.picture_23
+            //   ? getImageUrl(`/uploads/${screener.picture_23}`)
+            //   : null,
+            // picture_11: screener.picture_11
+            //   ? getImageUrl(`/uploads/${screener.picture_11}`)
+            //   : null,
+            // picture_24: screener.picture_24
+            //   ? getImageUrl(`/uploads/${screener.picture_24}`)
+            //   : null,
           }
         : null;
 
