@@ -871,7 +871,7 @@ enum custom_shafts_status {
   In_Produktion
   Qualitätskontrolle
   Versandt
-  Ausgeführte
+  Ausgeführt
 }
 
 

@@ -636,7 +636,7 @@ export const getTustomShafts = async (req: Request, res: Response) => {
       "In_Produktion",
       "Qualitätskontrolle",
       "Versandt",
-      "Ausgeführte",
+      "Ausgeführt",
     ] as const;
 
     // Safe status validation
@@ -943,7 +943,7 @@ export const updateCustomShaftStatus = async (req: Request, res: Response) => {
       "In_Produktion",
       "Qualitätskontrolle",
       "Versandt",
-      "Ausgeführte",
+      "Ausgeführt",
     ] as const;
 
     if (!validStatuses.includes(status as any)) {
