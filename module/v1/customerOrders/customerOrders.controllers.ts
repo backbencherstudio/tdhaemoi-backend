@@ -2715,9 +2715,13 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
           createdAt: true,
         },
       }),
-      // Count orders in production (from getEinlagenInProduktion)
+      // Count orders in production (within date range)
       prisma.customerOrders.count({
         where: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
           ...partnerFilter,
           orderStatus: {
             in: [
