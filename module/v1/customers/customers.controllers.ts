@@ -2873,6 +2873,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
               orderStatus: true,
               totalPrice: true,
               createdAt: true,
+              bezahlt: true,
             },
           },
           massschuheOrders: {
@@ -2922,6 +2923,24 @@ export const filterCustomer = async (req: Request, res: Response) => {
           }
         : null;
 
+    // Helper function to determine Kostenträger from bezahlt values
+    const getKostentrager = (orders: any[]): string | null => {
+      for (const order of orders) {
+        if (order.bezahlt) {
+          const bezahltLower = String(order.bezahlt).toLowerCase();
+          if (bezahltLower.includes("privat")) {
+            return "Privat";
+          }
+          if (bezahltLower.includes("krankenkasse")) {
+            return "Krankenkasse";
+          }
+          // If bezahlt is set but doesn't match known patterns, return the value
+          return order.bezahlt;
+        }
+      }
+      return null;
+    };
+
     const responseData = customers.map((customer) => {
       const completedOrdersCount = customer.customerOrders.filter((order) =>
         completedStatusesForCount.has(order.orderStatus)
@@ -2930,6 +2949,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
       const latestOrder = customer.customerOrders[0] || null;
       const latestScreener = formatScreener(customer.screenerFile[0]);
       const latestMassschuheOrder = customer.massschuheOrders?.[0] || null;
+      const kostentrager = getKostentrager(customer.customerOrders);
 
       return {
         id: customer.id,
@@ -2945,6 +2965,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
         latestOrder,
         latestScreener,
         latestMassschuheOrder,
+        Kostenträger: kostentrager,
       };
     });
 
