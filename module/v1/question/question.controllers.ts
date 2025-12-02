@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
-import { questionnaireData, InsolesQuestionnaData } from "./question.data";
+import { questionnaireData, InsolesQuestionnaData, shoeQuestionnaData } from "./question.data";
 
 const prisma = new PrismaClient();
 
@@ -180,7 +180,24 @@ const markCurrentOptions = (questions: any[], savedAnswers: any) => {
     const answerData = savedAnswers[questionId];
 
     // Handle question 4 which has nested sub-questions in options
-    if (questionId === 4) {
+    // Only apply this special logic when the data actually contains sub-questions.
+    // (In soles questionnaire id=4 is nested, in shoes questionnaire id=4 is flat.)
+    const hasNestedSubQuestions =
+      questionId === 4 &&
+      Array.isArray(questionData.questions) &&
+      questionData.questions.some(
+        (q: any) =>
+          Array.isArray(q.options) &&
+          q.options.some(
+            (opt: any) =>
+              opt &&
+              typeof opt === "object" &&
+              !Array.isArray(opt) &&
+              "question" in opt
+          )
+      );
+
+    if (hasNestedSubQuestions) {
       return {
         ...questionData,
         questions: questionData.questions.map((mainQ: any) => {
@@ -404,6 +421,131 @@ export const setInsolesAnswers = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error setting insoles answers:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+
+
+export const getShoesQuestions = async (req: Request, res: Response) => {
+  console.log("getShoesQuestions");
+  try {
+    const { customerId } = req.params;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer ID is required",
+      });
+    }
+
+    // Verify customer exists
+    const customer = await prisma.customers.findUnique({
+      where: { id: customerId },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    // Get saved answers if they exist
+    const savedAnswer = await prisma.shoeAnswers.findFirst({
+      where: { customerId },
+    });
+
+    const savedAnswers = savedAnswer?.answer || {};
+
+    // Mark current options based on saved answers
+    const questionsWithCurrent = markCurrentOptions(
+      shoeQuestionnaData,
+      savedAnswers
+    );
+
+    return res.json({
+      success: true,
+      data: questionsWithCurrent,
+    });
+  } catch (error: any) {
+    console.error("Error getting shoes questions:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+
+
+
+// Set/Update insoles answers
+export const setShoesAnswers = async (req: Request, res: Response) => {
+  try {
+    const { customerId } = req.params;
+    const { answer } = req.body;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer ID is required",
+      });
+    }
+
+    if (!answer || typeof answer !== "object") {
+      return res.status(400).json({
+        success: false,
+        message: "Answer data is required and must be an object",
+      });
+    }
+
+    // Verify customer exists
+    const customer = await prisma.customers.findUnique({
+      where: { id: customerId },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    // Find existing answer (get the first one if multiple exist)
+    const existingAnswer = await prisma.shoeAnswers.findFirst({
+      where: { customerId },
+      orderBy: { id: "desc" }, // Get the most recent one
+    });
+
+    let shoesAnswer;
+
+    if (existingAnswer) {
+      // Update existing answer
+      shoesAnswer = await prisma.shoeAnswers.update({
+        where: { id: existingAnswer.id },
+        data: { answer: answer },
+      });
+    } else {
+      // Create new answer
+      shoesAnswer = await prisma.shoeAnswers.create({
+        data: {
+          customerId: customerId,
+          answer: answer,
+        },
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Answers saved successfully",
+      data: shoesAnswer,
+    });
+  } catch (error: any) {
+    console.error("Error setting shoes answers:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error",

@@ -1,5 +1,5 @@
 import express from "express";
-import { getQuestionsFlow, getInsolesQuestions, setInsolesAnswers } from "./question.controllers";
+import { getQuestionsFlow, getInsolesQuestions, setInsolesAnswers, getShoesQuestions, setShoesAnswers } from "./question.controllers";
 import { questionnaireData } from "./question.data";
 
 
@@ -11,6 +11,16 @@ router.get("/insoles/:customerId", getInsolesQuestions);
 router.post("/insoles/:customerId", setInsolesAnswers);
 
 router.put("/insoles/:customerId", setInsolesAnswers);
+
+
+router.get("/shoes/:customerId", getShoesQuestions);
+
+router.post("/shoes/:customerId", setShoesAnswers);
+
+// router.post("/shoes/:customerId", setShoesAnswers);
+
+// router.put("/shoes/:customerId", setShoesAnswers);
+
 
 // // Shoe questionnaire routes
 // router.get("/", getQuestionsFlow);

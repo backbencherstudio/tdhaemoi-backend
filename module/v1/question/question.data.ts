@@ -1982,3 +1982,207 @@ export const InsolesQuestionnaData = [
     ],
   },
 ];
+
+
+export const shoeQuestionnaData = [
+    {
+      id: 1,
+      questions: [
+        {
+          question: "Für was möchten Sie die Schuhe hauptsächlich verwenden?",
+          options: [
+            {
+              id: 1,
+              option: "Alltag",
+              ownText: "",
+            },
+            {
+              id: 2,
+              option: "Arbeit",
+              ownText: "",
+            },
+            {
+              id: 3,
+              option: "Zuhause / Hausgebrauch",
+              ownText: "",
+            },
+            {
+              id: 4,
+              option: "Sonstiges",
+              ownText: "",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 2,
+      questions: [
+        {
+          question: "Können Sie selbstständig gehen?",
+          options: [
+            {
+              id: 1,
+              option: "Ja",
+              ownText: "",
+            },
+            {
+              id: 2,
+              option: "Nein – mit Hilfsmittel (z. B. Stock, Rollator, Orthesen)",
+              ownText: "",
+            },
+            {
+              id: 3,
+              option: "Nein – Rollstuhl teilweise mobil",
+              ownText: "",
+            },
+            {
+              id: 4,
+              option: "Nein – Rollstuhl nicht gehfähig",
+              ownText: "",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 3,
+      questions: [
+        {
+          question: "Wie stark belasten Sie Ihre Füße im Alltag?",
+          options: [
+            {
+              id: 1,
+              option: "Viel Gehen / Stehen",
+              ownText: "",
+            },
+            {
+              id: 2,
+              option: "Überwiegend sitzend / geringe Belastung",
+              ownText: "",
+            },
+            {
+              id: 3,
+              option: "Kaum Belastung",
+              ownText: "",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 4,
+      questions: [
+        {
+          question: "Wie viel wiegen Sie ungefähr? (für Material- und Stabilitätsauswahl wichtig)",
+          options: [
+            {
+              id: 1,
+              option: "_______ kg",
+              ownText: "",
+            },
+            {
+              id: 2,
+              option: "Möchte ich nicht angeben",
+              ownText: "",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 5,
+      questions: [
+        {
+          question: "Haben Sie eine Krankheit, die Ihre Fußgesundheit beeinträchtigen kann (z. B. Diabetes, neurologische oder Gefäßerkrankungen)?",
+          options: [
+            {
+              id: 1,
+              option: "Nein",
+              ownText: "",
+            },
+            {
+              id: 2,
+              option: "Ja",
+              ownText: "",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 6,
+      questions: [
+        {
+          question: "Haben Sie aktuell Schmerzen oder Problemzonen an den Füßen?",
+          options: [
+            {
+              id: 1,
+              option: "Keine Schmerzen",
+              ownText: "",
+            },
+            {
+              id: 2,
+              option: "Schmerzen beim Gehen",
+              ownText: "",
+            },
+            {
+              id: 3,
+              option: "Schmerzen beim Stehen",
+              ownText: "",
+            },
+            {
+              id: 4,
+              option: "Druckstellen / offene Stellen",
+              ownText: "",
+            },
+            {
+              id: 5,
+              option: "Sonstige Probleme",
+              ownText: "",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 7,
+      questions: [
+        {
+          question: "Was erwarten Sie von den Maßschuhen?",
+          options: [
+            {
+              id: 1,
+              option: "Verbesserung der Gehfähigkeit",
+              ownText: "",
+            },
+            {
+              id: 2,
+              option: "Mehr Stabilität / Sicherheit",
+              ownText: "",
+            },
+            {
+              id: 3,
+              option: "Druckentlastung / Schutz",
+              ownText: "",
+            },
+            {
+              id: 4,
+              option: "Korrektur von Fehlstellungen",
+              ownText: "",
+            },
+            {
+              id: 5,
+              option: "Alltagstauglichkeit",
+              ownText: "",
+            },
+            {
+              id: 6,
+              option: "Anderes Ziel",
+              ownText: "",
+            },
+          ],
+        },
+      ],
+    },
+]
