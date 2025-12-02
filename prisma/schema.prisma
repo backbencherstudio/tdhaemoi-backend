@@ -850,6 +850,7 @@ model maßschaft_kollektion {
 
 model custom_shafts {
   tets String?
+  
   id String @id @default(uuid())
 
   orderNumber           String? // if this 
