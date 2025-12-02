@@ -40,13 +40,14 @@ model User {
   bestellubersicht       Bestellubersicht?
 
   // Mandatory one-to-one relationship
-  workshopNote      WorkshopNote?
-  stores            Stores[]
-  StoresHistory     StoresHistory[]
-  custom_shafts     custom_shafts[]
+  workshopNote            WorkshopNote?
+  stores                  Stores[]
+  StoresHistory           StoresHistory[]
+  custom_shafts           custom_shafts[]
   // massschuheOrders massschuhe_order[]
-  massschuheOrders  massschuhe_order[]
-  controllQuestions controllQuestions[]
+  massschuheOrders        massschuhe_order[]
+  controllQuestions       controllQuestions[]
+  customerOrdersHistories customerOrdersHistory[]
 
   @@map("users")
 }
@@ -253,11 +254,12 @@ model Employees {
   // Many-to-many relation
   // massschuheOrders massschuhe_order[] @relation("OrderEmployees")
 
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  appointmentEmployees AppointmentEmployee[]
-  werkstattzettels     Werkstattzettel[]
-  massschuheOrders     massschuhe_order[]
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  appointmentEmployees    AppointmentEmployee[]
+  werkstattzettels        Werkstattzettel[]
+  massschuheOrders        massschuhe_order[]
+  customerOrdersHistories customerOrdersHistory[]
 
   @@index([createdAt])
 }
@@ -411,7 +413,7 @@ model customers {
   fußanalyse        Float? //ইনসোল $
   einlagenversorgung Float? //Foot analysis $
 
-  billingType   String? // Billing Type
+  billingType String? // Billing Type
 
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
@@ -629,7 +631,7 @@ model customerOrders {
 
   werkstattzettel   Werkstattzettel? @relation(fields: [werkstattzettelId], references: [id], onDelete: SetNull, name: "WerkstattzettelOrdersRelation")
   werkstattzettelId String?
-  StoresHistory     StoresHistory[] @relation("OrderStoresHistory")
+  StoresHistory     StoresHistory[]  @relation("OrderStoresHistory")
 
   ausführliche_diagnose String?
   versorgung_laut_arzt   String?
@@ -644,8 +646,9 @@ model customerOrders {
   storeId String?
   store   Stores? @relation(fields: [storeId], references: [id], onDelete: SetNull)
 
-  priority          Priority?          @default(Normal)
-  customerHistories customerHistorie[] @relation("OrderCustomerHistorie")
+  priority                Priority?               @default(Normal)
+  customerHistories       customerHistorie[]      @relation("OrderCustomerHistorie")
+  customerOrdersHistories customerOrdersHistory[]
 
   @@unique([partnerId, orderNumber]) // Unique per partner
   @@index([customerId])
@@ -659,6 +662,28 @@ model customerOrders {
 enum Priority {
   Dringend
   Normal
+}
+
+model customerOrdersHistory {
+  id String @id @default(uuid())
+
+  orderId String
+  order   customerOrders @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  statusFrom OrderStatus
+  statusTo   OrderStatus
+
+  //relation with user
+  partnerId String?
+  partner   User?   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  //relation with paetner employee
+  employeeId String?
+  employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  note       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Werkstattzettel {
