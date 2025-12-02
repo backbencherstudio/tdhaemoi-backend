@@ -40,13 +40,13 @@ model User {
   bestellubersicht       Bestellubersicht?
 
   // Mandatory one-to-one relationship
-  workshopNote     WorkshopNote?
-  stores           Stores[]
-  StoresHistory    StoresHistory[]
-  custom_shafts    custom_shafts[]
+  workshopNote      WorkshopNote?
+  stores            Stores[]
+  StoresHistory     StoresHistory[]
+  custom_shafts     custom_shafts[]
   // massschuheOrders massschuhe_order[]
-  massschuheOrders massschuhe_order[]
-  controllQuestions  controllQuestions[]
+  massschuheOrders  massschuhe_order[]
+  controllQuestions controllQuestions[]
 
   @@map("users")
 }
@@ -541,6 +541,10 @@ model customerHistorie {
 
   date DateTime?
 
+  // make a relation with customerOrders model
+  orderId String?
+  order   customerOrders? @relation("OrderCustomerHistorie", fields: [orderId], references: [id], onDelete: SetNull)
+
   url       String?
   methord   String?
   paymentIs String?
@@ -623,7 +627,7 @@ model customerOrders {
 
   werkstattzettel   Werkstattzettel? @relation(fields: [werkstattzettelId], references: [id], onDelete: SetNull, name: "WerkstattzettelOrdersRelation")
   werkstattzettelId String?
-  StoresHistory     StoresHistory[]
+  StoresHistory     StoresHistory[] @relation("OrderStoresHistory")
 
   ausführliche_diagnose String?
   versorgung_laut_arzt   String?
@@ -638,7 +642,8 @@ model customerOrders {
   storeId String?
   store   Stores? @relation(fields: [storeId], references: [id], onDelete: SetNull)
 
-  priority Priority? @default(Normal)
+  priority          Priority?          @default(Normal)
+  customerHistories customerHistorie[] @relation("OrderCustomerHistorie")
 
   @@unique([partnerId, orderNumber]) // Unique per partner
   @@index([customerId])
@@ -784,7 +789,7 @@ model StoresHistory {
   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   orderId String? // Optional: Link to order if applicable
-  order   customerOrders? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  order   customerOrders? @relation("OrderStoresHistory", fields: [orderId], references: [id], onDelete: SetNull)
 
   status StoresHistoryStatus?
 

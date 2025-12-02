@@ -120,7 +120,10 @@ const deserializeMaterial = (material: any): string[] | null => {
 };
 
 // Get next order number for a partner (starts from 1000)
-const getNextOrderNumberForPartner = async (tx: any, partnerId: string): Promise<number> => {
+const getNextOrderNumberForPartner = async (
+  tx: any,
+  partnerId: string
+): Promise<number> => {
   const maxOrder = await tx.customerOrders.findFirst({
     where: { partnerId },
     orderBy: { orderNumber: "desc" },
@@ -291,9 +294,17 @@ export const createOrder = async (req: Request, res: Response) => {
         });
 
         if (store?.groessenMengen && typeof store.groessenMengen === "object") {
-          const sizes = { ...(store.groessenMengen as any) } as Record<string, any>;
-          const targetLength = Math.max(Number(customer.fusslange1), Number(customer.fusslange2)) + 5;
-          const storeMatchedSizeKey = determineSizeFromGroessenMengen(sizes, targetLength);
+          const sizes = { ...(store.groessenMengen as any) } as Record<
+            string,
+            any
+          >;
+          const targetLength =
+            Math.max(Number(customer.fusslange1), Number(customer.fusslange2)) +
+            5;
+          const storeMatchedSizeKey = determineSizeFromGroessenMengen(
+            sizes,
+            targetLength
+          );
 
           if (!storeMatchedSizeKey) throw new Error("NO_MATCHED_SIZE_IN_STORE");
 
@@ -319,7 +330,7 @@ export const createOrder = async (req: Request, res: Response) => {
               partnerId: store.userId,
               customerId,
               orderId: newOrder.id,
-              status: "SELL_OUT"
+              status: "SELL_OUT",
             },
           });
 
@@ -332,7 +343,8 @@ export const createOrder = async (req: Request, res: Response) => {
           customerId,
           category: "Bestellungen",
           eventId: newOrder.id,
-          note: "New order created",
+          // set hear order id
+          note: `Einlagenauftrag ${newOrder.id} erstellt`,
           system_note: "New order created",
           paymentIs: totalPrice.toString(),
         },
@@ -441,20 +453,28 @@ const validateData = (customer: any, versorgung: any, werkstattzettel: any) => {
 const calculateTotalPrice = (customer: any): number =>
   (customer.fußanalyse || 0) + (customer.einlagenversorgung || 0);
 
-const determineProductSize = (customer: any, versorgung: any): string | null => {
+const determineProductSize = (
+  customer: any,
+  versorgung: any
+): string | null => {
   const largerFusslange = Math.max(
     Number(customer.fusslange1) + 5,
     Number(customer.fusslange2) + 5
   );
 
-  if (!versorgung.langenempfehlung || typeof versorgung.langenempfehlung !== "object") {
+  if (
+    !versorgung.langenempfehlung ||
+    typeof versorgung.langenempfehlung !== "object"
+  ) {
     return null;
   }
 
   let matchedSizeKey: string | null = null;
   let smallestDiff = Infinity;
 
-  for (const [sizeKey, sizeData] of Object.entries(versorgung.langenempfehlung as any)) {
+  for (const [sizeKey, sizeData] of Object.entries(
+    versorgung.langenempfehlung as any
+  )) {
     const lengthValue = extractLengthValue(sizeData);
     if (lengthValue === null) continue;
 
@@ -548,7 +568,12 @@ const createOrderTransaction = async (
 
 const updateStoreStock = async (
   tx: any,
-  params: { storeId: string; matchedSizeKey: string; customerId: string; orderId: string }
+  params: {
+    storeId: string;
+    matchedSizeKey: string;
+    customerId: string;
+    orderId: string;
+  }
 ) => {
   const { storeId, matchedSizeKey, customerId, orderId } = params;
 
@@ -557,7 +582,8 @@ const updateStoreStock = async (
     select: { id: true, groessenMengen: true, userId: true },
   });
 
-  if (!store?.groessenMengen || typeof store.groessenMengen !== "object") return;
+  if (!store?.groessenMengen || typeof store.groessenMengen !== "object")
+    return;
 
   const sizes = { ...(store.groessenMengen as any) };
   const sizeData = sizes[matchedSizeKey];
@@ -569,7 +595,10 @@ const updateStoreStock = async (
 
   sizes[matchedSizeKey] = { quantity: newQty, length: currentLength };
 
-  await tx.stores.update({ where: { id: store.id }, data: { groessenMengen: sizes } });
+  await tx.stores.update({
+    where: { id: store.id },
+    data: { groessenMengen: sizes },
+  });
 
   await tx.storesHistory.create({
     data: {
@@ -1805,8 +1834,23 @@ export const updateMultipleOrderStatuses = async (
             },
           },
           product: true,
+          // custommer histoary
         },
       });
+
+      //get order history if change status order "Ausgeführt" i need to chnage thiscustomerHistorie
+      // Update customer history ONLY for each order you updated
+      for (const id of orderIds) {
+        await tx.customerHistorie.updateMany({
+          where: {
+            eventId: id, // exact order ID
+          },
+          data: {
+            note: `Einlagenauftrag ${id} erstellt & Einlagenauftrag ${id} ${orderStatus}`,
+            updatedAt: new Date(),
+          },
+        });
+      }
 
       return {
         updateCount: updateResult.count,
@@ -2920,7 +2964,8 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
           ? new Date(fertigstellungBis)
           : null,
         versorgung,
-        bezahlt: bezahlt !== undefined && bezahlt !== null ? String(bezahlt) : null,
+        bezahlt:
+          bezahlt !== undefined && bezahlt !== null ? String(bezahlt) : null,
         fussanalysePreis: fussanalysePreis
           ? parseFloat(fussanalysePreis)
           : null,
@@ -2943,7 +2988,8 @@ export const createWerkstattzettel = async (req: Request, res: Response) => {
           ? new Date(fertigstellungBis)
           : null,
         versorgung,
-        bezahlt: bezahlt !== undefined && bezahlt !== null ? String(bezahlt) : null,
+        bezahlt:
+          bezahlt !== undefined && bezahlt !== null ? String(bezahlt) : null,
         fussanalysePreis: fussanalysePreis
           ? parseFloat(fussanalysePreis)
           : null,
@@ -3048,8 +3094,6 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
       },
     });
 
-
-
     const einlagen = await prisma.customerOrders.count({
       where: {
         ...partnerFilter,
@@ -3068,7 +3112,6 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
       success: true,
       data: count,
       totalPrice: einlagen,
-    
     });
   } catch (error: any) {
     console.error("Get Active Orders Count Error:", error);
@@ -3134,5 +3177,3 @@ export const getLast30DaysOrderEinlagen = async (
     });
   }
 };
-
-
