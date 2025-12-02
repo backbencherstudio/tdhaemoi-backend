@@ -1,7 +1,15 @@
 import express from "express";
-import { getQuestionsFlow, getInsolesQuestions, setInsolesAnswers, getShoesQuestions, setShoesAnswers } from "./question.controllers";
+import {
+  getQuestionsFlow,
+  getInsolesQuestions,
+  setInsolesAnswers,
+  getShoesQuestions,
+  setShoesAnswers,
+  getControllQuestions,
+  getQuestions,
+} from "./question.controllers";
 import { questionnaireData } from "./question.data";
-
+import { verifyUser } from "../../../middleware/verifyUsers";
 
 const router = express.Router();
 
@@ -12,15 +20,16 @@ router.post("/insoles/:customerId", setInsolesAnswers);
 
 router.put("/insoles/:customerId", setInsolesAnswers);
 
-
 router.get("/shoes/:customerId", getShoesQuestions);
 
 router.post("/shoes/:customerId", setShoesAnswers);
 
+// Get flattened question overview for partner to control which blocks are active
+router.get("/get-questions", verifyUser("PARTNER"), getQuestions);
+
 // router.post("/shoes/:customerId", setShoesAnswers);
 
 // router.put("/shoes/:customerId", setShoesAnswers);
-
 
 // // Shoe questionnaire routes
 // router.get("/", getQuestionsFlow);
@@ -29,6 +38,10 @@ router.post("/shoes/:customerId", setShoesAnswers);
 
 // router.get("/:categoryTitle/:subCategoryTitle", getQuestionsFlow);
 
-
+router.post(
+  "/controll-questions",
+  verifyUser("PARTNER"),
+  getControllQuestions
+);
 
 export default router;

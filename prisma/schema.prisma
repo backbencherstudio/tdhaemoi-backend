@@ -46,6 +46,7 @@ model User {
   custom_shafts    custom_shafts[]
   // massschuheOrders massschuhe_order[]
   massschuheOrders massschuhe_order[]
+  controllQuestions  controllQuestions[]
 
   @@map("users")
 }
@@ -417,9 +418,8 @@ model customers {
   // massschuheOrders massschuhe_order[]
   massschuheOrders massschuhe_order[]
 
-  shoeAnswers shoeAnswers[]
+  shoeAnswers    shoeAnswers[]
   insolesAnswers insolesAnswers[]
-
 
   @@unique([createdBy, customerNumber]) // Unique per partner
   @@index([vorname, nachname])
@@ -432,17 +432,35 @@ model customers {
 }
 
 model shoeAnswers {
-  id String @id @default(uuid())
+  id         String    @id @default(uuid())
   customerId String
-  customer customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  answer Json
+  customer   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  answer     Json
 }
 
 model insolesAnswers {
-  id String @id @default(uuid())
+  id         String    @id @default(uuid())
   customerId String
-  customer customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  answer Json
+  customer   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  answer     Json
+}
+
+model controllQuestions {
+  id String @id @default(uuid())
+
+  partnerId String @unique
+  partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  controlShoeQuestions    Int[]
+  controlInsolesQuestions Int[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([partnerId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([id])
 }
 
 model screener_file {
@@ -891,7 +909,6 @@ enum custom_shafts_status {
   Versandt
   Ausgeführt
 }
-
 
 //---------------------------massschuhe_order---------------------
 // model massschuhe_order {

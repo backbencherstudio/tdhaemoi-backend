@@ -1987,6 +1987,7 @@ export const InsolesQuestionnaData = [
 export const shoeQuestionnaData = [
     {
       id: 1,
+      title: "Einsatzbereich",
       questions: [
         {
           question: "Für was möchten Sie die Schuhe hauptsächlich verwenden?",
@@ -2017,6 +2018,7 @@ export const shoeQuestionnaData = [
     },
     {
       id: 2,
+      title: "Mobilität",
       questions: [
         {
           question: "Können Sie selbstständig gehen?",
@@ -2047,6 +2049,7 @@ export const shoeQuestionnaData = [
     },
     {
       id: 3,
+      title: "Belastung im Alltag",
       questions: [
         {
           question: "Wie stark belasten Sie Ihre Füße im Alltag?",
@@ -2072,6 +2075,7 @@ export const shoeQuestionnaData = [
     },
     {
       id: 4,
+      title: "Gewicht",
       questions: [
         {
           question: "Wie viel wiegen Sie ungefähr? (für Material- und Stabilitätsauswahl wichtig)",
@@ -2092,6 +2096,7 @@ export const shoeQuestionnaData = [
     },
     {
       id: 5,
+      title: "Gesundheitliche Besonderheiten",
       questions: [
         {
           question: "Haben Sie eine Krankheit, die Ihre Fußgesundheit beeinträchtigen kann (z. B. Diabetes, neurologische oder Gefäßerkrankungen)?",
@@ -2112,6 +2117,7 @@ export const shoeQuestionnaData = [
     },
     {
       id: 6,
+      title: "Schmerzen oder Problemzonen",
       questions: [
         {
           question: "Haben Sie aktuell Schmerzen oder Problemzonen an den Füßen?",
@@ -2147,6 +2153,7 @@ export const shoeQuestionnaData = [
     },
     {
       id: 7,
+      title: "Versorgungsziel",
       questions: [
         {
           question: "Was erwarten Sie von den Maßschuhen?",

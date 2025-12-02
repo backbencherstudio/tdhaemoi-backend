@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
-import { questionnaireData, InsolesQuestionnaData, shoeQuestionnaData } from "./question.data";
+import {
+  questionnaireData,
+  InsolesQuestionnaData,
+  shoeQuestionnaData,
+} from "./question.data";
 
 const prisma = new PrismaClient();
 
@@ -78,9 +82,6 @@ const prisma = new PrismaClient();
 //   return res.json({ level: "category", category: category.title, data: [] });
 // };
 
-
-
-
 function normalize(text) {
   return text
     .toLowerCase()
@@ -94,10 +95,10 @@ export const getQuestionsFlow = (req, res) => {
 
   // ✅ 1. If no category provided → return all categories
   if (!categoryTitle) {
-    const categories = questionnaireData.map(cat => ({
+    const categories = questionnaireData.map((cat) => ({
       title: cat.title,
       slug: normalize(cat.title),
-      image: cat.image
+      image: cat.image,
     }));
 
     return res.json({ level: "category", data: categories });
@@ -105,7 +106,7 @@ export const getQuestionsFlow = (req, res) => {
 
   // ✅ 2. Find category
   const category = questionnaireData.find(
-    c => normalize(c.title) === normalize(categoryTitle)
+    (c) => normalize(c.title) === normalize(categoryTitle)
   );
 
   if (!category) {
@@ -117,7 +118,7 @@ export const getQuestionsFlow = (req, res) => {
     // If subcategory provided → return questions
     if (subCategoryTitle) {
       const subCategory = category.data.find(
-        sub => normalize(sub.title) === normalize(subCategoryTitle)
+        (sub) => normalize(sub.title) === normalize(subCategoryTitle)
       );
 
       if (!subCategory) {
@@ -128,25 +129,25 @@ export const getQuestionsFlow = (req, res) => {
         level: "questions",
         category: category.title,
         subCategory: subCategory.title,
-        questions: (subCategory.questions || []).map(q => ({
+        questions: (subCategory.questions || []).map((q) => ({
           question: q.question,
           question_key: normalize(q.question),
-          options: q.options
-        }))
+          options: q.options,
+        })),
       });
     }
 
     // Otherwise → return subcategories
-    const subCategories = category.data.map(sub => ({
+    const subCategories = category.data.map((sub) => ({
       title: sub.title,
       slug: normalize(sub.title),
-      image: sub.image
+      image: sub.image,
     }));
 
     return res.json({
       level: "sub-categories",
       category: category.title,
-      data: subCategories
+      data: subCategories,
     });
   }
 
@@ -155,11 +156,11 @@ export const getQuestionsFlow = (req, res) => {
     return res.json({
       level: "questions",
       category: category.title,
-      questions: category.questions.map(q => ({
+      questions: category.questions.map((q) => ({
         question: q.question,
         question_key: normalize(q.question),
-        options: q.options
-      }))
+        options: q.options,
+      })),
     });
   }
 
@@ -167,11 +168,9 @@ export const getQuestionsFlow = (req, res) => {
   return res.json({
     level: "category",
     category: category.title,
-    data: []
+    data: [],
   });
 };
-
-
 
 // Helper function to mark options as current based on saved answers
 const markCurrentOptions = (questions: any[], savedAnswers: any) => {
@@ -206,7 +205,10 @@ const markCurrentOptions = (questions: any[], savedAnswers: any) => {
             return {
               ...mainQ,
               options: mainQ.options
-                .filter((opt: any) => opt && typeof opt === "object" && !Array.isArray(opt))
+                .filter(
+                  (opt: any) =>
+                    opt && typeof opt === "object" && !Array.isArray(opt)
+                )
                 .map((subQOption: any) => {
                   // This option is actually a sub-question
                   if (subQOption.question && subQOption.options) {
@@ -216,7 +218,12 @@ const markCurrentOptions = (questions: any[], savedAnswers: any) => {
                       return {
                         ...subQOption,
                         options: subQOption.options
-                          .filter((opt: any) => opt && typeof opt === "object" && !Array.isArray(opt))
+                          .filter(
+                            (opt: any) =>
+                              opt &&
+                              typeof opt === "object" &&
+                              !Array.isArray(opt)
+                          )
                           .map((opt: any) => ({
                             ...opt,
                             current: false,
@@ -224,16 +231,24 @@ const markCurrentOptions = (questions: any[], savedAnswers: any) => {
                       };
                     }
 
-                    const selectedIds = Array.isArray(subAnswer.id) ? subAnswer.id : [subAnswer.id];
+                    const selectedIds = Array.isArray(subAnswer.id)
+                      ? subAnswer.id
+                      : [subAnswer.id];
                     const ownText = subAnswer.ownText || {};
 
                     return {
                       ...subQOption,
                       options: subQOption.options
-                        .filter((opt: any) => opt && typeof opt === "object" && !Array.isArray(opt))
+                        .filter(
+                          (opt: any) =>
+                            opt &&
+                            typeof opt === "object" &&
+                            !Array.isArray(opt)
+                        )
                         .map((opt: any) => {
                           const isSelected = selectedIds.includes(opt.id);
-                          const customText = ownText[opt.id] || opt.ownText || "";
+                          const customText =
+                            ownText[opt.id] || opt.ownText || "";
 
                           return {
                             ...opt,
@@ -254,12 +269,16 @@ const markCurrentOptions = (questions: any[], savedAnswers: any) => {
           // Regular question structure (fallback)
           return {
             ...mainQ,
-            options: mainQ.options
-              ?.filter((opt: any) => opt && typeof opt === "object" && !Array.isArray(opt))
-              ?.map((opt: any) => ({
-                ...opt,
-                current: false,
-              })) || [],
+            options:
+              mainQ.options
+                ?.filter(
+                  (opt: any) =>
+                    opt && typeof opt === "object" && !Array.isArray(opt)
+                )
+                ?.map((opt: any) => ({
+                  ...opt,
+                  current: false,
+                })) || [],
           };
         }),
       };
@@ -272,7 +291,10 @@ const markCurrentOptions = (questions: any[], savedAnswers: any) => {
         questions: questionData.questions.map((q: any) => ({
           ...q,
           options: q.options
-            .filter((opt: any) => opt && typeof opt === "object" && !Array.isArray(opt))
+            .filter(
+              (opt: any) =>
+                opt && typeof opt === "object" && !Array.isArray(opt)
+            )
             .map((opt: any) => ({
               ...opt,
               current: false,
@@ -284,13 +306,18 @@ const markCurrentOptions = (questions: any[], savedAnswers: any) => {
     return {
       ...questionData,
       questions: questionData.questions.map((q: any) => {
-        const selectedIds = Array.isArray(answerData.id) ? answerData.id : [answerData.id];
+        const selectedIds = Array.isArray(answerData.id)
+          ? answerData.id
+          : [answerData.id];
         const ownText = answerData.ownText || {};
 
         return {
           ...q,
           options: q.options
-            .filter((opt: any) => opt && typeof opt === "object" && !Array.isArray(opt))
+            .filter(
+              (opt: any) =>
+                opt && typeof opt === "object" && !Array.isArray(opt)
+            )
             .map((opt: any) => {
               const isSelected = selectedIds.includes(opt.id);
               const customText = ownText[opt.id] || opt.ownText || "";
@@ -332,6 +359,14 @@ export const getInsolesQuestions = async (req: Request, res: Response) => {
       });
     }
 
+    // Determine partner (creator of the customer)
+    const partnerId = customer.createdBy;
+
+    // Get control configuration for this partner (if any)
+    const controlConfig = await prisma.controllQuestions.findUnique({
+      where: { partnerId },
+    });
+
     // Get saved answers if they exist
     const savedAnswer = await prisma.insolesAnswers.findFirst({
       where: { customerId },
@@ -339,9 +374,19 @@ export const getInsolesQuestions = async (req: Request, res: Response) => {
 
     const savedAnswers = savedAnswer?.answer || {};
 
+    // Decide which question blocks to show based on control configuration
+    let sourceQuestions = InsolesQuestionnaData;
+    const controlIds = controlConfig?.controlInsolesQuestions || [];
+
+    if (Array.isArray(controlIds) && controlIds.length > 0) {
+      sourceQuestions = InsolesQuestionnaData.filter((q) =>
+        controlIds.includes(q.id)
+      );
+    }
+
     // Mark current options based on saved answers
     const questionsWithCurrent = markCurrentOptions(
-      InsolesQuestionnaData,
+      sourceQuestions,
       savedAnswers
     );
 
@@ -428,8 +473,6 @@ export const setInsolesAnswers = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const getShoesQuestions = async (req: Request, res: Response) => {
   console.log("getShoesQuestions");
   try {
@@ -454,6 +497,14 @@ export const getShoesQuestions = async (req: Request, res: Response) => {
       });
     }
 
+    // Determine partner (creator of the customer)
+    const partnerId = customer.createdBy;
+
+    // Get control configuration for this partner (if any)
+    const controlConfig = await prisma.controllQuestions.findUnique({
+      where: { partnerId },
+    });
+
     // Get saved answers if they exist
     const savedAnswer = await prisma.shoeAnswers.findFirst({
       where: { customerId },
@@ -461,9 +512,19 @@ export const getShoesQuestions = async (req: Request, res: Response) => {
 
     const savedAnswers = savedAnswer?.answer || {};
 
+    // Decide which question blocks to show based on control configuration
+    let sourceQuestions = shoeQuestionnaData;
+    const controlIds = controlConfig?.controlShoeQuestions || [];
+
+    if (Array.isArray(controlIds) && controlIds.length > 0) {
+      sourceQuestions = shoeQuestionnaData.filter((q) =>
+        controlIds.includes(q.id)
+      );
+    }
+
     // Mark current options based on saved answers
     const questionsWithCurrent = markCurrentOptions(
-      shoeQuestionnaData,
+      sourceQuestions,
       savedAnswers
     );
 
@@ -479,9 +540,6 @@ export const getShoesQuestions = async (req: Request, res: Response) => {
     });
   }
 };
-
-
-
 
 // Set/Update insoles answers
 export const setShoesAnswers = async (req: Request, res: Response) => {
@@ -546,6 +604,96 @@ export const setShoesAnswers = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error setting shoes answers:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+export const getControllQuestions = async (req: Request, res: Response) => {
+  try {
+    const partnerId = req.user.id;
+    const { controlShoeQuestions, controlInsolesQuestions } = req.body;
+
+    const partner = await prisma.user.findUnique({
+      where: { id: partnerId },
+    });
+
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: "Partner not found",
+      });
+    }
+
+    const controllQuestions = await prisma.controllQuestions.upsert({
+      where: { partnerId: partnerId },
+      create: {
+        partnerId: partnerId,
+        controlShoeQuestions: controlShoeQuestions,
+        controlInsolesQuestions: controlInsolesQuestions,
+      },
+      update: {
+        controlShoeQuestions: controlShoeQuestions,
+        controlInsolesQuestions: controlInsolesQuestions,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: controllQuestions,
+    });
+  } catch (error: any) {
+    console.error("Error getting controll questions:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+// Get a flattened overview of all question blocks for partner configuration UI
+export const getQuestions = async (req: Request, res: Response) => {
+  try {
+    const partnerId = req.user.id;
+
+    // Load control configuration for this partner (if it exists)
+    const controlConfig = await prisma.controllQuestions.findUnique({
+      where: { partnerId },
+    });
+
+    const activeInsolesIds = controlConfig?.controlInsolesQuestions || [];
+    const activeShoesIds = controlConfig?.controlShoeQuestions || [];
+
+    // Flatten insoles questions: one entry per block (id), with title and main question text
+    const insoles = InsolesQuestionnaData.map((block) => ({
+      id: block.id,
+      // title: block.title ?? "",
+      question: block.questions?.[0]?.question ?? "",
+      active:
+        Array.isArray(activeInsolesIds) &&
+        activeInsolesIds.includes(block.id),
+    }));
+
+    // Flatten shoes questions similarly
+    const shoes = shoeQuestionnaData.map((block) => ({
+      id: block.id,
+      // title: block.title ?? "",
+      question: block.questions?.[0]?.question ?? "",
+      active:
+        Array.isArray(activeShoesIds) && activeShoesIds.includes(block.id),
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        insoles,
+        shoes,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error getting questions:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error",
