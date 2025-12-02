@@ -119,7 +119,9 @@ export const createCustomers = async (req: Request, res: Response) => {
       kodexeEinlagen,
       sonstiges,
       geburtsdatum,
-      billingType
+      billingType,
+      gender
+
     } = req.body;
 
     const existingCustomer = await prisma.customers.findUnique({
@@ -176,6 +178,7 @@ export const createCustomers = async (req: Request, res: Response) => {
           updatedBy: null,
           geburtsdatum: geburtsdatum || null,
           billingType: billingType || null,
+          gender: gender || null,
         },
       });
 
