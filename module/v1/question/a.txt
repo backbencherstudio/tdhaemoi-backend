@@ -1,0 +1,603 @@
+{
+    "success": true,
+    "data": [
+        {
+            "id": 1,
+            "questions": [
+                {
+                    "question": "Welches Aktivitätslevel Trifft Am Besten Auf Sie Zu?",
+                    "options": [
+                        {
+                            "id": 1,
+                            "option": "Sportlich aktiv (regelmäßiges Training oder sportliche Aktivitäten)",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 2,
+                            "option": "Mäßig aktiv (leichte körperliche Aktivität oder Gehen)",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 3,
+                            "option": "Wenig aktiv (hauptsächlich sitzende Tätigkeit)",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 4,
+                            "option": "Sehr wenig aktiv",
+                            "ownText": "",
+                            "current": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "questions": [
+                {
+                    "question": "Haben Sie Gesundheitliche Probleme Wie Diabetes Oder Andere Erkrankungen, Die Ihre Fußgesundheit Beeinträchtigen Könnten?",
+                    "options": [
+                        {
+                            "id": 1,
+                            "option": "Ja, bitte eingeben",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 2,
+                            "option": "Nein",
+                            "ownText": "",
+                            "current": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "questions": [
+                {
+                    "question": "Wie Viel Wiegen Sie Ca.?",
+                    "options": [
+                        {
+                            "id": 1,
+                            "option": "Unter 50kg",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 2,
+                            "option": "Ja, 51-60kg",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 3,
+                            "option": "61-70kg",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 4,
+                            "option": "71-80kg",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 5,
+                            "option": "81-90kg",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 6,
+                            "option": "91-100kg",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 7,
+                            "option": "101-110kg",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 8,
+                            "option": "Über 110kg",
+                            "ownText": "",
+                            "current": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "questions": [
+                {
+                    "question": "Haben sie schmerzen? Wenn ja, bitte markieren sie  die betroffenen bereiche auf dem 3D-Modell.",
+                    "options": [
+                        {
+                            "id": 1,
+                            "question": "Wann haben die Schmerzen begonnen?",
+                            "options": [
+                                {
+                                    "id": 1,
+                                    "option": "Vor weniger als einer Woche",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 2,
+                                    "option": "Seit mehreren Wochen ",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 3,
+                                    "option": "Seit mehreren Monaten",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 4,
+                                    "option": "Seit über einem Jahr",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 5,
+                                    "option": "Ich kann es nicht genau sagen",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 6,
+                                    "option": "Die Schmerzen treten immer wieder auf",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 7,
+                                    "option": "seit längerer Zeit",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 8,
+                                    "option": "Erst seit einer bestimmten Belastung (z. B. Sport, langes Gehen)",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 9,
+                                    "option": "Nach einer Verletzung / Operation",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 10,
+                                    "option": "Seit ich neue Schuhe trage",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 11,
+                                    "option": "Seit meiner Schwangerschaft / Geburt",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 12,
+                                    "option": "Seit einer beruflichen Veränderung (z. B. mehr Stehen)",
+                                    "ownText": "",
+                                    "current": false
+                                }
+                            ]
+                        },
+                        {
+                            "id": 2,
+                            "question": "Wie beeinflussen die Schmerzen deinen Alltag?",
+                            "options": [
+                                {
+                                    "id": 1,
+                                    "option": "Ich kann keine längeren Strecken mehr gehen",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 2,
+                                    "option": "Ich muss häufiger Pausen machen",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 3,
+                                    "option": "Ich kann meinen Sport nicht mehr ausüben",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 4,
+                                    "option": "Ich stehe ungern längere Zeit",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 5,
+                                    "option": "Ich vermeide bestimmte Bewegungen",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 6,
+                                    "option": "Ich habe Angst vor Verschlechterung",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 7,
+                                    "option": "Ich schlafe schlechter",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "0": "I",
+                                    "1": "c",
+                                    "2": "h",
+                                    "3": " ",
+                                    "4": "s",
+                                    "5": "t",
+                                    "6": "e",
+                                    "7": "h",
+                                    "8": "e",
+                                    "9": " ",
+                                    "10": "u",
+                                    "11": "n",
+                                    "12": "g",
+                                    "13": "e",
+                                    "14": "r",
+                                    "15": "n",
+                                    "16": " ",
+                                    "17": "l",
+                                    "18": "ä",
+                                    "19": "n",
+                                    "20": "g",
+                                    "21": "e",
+                                    "22": "r",
+                                    "23": "e",
+                                    "24": " ",
+                                    "25": "Z",
+                                    "26": "e",
+                                    "27": "i",
+                                    "28": "t",
+                                    "current": false
+                                },
+                                {
+                                    "id": 8,
+                                    "option": "Es beeinträchtigt meine Arbeit",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 9,
+                                    "option": "Es belastet mich psychisch",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 10,
+                                    "option": "Kaum",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 11,
+                                    "option": "ich komme noch gut damit zurecht",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 12,
+                                    "option": "Es ist situativ unangenehm, aber erträglich",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 13,
+                                    "option": "Stark",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 14,
+                                    "option": "ich bin im Alltag deutlich eingeschränkt",
+                                    "ownText": "",
+                                    "current": false
+                                }
+                            ]
+                        },
+                        {
+                            "id": 3,
+                            "question": "Wie fühlen sich die Schmerzen an?",
+                            "options": [
+                                {
+                                    "id": 1,
+                                    "option": "Stechend",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 2,
+                                    "option": "Ziehend",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 3,
+                                    "option": "Dumpf",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 4,
+                                    "option": "Brennend",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 5,
+                                    "option": "Elektrisierend",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 6,
+                                    "option": "Druckartig",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 7,
+                                    "option": "Krampfartig",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 8,
+                                    "option": "Wechselt / schwer zu beschreiben",
+                                    "ownText": "",
+                                    "current": false
+                                }
+                            ]
+                        },
+                        {
+                            "id": 4,
+                            "question": "Wann verstärken sich die Schmerzen?",
+                            "options": [
+                                {
+                                    "id": 1,
+                                    "option": "Beim Barfußgehen",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 2,
+                                    "option": "Beim Tragen von Schuhen mit harter Sohle",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 3,
+                                    "option": "Nach längerem Stehen",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 4,
+                                    "option": "Beim Laufen / Joggen",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 5,
+                                    "option": "Beim Gehen bergauf / bergab",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 6,
+                                    "option": "Bei schneller Bewegung / Sprint",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 7,
+                                    "option": "Bei bestimmten Bewegungen (z. B. Abrollen)",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 8,
+                                    "option": "Nach dem Aufstehen",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 9,
+                                    "option": "Nach Belastung",
+                                    "ownText": "",
+                                    "current": false
+                                },
+                                {
+                                    "id": 10,
+                                    "option": "Ohne erkennbaren Auslöser",
+                                    "ownText": "",
+                                    "current": false
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "questions": [
+                {
+                    "question": "Haben sie sonst noch relevante Schmerzen oder beschwerden?",
+                    "options": [
+                        {
+                            "id": 1,
+                            "option": "Nein",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 2,
+                            "option": "Ja, Rückenschmerzen",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 3,
+                            "option": "Ja, Hüftprobleme",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 4,
+                            "option": "Ja, Wadenprobleme",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 5,
+                            "option": "Ja, Achilessehnenprobleme",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 6,
+                            "option": "Ja, Gelenkschmerzen",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 7,
+                            "option": "Andere, bitte angeben",
+                            "ownText": "",
+                            "current": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": 6,
+            "questions": [
+                {
+                    "question": "Haben sie Probleme mit ihrem Gleichgewicht, Gang oder der beweglichkeit?",
+                    "options": [
+                        {
+                            "id": 1,
+                            "option": "Ja, bitte angeben",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 2,
+                            "option": "Nein",
+                            "ownText": "",
+                            "current": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": 7,
+            "questions": [
+                {
+                    "question": "Welche Erwartungen oder Ziele haben Sie mit Einlagen?",
+                    "options": [
+                        {
+                            "id": 1,
+                            "option": "Besserer Komfort",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 2,
+                            "option": "Unterstützung bei Fußproblemen",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 3,
+                            "option": "Bessere Performance beim Sport",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 4,
+                            "option": "Vorbeugen von Fußschmerzen",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 5,
+                            "option": "Andere, bitte eingeben",
+                            "ownText": "",
+                            "current": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": 8,
+            "questions": [
+                {
+                    "question": "Haben Sie eine bevorzugte Farbe für den Überzug Ihrer Einlagen?",
+                    "options": [
+                        {
+                            "id": 1,
+                            "option": "Schwarz",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 2,
+                            "option": "Grau",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 3,
+                            "option": "Blau",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 4,
+                            "option": "Weiß",
+                            "ownText": "",
+                            "current": false
+                        },
+                        {
+                            "id": 5,
+                            "option": "Beige",
+                            "ownText": "",
+                            "current": false
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

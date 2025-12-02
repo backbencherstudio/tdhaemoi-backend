@@ -417,6 +417,10 @@ model customers {
   // massschuheOrders massschuhe_order[]
   massschuheOrders massschuhe_order[]
 
+  shoeAnswers shoeAnswers[]
+  insolesAnswers insolesAnswers[]
+
+
   @@unique([createdBy, customerNumber]) // Unique per partner
   @@index([vorname, nachname])
   // @@index([telefonnummer])
@@ -425,6 +429,20 @@ model customers {
   @@index([id, vorname])
   @@index([id, email])
   @@index([createdAt])
+}
+
+model shoeAnswers {
+  id String @id @default(uuid())
+  customerId String
+  customer customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  answer Json
+}
+
+model insolesAnswers {
+  id String @id @default(uuid())
+  customerId String
+  customer customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  answer Json
 }
 
 model screener_file {
