@@ -118,6 +118,8 @@ export const createCustomers = async (req: Request, res: Response) => {
       kodexeMassschuhe,
       kodexeEinlagen,
       sonstiges,
+      geburtsdatum,
+      billingType
     } = req.body;
 
     const existingCustomer = await prisma.customers.findUnique({
@@ -172,6 +174,8 @@ export const createCustomers = async (req: Request, res: Response) => {
           zehentyp2: csvData.C136 || null,
           createdBy: req.user.id,
           updatedBy: null,
+          geburtsdatum: geburtsdatum || null,
+          billingType: billingType || null,
         },
       });
 
