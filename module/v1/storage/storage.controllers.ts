@@ -4,18 +4,16 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 /**
- * Calculate Status dynamically based on mindestbestand and groessenMengen
+ * Calculate overall Status dynamically based on mindestbestand / mindestmenge and groessenMengen
  * @param groessenMengen - JSON object with sizes and quantities
- *   New format: {"35": {"quantity": 5, "length": 225}, "36": {"quantity": 2, "length": 230}}
- *   Old format (backward compatible): {"35": 5, "36": 2}
- * @param mindestbestand - Minimum stock level threshold
- * @returns "Voller Bestand" if all sizes >= mindestbestand, "Niedriger Bestand" otherwise
+ *   New format: {"35": {"quantity": 5, "length": 225, "mindestmenge": 3}, ...}
+ *   Old format (backward compatible):
+ *     - {"35": {"quantity": 5, "length": 225}, ...}  (no mindestmenge per size → fallback to global mindestbestand)
+ *     - {"35": 5, "36": 2}                          (plain quantity → fallback to global mindestbestand)
+ * @param mindestbestand - Global minimum stock level threshold (fallback)
+ * @returns "Voller Bestand" if all sizes >= threshold, otherwise "Niedriger Bestand"
  */
-
-const calculateStatus = (
-  groessenMengen: any,
-  mindestbestand: number
-): string => {
+const calculateStatus = (groessenMengen: any, mindestbestand: number): string => {
   if (!groessenMengen || typeof groessenMengen !== "object") {
     return "Niedriger Bestand";
   }
@@ -27,23 +25,31 @@ const calculateStatus = (
     return "Niedriger Bestand";
   }
 
-  // Check if any size is below mindestbestand
   for (const sizeKey of sizeKeys) {
     const sizeValue = sizes[sizeKey];
     let quantity: number;
+    let threshold: number;
 
-    // Handle new format: { quantity: number, length: number }
     if (sizeValue && typeof sizeValue === "object" && "quantity" in sizeValue) {
       quantity = Number(sizeValue.quantity ?? 0);
+      // Per-size mindestmenge, fallback to global mindestbestand
+      const sizeMindest = Number(
+        (sizeValue as any).mindestmenge !== undefined
+          ? (sizeValue as any).mindestmenge
+          : mindestbestand
+      );
+      threshold = isNaN(sizeMindest) ? mindestbestand : sizeMindest;
     }
-    // Handle old format: number (backward compatibility)
+    // Old plain-number format → use global mindestbestand as threshold
     else if (typeof sizeValue === "number") {
       quantity = sizeValue;
+      threshold = mindestbestand;
     } else {
       quantity = 0;
+      threshold = mindestbestand;
     }
 
-    if (quantity < mindestbestand) {
+    if (quantity < threshold) {
       return "Niedriger Bestand";
     }
   }
@@ -52,13 +58,87 @@ const calculateStatus = (
 };
 
 /**
+ * Add per-size warningStatus (not stored in DB, only in API response)
+ * Structure example for each size:
+ *  "35": {
+ *    "length": 225,
+ *    "quantity": 5,
+ *    "mindestmenge": 3,
+ *    "warningStatus": "Niedriger Bestand" | "Voller Bestand"
+ *  }
+ */
+const addWarningStatusToGroessenMengen = (
+  groessenMengen: any,
+  mindestbestand: number
+) => {
+  if (!groessenMengen || typeof groessenMengen !== "object") {
+    return groessenMengen;
+  }
+
+  const sizes = groessenMengen as Record<string, any>;
+  const result: Record<string, any> = {};
+
+  for (const sizeKey of Object.keys(sizes)) {
+    const sizeValue = sizes[sizeKey];
+
+    // Old numeric format → convert to object with quantity
+    if (typeof sizeValue === "number") {
+      const quantity = sizeValue;
+      const threshold = mindestbestand;
+      const warningStatus =
+        quantity < threshold ? "Niedriger Bestand" : "Voller Bestand";
+
+      result[sizeKey] = {
+        quantity,
+        mindestmenge: threshold,
+        warningStatus,
+      };
+      continue;
+    }
+
+    if (sizeValue && typeof sizeValue === "object") {
+      const quantity = Number(sizeValue.quantity ?? 0);
+      const sizeMindestRaw =
+        (sizeValue as any).mindestmenge !== undefined
+          ? (sizeValue as any).mindestmenge
+          : mindestbestand;
+      const sizeMindest = Number(sizeMindestRaw);
+      const threshold = isNaN(sizeMindest) ? mindestbestand : sizeMindest;
+
+      const warningStatus =
+        quantity < threshold ? "Niedriger Bestand" : "Voller Bestand";
+
+      // Never persist warningStatus to DB; only add it on the fly here
+      result[sizeKey] = {
+        ...sizeValue,
+        mindestmenge: threshold,
+        warningStatus,
+      };
+      continue;
+    }
+
+    // Unknown value type, just pass-through
+    result[sizeKey] = sizeValue;
+  }
+
+  return result;
+};
+
+/**
  * Add Status field to a single store object
  */
 const addStatusToStore = (store: any) => {
   if (!store) return store;
+
+  const enrichedGroessenMengen = addWarningStatusToGroessenMengen(
+    store.groessenMengen,
+    store.mindestbestand
+  );
+
   return {
     ...store,
     Status: calculateStatus(store.groessenMengen, store.mindestbestand),
+    groessenMengen: enrichedGroessenMengen,
   };
 };
 
@@ -110,6 +190,25 @@ export const createStorage = async (req: Request, res: Response) => {
       return;
     }
 
+    // Clean groessenMengen before saving:
+    // - keep quantity/length/mindestmenge
+    // - drop warningStatus (it's calculated in responses)
+    let cleanedGroessenMengen = groessenMengen;
+    if (groessenMengen && typeof groessenMengen === "object") {
+      const sizes = groessenMengen as Record<string, any>;
+      const cleaned: Record<string, any> = {};
+      for (const sizeKey of Object.keys(sizes)) {
+        const sizeValue = sizes[sizeKey];
+        if (sizeValue && typeof sizeValue === "object") {
+          const { warningStatus, ...rest } = sizeValue;
+          cleaned[sizeKey] = rest;
+        } else {
+          cleaned[sizeKey] = sizeValue;
+        }
+      }
+      cleanedGroessenMengen = cleaned;
+    }
+
     const newStorage = await prisma.stores.create({
       data: {
         produktname,
@@ -117,7 +216,7 @@ export const createStorage = async (req: Request, res: Response) => {
         artikelnummer,
         lagerort,
         mindestbestand,
-        groessenMengen,
+        groessenMengen: cleanedGroessenMengen,
         purchase_price,
         selling_price,
         userId,
@@ -280,6 +379,22 @@ export const updateStorage = async (req: Request, res: Response) => {
 
     // Status = auto generated, never user updated
     delete updatedData.Status;
+
+    // Clean groessenMengen in updates – never persist warningStatus
+    if (updatedData.groessenMengen && typeof updatedData.groessenMengen === "object") {
+      const sizes = updatedData.groessenMengen as Record<string, any>;
+      const cleaned: Record<string, any> = {};
+      for (const sizeKey of Object.keys(sizes)) {
+        const sizeValue = sizes[sizeKey];
+        if (sizeValue && typeof sizeValue === "object") {
+          const { warningStatus, ...rest } = sizeValue;
+          cleaned[sizeKey] = rest;
+        } else {
+          cleaned[sizeKey] = sizeValue;
+        }
+      }
+      updatedData.groessenMengen = cleaned;
+    }
 
     // Fetch old store data
     const oldStore = await prisma.stores.findUnique({

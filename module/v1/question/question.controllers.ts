@@ -375,14 +375,13 @@ export const getInsolesQuestions = async (req: Request, res: Response) => {
     const savedAnswers = savedAnswer?.answer || {};
 
     // Decide which question blocks to show based on control configuration
-    let sourceQuestions = InsolesQuestionnaData;
     const controlIds = controlConfig?.controlInsolesQuestions || [];
 
-    if (Array.isArray(controlIds) && controlIds.length > 0) {
-      sourceQuestions = InsolesQuestionnaData.filter((q) =>
-        controlIds.includes(q.id)
-      );
-    }
+    // If no IDs are configured, return no questions
+    const sourceQuestions =
+      Array.isArray(controlIds) && controlIds.length > 0
+        ? InsolesQuestionnaData.filter((q) => controlIds.includes(q.id))
+        : [];
 
     // Mark current options based on saved answers
     const questionsWithCurrent = markCurrentOptions(
@@ -513,14 +512,13 @@ export const getShoesQuestions = async (req: Request, res: Response) => {
     const savedAnswers = savedAnswer?.answer || {};
 
     // Decide which question blocks to show based on control configuration
-    let sourceQuestions = shoeQuestionnaData;
     const controlIds = controlConfig?.controlShoeQuestions || [];
 
-    if (Array.isArray(controlIds) && controlIds.length > 0) {
-      sourceQuestions = shoeQuestionnaData.filter((q) =>
-        controlIds.includes(q.id)
-      );
-    }
+    // If no IDs are configured, return no questions
+    const sourceQuestions =
+      Array.isArray(controlIds) && controlIds.length > 0
+        ? shoeQuestionnaData.filter((q) => controlIds.includes(q.id))
+        : [];
 
     // Mark current options based on saved answers
     const questionsWithCurrent = markCurrentOptions(
@@ -653,12 +651,10 @@ export const getControllQuestions = async (req: Request, res: Response) => {
   }
 };
 
-// Get a flattened overview of all question blocks for partner configuration UI
 export const getQuestions = async (req: Request, res: Response) => {
   try {
     const partnerId = req.user.id;
 
-    // Load control configuration for this partner (if it exists)
     const controlConfig = await prisma.controllQuestions.findUnique({
       where: { partnerId },
     });
@@ -666,20 +662,18 @@ export const getQuestions = async (req: Request, res: Response) => {
     const activeInsolesIds = controlConfig?.controlInsolesQuestions || [];
     const activeShoesIds = controlConfig?.controlShoeQuestions || [];
 
-    // Flatten insoles questions: one entry per block (id), with title and main question text
     const insoles = InsolesQuestionnaData.map((block) => ({
       id: block.id,
-      // title: block.title ?? "",
       question: block.questions?.[0]?.question ?? "",
       active:
         Array.isArray(activeInsolesIds) &&
         activeInsolesIds.includes(block.id),
     }));
 
-    // Flatten shoes questions similarly
+
     const shoes = shoeQuestionnaData.map((block) => ({
       id: block.id,
-      // title: block.title ?? "",
+
       question: block.questions?.[0]?.question ?? "",
       active:
         Array.isArray(activeShoesIds) && activeShoesIds.includes(block.id),

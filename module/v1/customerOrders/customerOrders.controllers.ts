@@ -283,7 +283,19 @@ export const createOrder = async (req: Request, res: Response) => {
           storeId: versorgung?.storeId ?? null,
           bezahlt: werkstattzettel?.bezahlt ?? null,
         },
-        select: { id: true },
+        // i need to get employee id from werkstattzettel
+        select: {
+          id: true,
+          werkstattzettel: {
+            select: {
+              employee: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       // Update store stock if needed
@@ -347,6 +359,16 @@ export const createOrder = async (req: Request, res: Response) => {
           note: `Einlagenauftrag ${newOrder.id} erstellt`,
           system_note: "New order created",
           paymentIs: totalPrice.toString(),
+        },
+      });
+      await tx.customerOrdersHistory.create({
+        data: {
+          orderId: newOrder.id,
+          statusFrom: "Warten_auf_Versorgungsstart",
+          statusTo: "Warten_auf_Versorgungsstart",
+          partnerId: partnerId,
+          employeeId: newOrder.werkstattzettel.employee?.id || null,
+          note: null,
         },
       });
 
@@ -1835,6 +1857,20 @@ export const updateMultipleOrderStatuses = async (
           },
           product: true,
           // custommer histoary
+          partner: {
+            select: {
+              id: true,
+            },
+          },
+          werkstattzettel: {
+            select: {
+              employee: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -1848,6 +1884,32 @@ export const updateMultipleOrderStatuses = async (
           data: {
             note: `Einlagenauftrag ${id} erstellt & Einlagenauftrag ${id} ${orderStatus}`,
             updatedAt: new Date(),
+          },
+        });
+      }
+
+      //i need to get prevus customerOrdersHistory then i need to calculate how much time stary in prevus status
+      for (const order of updatedOrders) {
+        const previousHistoryRecord = await tx.customerOrdersHistory.findFirst({
+          where: {
+            orderId: order.id,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1,
+          select: {
+            statusTo: true,
+          },
+        });
+        await tx.customerOrdersHistory.create({
+          data: {
+            orderId: order.id,
+            statusFrom: previousHistoryRecord?.statusTo || order.orderStatus,
+            statusTo: orderStatus,
+            partnerId: order.partnerId,
+            employeeId: order.werkstattzettel.employee?.id || null,
+            note: `Status changed from ${order.orderStatus} to ${orderStatus}`,
           },
         });
       }
@@ -1879,6 +1941,231 @@ export const updateMultipleOrderStatuses = async (
     });
   }
 };
+
+// export const updateMultipleOrderStatuses = async (
+//   req: Request,
+//   res: Response
+// ) => {
+//   try {
+//     const { orderIds, orderStatus, note, employeeId } = req.body;
+//     const partnerId = req.user?.id; // Assuming user ID is available in req.user
+
+//     // Validate required fields
+//     if (!orderIds || !orderStatus) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Order IDs and order status are required",
+//       });
+//     }
+
+//     // Validate orderIds is an array
+//     if (!Array.isArray(orderIds) || orderIds.length === 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Order IDs must be a non-empty array",
+//       });
+//     }
+
+//     // Validate order status
+//     const validOrderStatuses = new Set([
+//       "Warten_auf_Versorgungsstart",
+//       "In_Fertigung",
+//       "Verpacken_Qualitätssicherung",
+//       "Abholbereit_Versandt",
+//       "Ausgeführt",
+//     ]);
+
+//     if (!validOrderStatuses.has(orderStatus)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid order status",
+//         error: `Order status must be one of: ${Array.from(
+//           validOrderStatuses
+//         ).join(", ")}`,
+//         validStatuses: Array.from(validOrderStatuses),
+//       });
+//     }
+
+//     // Check if all orders exist and get their current status
+//     const existingOrders = await prisma.customerOrders.findMany({
+//       where: {
+//         id: {
+//           in: orderIds,
+//         },
+//       },
+//       select: {
+//         id: true,
+//         orderStatus: true,
+//         orderNumber: true,
+//       },
+//     });
+
+//     const existingOrderIds = existingOrders.map((order) => order.id);
+//     const nonExistingOrderIds = orderIds.filter(
+//       (id) => !existingOrderIds.includes(id)
+//     );
+
+//     if (nonExistingOrderIds.length > 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Some orders not found",
+//         nonExistingOrderIds,
+//         existingOrderIds,
+//       });
+//     }
+
+//     // Update multiple orders in a transaction
+//     const result = await prisma.$transaction(async (tx) => {
+//       const historyRecords = [];
+//       const currentTimestamp = new Date();
+
+//       // Update all orders and create history records
+//       for (const order of existingOrders) {
+//         // Only create history if status is changing
+//         if (order.orderStatus !== orderStatus) {
+//           // Update the order
+//           await tx.customerOrders.update({
+//             where: {
+//               id: order.id,
+//             },
+//             data: {
+//               orderStatus,
+//               statusUpdate: currentTimestamp,
+//             },
+//           });
+
+//           // Create history record for this order
+//           const historyRecord = await tx.customerOrdersHistory.create({
+//             data: {
+//               orderId: order.id,
+//               statusFrom: order.orderStatus,
+//               statusTo: orderStatus,
+//               partnerId: partnerId,
+//               employeeId: employeeId || null,
+//               note:
+//                 note ||
+//                 `Status changed from ${order.orderStatus} to ${orderStatus}`,
+//               createdAt: currentTimestamp,
+//               updatedAt: currentTimestamp,
+//             },
+//           });
+
+//           historyRecords.push(historyRecord);
+//         } else {
+//           // Status not changing, just update timestamp if needed
+//           await tx.customerOrders.update({
+//             where: {
+//               id: order.id,
+//             },
+//             data: {
+//               statusUpdate: currentTimestamp,
+//             },
+//           });
+//         }
+//       }
+
+//       // Get the updated orders with their details
+//       const updatedOrders = await tx.customerOrders.findMany({
+//         where: {
+//           id: {
+//             in: orderIds,
+//           },
+//         },
+//         include: {
+//           customer: {
+//             select: {
+//               id: true,
+//               customerNumber: true,
+//               vorname: true,
+//               nachname: true,
+//               email: true,
+//               wohnort: true,
+//             },
+//           },
+//           product: true,
+//           // Include history for the response if needed
+//           customerOrdersHistories: {
+//             take: 5,
+//             orderBy: {
+//               createdAt: "desc",
+//             },
+//             include: {
+//               partner: {
+//                 select: {
+//                   id: true,
+//                   name: true,
+//                   email: true,
+//                 },
+//               },
+//               employee: {
+//                 select: {
+//                   id: true,
+//                   accountName: true,
+//                   email: true,
+//                 },
+//               },
+//             },
+//           },
+//         },
+//       });
+
+//       // Update customer history ONLY for each order you updated
+//       for (const id of orderIds) {
+//         const order = existingOrders.find((o) => o.id === id);
+//         if (order) {
+//           await tx.customerHistorie.updateMany({
+//             where: {
+//               eventId: id, // exact order ID
+//             },
+//             data: {
+//               note: `Auftrag ${order.orderNumber} Status: ${orderStatus}`,
+//               updatedAt: currentTimestamp,
+//             },
+//           });
+//         }
+//       }
+
+//       return {
+//         updateCount: historyRecords.length, // Only count orders that actually changed status
+//         historyRecords,
+//         updatedOrders,
+//       };
+//     });
+
+//     // Format orders with invoice URLs
+//     const formattedOrders = result.updatedOrders.map((order) => ({
+//       ...order,
+//       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+//     }));
+
+//     // Format response similar to UI
+//     const formattedHistory = result.historyRecords.map((record) => ({
+//       id: record.id,
+//       date: record.createdAt,
+//       user: partnerId, // You might want to get user name from database
+//       action: `${record.statusFrom} → ${record.statusTo}`,
+//       note: record.note,
+//     }));
+
+//     res.status(200).json({
+//       success: true,
+//       message: `Successfully updated ${result.updateCount} order(s) to status: ${orderStatus}`,
+//       data: {
+//         orders: formattedOrders,
+//         history: formattedHistory,
+//       },
+//       updatedCount: result.updateCount,
+//       historyCount: result.historyRecords.length,
+//     });
+//   } catch (error: any) {
+//     console.error("Update Multiple Order Statuses Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong while updating order statuses",
+//       error: error.message,
+//     });
+//   }
+// };
 
 export const updateOrderPriority = async (req: Request, res: Response) => {
   try {
@@ -3173,6 +3460,564 @@ export const getLast30DaysOrderEinlagen = async (
       success: false,
       message:
         "Something went wrong while fetching last 30 days order einlagen",
+      error: error.message,
+    });
+  }
+};
+
+//-----------------------------------------------------------------
+// Helper function to format duration
+const formatDuration = (milliseconds: number): string => {
+  const seconds = Math.floor(milliseconds / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) {
+    const remainingHours = hours % 24;
+    const remainingMinutes = minutes % 60;
+    if (remainingHours > 0 && remainingMinutes > 0) {
+      return `${days}T ${remainingHours}h ${remainingMinutes}m`;
+    } else if (remainingHours > 0) {
+      return `${days}T ${remainingHours}h`;
+    } else if (remainingMinutes > 0) {
+      return `${days}T ${remainingMinutes}m`;
+    }
+    return `${days}T`;
+  }
+
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes > 0) {
+      return `${hours}h ${remainingMinutes}m`;
+    }
+    return `${hours}h`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+
+  return `${seconds}s`;
+};
+
+// Helper function to format status name for display (German format)
+const formatStatusName = (status: string): string => {
+  return status.replace(/_/g, " ");
+};
+
+//3 panda
+export const getOrdersHistory = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required",
+      });
+    }
+
+    // Get order with all necessary relations
+    const order = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        orderNumber: true,
+        orderStatus: true,
+        createdAt: true,
+        statusUpdate: true,
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        werkstattzettel: {
+          select: {
+            employee: {
+              select: {
+                id: true,
+                employeeName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Get order status history
+    const orderHistory = await prisma.customerOrdersHistory.findMany({
+      where: { orderId },
+      orderBy: { createdAt: "asc" },
+      include: {
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        employee: {
+          select: {
+            id: true,
+            employeeName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Get customer history entries related to this order
+    const customerHistory = await prisma.customerHistorie.findMany({
+      where: {
+        eventId: orderId,
+        category: "Bestellungen",
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // Calculate status durations
+    const statusDurations: Array<{
+      status: string;
+      statusDisplay: string;
+      duration: string;
+      durationMs: number;
+      startDate: Date;
+      endDate: Date | null;
+      assignee: string;
+      assigneeId: string | null;
+      assigneeType: "employee" | "partner" | "system";
+    }> = [];
+
+    // Track status transitions
+    const statusTransitions: Array<{
+      status: string;
+      startTime: Date;
+      endTime: Date | null;
+      assignee: string;
+      assigneeId: string | null;
+      assigneeType: "employee" | "partner" | "system";
+    }> = [];
+
+    // Process order history to calculate durations
+    if (orderHistory.length > 0) {
+      // Filter out records where statusFrom === statusTo (initial creation records)
+      const actualStatusChanges = orderHistory.filter(
+        (record) => record.statusFrom !== record.statusTo
+      );
+
+      // Determine initial status from first record
+      const firstRecord = orderHistory[0];
+      const initialStatus =
+        firstRecord.statusFrom === firstRecord.statusTo
+          ? firstRecord.statusTo
+          : firstRecord.statusFrom;
+
+      // Track initial status from order creation
+      let statusStartTime = order.createdAt;
+      let statusAssignee =
+        order.werkstattzettel?.employee?.employeeName ||
+        order.partner?.name ||
+        "System";
+      let statusAssigneeId =
+        order.werkstattzettel?.employee?.id || order.partner?.id || null;
+      let statusAssigneeType: "employee" | "partner" | "system" = order
+        .werkstattzettel?.employee?.id
+        ? "employee"
+        : order.partner?.id
+        ? "partner"
+        : "system";
+
+      // Process each status change
+      for (let i = 0; i < actualStatusChanges.length; i++) {
+        const record = actualStatusChanges[i];
+        const nextRecord = actualStatusChanges[i + 1];
+
+        // Record duration for the status that's ending
+        const statusEndTime = record.createdAt;
+        statusTransitions.push({
+          status: record.statusFrom,
+          startTime: statusStartTime,
+          endTime: statusEndTime,
+          assignee: statusAssignee,
+          assigneeId: statusAssigneeId,
+          assigneeType: statusAssigneeType,
+        });
+
+        // Start tracking the new status
+        statusStartTime = record.createdAt;
+        statusAssignee =
+          record.employee?.employeeName || record.partner?.name || "System";
+        statusAssigneeId = record.employee?.id || record.partner?.id || null;
+        statusAssigneeType = record.employee?.id
+          ? "employee"
+          : record.partner?.id
+          ? "partner"
+          : "system";
+      }
+
+      // Track current status (the last status the order is in)
+      const currentStatus =
+        actualStatusChanges.length > 0
+          ? actualStatusChanges[actualStatusChanges.length - 1].statusTo
+          : initialStatus;
+
+      statusTransitions.push({
+        status: currentStatus,
+        startTime: statusStartTime,
+        endTime: null, // Still in this status
+        assignee: statusAssignee,
+        assigneeId: statusAssigneeId,
+        assigneeType: statusAssigneeType,
+      });
+    } else {
+      // No history records, order is still in initial status
+      const duration = new Date().getTime() - order.createdAt.getTime();
+      statusTransitions.push({
+        status: order.orderStatus,
+        startTime: order.createdAt,
+        endTime: null,
+        assignee:
+          order.werkstattzettel?.employee?.employeeName ||
+          order.partner?.name ||
+          "System",
+        assigneeId:
+          order.werkstattzettel?.employee?.id || order.partner?.id || null,
+        assigneeType: order.werkstattzettel?.employee?.id
+          ? "employee"
+          : order.partner?.id
+          ? "partner"
+          : "system",
+      });
+    }
+
+    // Convert transitions to duration objects
+    statusDurations.push(
+      ...statusTransitions.map((transition) => ({
+        status: transition.status,
+        statusDisplay: formatStatusName(transition.status),
+        duration: formatDuration(
+          transition.endTime
+            ? transition.endTime.getTime() - transition.startTime.getTime()
+            : new Date().getTime() - transition.startTime.getTime()
+        ),
+        durationMs: transition.endTime
+          ? transition.endTime.getTime() - transition.startTime.getTime()
+          : new Date().getTime() - transition.startTime.getTime(),
+        startDate: transition.startTime,
+        endDate: transition.endTime,
+        assignee: transition.assignee,
+        assigneeId: transition.assigneeId,
+        assigneeType: transition.assigneeType,
+      }))
+    );
+
+    // Format change log entries
+    const changeLog: Array<{
+      id: string;
+      date: Date;
+      user: string;
+      action: string;
+      note: string;
+      type: "status_change" | "order_creation" | "approval_change" | "other";
+      details: {
+        partnerId: string | null;
+        employeeId: string | null;
+      };
+    }> = [];
+
+    // Add order creation entry
+    changeLog.push({
+      id: "initial",
+      date: order.createdAt,
+      user: order.partner?.name || "System",
+      action: "Auftrag erstellt",
+      note: `System erstellte Auftrag: ${formatStatusName(order.orderStatus)}`,
+      type: "order_creation",
+      details: {
+        partnerId: order.partner?.id || null,
+        employeeId: order.werkstattzettel?.employee?.id || null,
+      },
+    });
+
+    // Add status change entries
+    orderHistory.forEach((record) => {
+      changeLog.push({
+        id: record.id,
+        date: record.createdAt,
+        user: record.employee?.employeeName || record.partner?.name || "System",
+        action: `Status geändert: ${formatStatusName(
+          record.statusFrom
+        )} → ${formatStatusName(record.statusTo)}`,
+        note:
+          record.note ||
+          `${
+            record.employee?.employeeName || record.partner?.name || "System"
+          } änderte Status: ${formatStatusName(
+            record.statusFrom
+          )} → ${formatStatusName(record.statusTo)}`,
+        type: "status_change",
+        details: {
+          partnerId: record.partnerId || null,
+          employeeId: record.employeeId || null,
+        },
+      });
+    });
+
+    // Helper to extract user name from note (e.g., "Anna Müller änderte..." -> "Anna Müller")
+    const extractUserNameFromNote = (note: string | null): string => {
+      if (!note) return "System";
+      const match = note.match(
+        /^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)*)\s+(änderte|changed|erstellte|created)/i
+      );
+      return match ? match[1] : "System";
+    };
+
+    // Add customer history entries (like approval changes)
+    customerHistory.forEach((record) => {
+      // Skip duplicate entries that are already in orderHistory
+      const isDuplicate = changeLog.some(
+        (entry) =>
+          entry.type === "status_change" &&
+          Math.abs(
+            new Date(entry.date).getTime() -
+              new Date(record.createdAt || record.date || new Date()).getTime()
+          ) < 1000 // Within 1 second
+      );
+
+      if (isDuplicate) return;
+
+      // Check for approval status changes
+      if (
+        record.note &&
+        (record.note.includes("Genehmigungsstatus") ||
+          record.note.includes("approval") ||
+          record.note.includes("Approval") ||
+          record.note.includes("Genehmigt"))
+      ) {
+        const userName = extractUserNameFromNote(record.note);
+        changeLog.push({
+          id: record.id,
+          date: record.createdAt || record.date || new Date(),
+          user: userName,
+          action: "Genehmigungsstatus geändert",
+          note: record.note,
+          type: "approval_change",
+          details: {
+            partnerId: null,
+            employeeId: null,
+          },
+        });
+      } else if (
+        record.note &&
+        !record.note.includes("erstellt") &&
+        !record.note.includes("Status:") &&
+        !record.note.includes("→")
+      ) {
+        // Other history entries (exclude status changes and creation notes)
+        const userName = extractUserNameFromNote(record.note);
+        changeLog.push({
+          id: record.id,
+          date: record.createdAt || record.date || new Date(),
+          user: userName,
+          action: record.note || "Eintrag aktualisiert",
+          note: record.system_note || record.note || "",
+          type: "other",
+          details: {
+            partnerId: null,
+            employeeId: null,
+          },
+        });
+      }
+    });
+
+    // Sort change log by date descending
+    changeLog.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        orderNumber: order.orderNumber,
+        stepDurations: statusDurations.map((sd) => ({
+          status: sd.status,
+          statusDisplay: sd.statusDisplay,
+          duration: sd.duration,
+          assignee: sd.assignee,
+          assigneeId: sd.assigneeId,
+          assigneeType: sd.assigneeType,
+        })),
+        changeLog: changeLog.map((entry) => ({
+          id: entry.id,
+          date: entry.date,
+          user: entry.user,
+          action: entry.action,
+          note: entry.note,
+          type: entry.type,
+          details: entry.details,
+        })),
+        totalEntries: changeLog.length,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get Order History Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching order history",
+      error: error.message,
+    });
+  }
+};
+
+export const getSupplyInfo = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    // First, check if the order exists
+    const order = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        orderNumber: true,
+        versorgungId: true,
+        productId: true,
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Fetch product if exists
+    let productData = null;
+    if (order.productId) {
+      productData = await prisma.customerProduct.findUnique({
+        where: { id: order.productId },
+        select: {
+          id: true,
+          name: true,
+          material: true,
+          langenempfehlung: true,
+          rohlingHersteller: true,
+          artikelHersteller: true,
+          versorgung: true,
+          status: true,
+          diagnosis_status: true,
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        orderNumber: order.orderNumber,
+        productId: order.productId,
+        product: productData,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get Supply Info Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching supply info",
+      error: error.message,
+    });
+  }
+};
+
+export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
+  try {
+    // Get the picture 23 and 24 from the customer screener file
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required",
+      });
+    }
+
+    // Get customer and product/versorgung information for this order
+    const order = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: {
+        customer: {
+          select: {
+            id: true,
+            vorname: true,
+            nachname: true,
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            diagnosis_status: true,
+            material: true,
+          },
+        },
+      },
+    });
+
+    if (!order || !order.customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Order or customer not found",
+      });
+    }
+
+    const customerScreenerFile = await prisma.screener_file.findFirst({
+      where: { customerId: order.customer.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        picture_23: true,
+        picture_24: true,
+      },
+    });
+
+    if (!customerScreenerFile) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer screener file not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        customerName: `${order.customer.vorname} ${order.customer.nachname}`,
+        // Use data from customerProduct (same as in getSupplyInfo)
+        versorgungName: order.product?.name ?? null,
+        diagnosisStatus: order.product?.diagnosis_status ?? null,
+        material: order.product?.material ?? null,
+        // customerId: order.customer.id,
+        picture_23: customerScreenerFile.picture_23
+          ? getImageUrl(`/uploads/${customerScreenerFile.picture_23}`)
+          : null,
+        picture_24: customerScreenerFile.picture_24
+          ? getImageUrl(`/uploads/${customerScreenerFile.picture_24}`)
+          : null,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get Picture 23 24 By Order ID Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching picture 23 24",
       error: error.message,
     });
   }

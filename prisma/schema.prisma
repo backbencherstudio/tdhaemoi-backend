@@ -680,6 +680,7 @@ model customerOrdersHistory {
   //relation with paetner employee
   employeeId String?
   employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
   note       String?
 
   createdAt DateTime @default(now())

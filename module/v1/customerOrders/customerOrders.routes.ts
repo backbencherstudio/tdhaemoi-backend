@@ -17,7 +17,10 @@ import {
   getLast40DaysOrderStats,
   createWerkstattzettel,
   getEinlagenInProduktion,
-  getLast30DaysOrderEinlagen
+  getLast30DaysOrderEinlagen,
+  getOrdersHistory,
+  getSupplyInfo,
+  getPicture2324ByOrderId
 } from "./customerOrders.controllers";
 import upload from "../../../config/multer.config";
  
@@ -94,6 +97,9 @@ router.post(
 
 router.get("/lest30days/einlagen", verifyUser("ADMIN", "PARTNER"), getLast30DaysOrderEinlagen);
 
-
+//3 panda
+router.get("/history/orders/:orderId", verifyUser("ADMIN", "PARTNER"), getOrdersHistory);
+router.get("/supply-info/:orderId", verifyUser("ADMIN", "PARTNER"), getSupplyInfo);
+router.get("/picture-23-24/:orderId", verifyUser("ADMIN", "PARTNER"), getPicture2324ByOrderId);
 
 export default router;
