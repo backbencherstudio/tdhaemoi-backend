@@ -324,6 +324,22 @@ model Versorgungen {
   @@index([createdAt])
 }
 
+model supplyStatus {
+  id        String   @id @default(uuid())
+  name      String
+  price     Float
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([name])
+  @@index([price])
+  @@index([image])
+  @@index([name, price, image])
+  @@map("supply_status")
+}
+
 enum versorgungenStatus {
   Alltagseinlagen
   Sporteinlagen
@@ -1084,7 +1100,6 @@ model massschuhe_order_history {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
 
   @@index([createdAt])
   @@index([massschuhe_orderId])

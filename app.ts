@@ -51,7 +51,8 @@ app.use(
       "https://vacations-acm-dropped-beatles.trycloudflare.com",
       "https://nelson-hint-grand-continually.trycloudflare.com",
       "http://localhost:3003",
-      "https://nelson-hint-grand-continually.trycloudflare.com"
+      "https://nelson-hint-grand-continually.trycloudflare.com",
+      "https://feetf1rst.vercel.app"
     ],
      credentials: true 
   })

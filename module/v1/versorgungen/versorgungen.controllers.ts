@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import { PrismaClient, Prisma } from "@prisma/client";
+import path from "path";
+import fs from "fs";
+import { getImageUrl } from "../../../utils/base_utl";
 
 const prisma = new PrismaClient();
 
@@ -482,5 +485,125 @@ export const getSingleVersorgungen = async (req: Request, res: Response) => {
       message: "Something went wrong",
       error: error.message,
     });
+  }
+};
+
+
+export const getSupplyStatus = async (req: Request, res: Response) => {
+  try {
+    const supplyStatus = await prisma.supplyStatus.findMany();
+    res.status(200).json({
+      success: true,
+      message: "Supply status fetched successfully",
+      data: supplyStatus,
+    });
+  } catch (error) {
+    console.error("Get Supply Status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const createSupplyStatus = async (req: Request, res: Response) => {
+  try {
+    const { name, price } = req.body;
+    const image = req.file?.filename;
+
+    const missingField = ["name", "price"].find((field) => !req.body[field]);
+    if (missingField) {
+      if (req.file) {
+        const imagePath = path.join(__dirname, "../../uploads", req.file.filename);
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+      }
+      return res.status(400).json({
+        success: false,
+        message: `${missingField} is required`,
+      });
+    }
+    if (!image) {
+      return res.status(400).json({
+        
+        success: false,
+        message: "Image is required",
+      });
+    }
+
+
+    const supplyStatus = await prisma.supplyStatus.create({
+      data: { name, price, image },
+    });
+
+    const imageUrl = image ? getImageUrl(`/uploads/${image}`) : null;
+
+    res.status(201).json({
+      success: true,
+      message: "Supply status created successfully",
+      data: {
+        ...supplyStatus,
+        image: imageUrl,
+      },
+    });
+  } catch (error) {
+    console.error("Create Supply Status error:", error);
+    if (req.file) {
+      const imagePath = path.join(__dirname, "../../uploads", req.file.filename);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const updateSupplyStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, price, image } = req.body;
+    const supplyStatus = await prisma.supplyStatus.update({
+      where: { id },
+      data: { name, price, image },
+        });
+    res.status(200).json({
+      success: true,
+      message: "Supply status updated successfully",
+      data: supplyStatus,
+    });
+  } catch (error) {
+    console.error("Update Supply Status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteSupplyStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const supplyStatus = await prisma.supplyStatus.delete({
+      where: { id },
+    });
+    res.status(200).json({
+      success: true,
+      message: "Supply status deleted successfully",
+      data: supplyStatus,
+    });
+  } catch (error) {
+    console.error("Delete Supply Status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    }); 
   }
 };
