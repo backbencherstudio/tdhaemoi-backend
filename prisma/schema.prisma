@@ -40,14 +40,15 @@ model User {
   bestellubersicht       Bestellubersicht?
 
   // Mandatory one-to-one relationship
-  workshopNote            WorkshopNote?
-  stores                  Stores[]
-  StoresHistory           StoresHistory[]
-  custom_shafts           custom_shafts[]
+  workshopNote             WorkshopNote?
+  stores                   Stores[]
+  StoresHistory            StoresHistory[]
+  custom_shafts            custom_shafts[]
   // massschuheOrders massschuhe_order[]
-  massschuheOrders        massschuhe_order[]
-  controllQuestions       controllQuestions[]
-  customerOrdersHistories customerOrdersHistory[]
+  massschuheOrders         massschuhe_order[]
+  controllQuestions        controllQuestions[]
+  customerOrdersHistories  customerOrdersHistory[]
+  massschuheOrderHistories massschuhe_order_history[]
 
   @@map("users")
 }
@@ -254,12 +255,13 @@ model Employees {
   // Many-to-many relation
   // massschuheOrders massschuhe_order[] @relation("OrderEmployees")
 
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
-  appointmentEmployees    AppointmentEmployee[]
-  werkstattzettels        Werkstattzettel[]
-  massschuheOrders        massschuhe_order[]
-  customerOrdersHistories customerOrdersHistory[]
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  appointmentEmployees     AppointmentEmployee[]
+  werkstattzettels         Werkstattzettel[]
+  massschuheOrders         massschuhe_order[]
+  customerOrdersHistories  customerOrdersHistory[]
+  massschuheOrderHistories massschuhe_order_history[]
 
   @@index([createdAt])
 }
@@ -422,8 +424,9 @@ model customers {
   // massschuheOrders massschuhe_order[]
   massschuheOrders massschuhe_order[]
 
-  shoeAnswers    shoeAnswers[]
-  insolesAnswers insolesAnswers[]
+  shoeAnswers              shoeAnswers[]
+  insolesAnswers           insolesAnswers[]
+  massschuheOrderHistories massschuhe_order_history[]
 
   @@unique([createdBy, customerNumber]) // Unique per partner
   @@index([vorname, nachname])
@@ -680,8 +683,8 @@ model customerOrdersHistory {
   //relation with paetner employee
   employeeId String?
   employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
-  note       String?
+
+  note String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -769,10 +772,10 @@ model Stores {
   artikelnummer String
 
   /// Storage location / warehouse location এটা আসবে ইউজার মডেলের hauptstandort[] এই অ্যাারে অফ স্ট্রিং থেকে
-  lagerort String
+  lagerort String?
 
   /// Minimum stock level এটা দিয়ে স্টক ওইয়ারনিং দিবে যদি groessenMengen json এর কোন ভেলু এই int এর নিচে নামে তাহলে এটা স্টকে "Niedriger Bestand" এই wormning দবে যদি এই int এর উপরে নামে তাহলে এটা স্টকে "Voller Bestand" এই wormning দবে
-  mindestbestand Int
+  mindestbestand Int?
 
   /// Sizes & quantities (e.g., {"S": 10, "M": 20, "L": 15})
   groessenMengen Json
@@ -1009,8 +1012,8 @@ model massschuhe_order {
   durchgeführt_von     String?
   note                  String?
 
-  albprobe_geplant   Boolean? @default(false)
-  kostenvoranschlag  Boolean? @default(false)
+  albprobe_geplant   Boolean?                @default(false)
+  kostenvoranschlag  Boolean?                @default(false)
   //-------------------------------------------------
   //workload section
   delivery_date      String?
@@ -1025,6 +1028,9 @@ model massschuhe_order {
   customer_note      String?
   location           String?
   //-------------------------------------------------
+  status             massschuhe_order_status @default(Leistenerstellung)
+
+  //-------------------------------------------------
 
   //relation with users
   userId String?
@@ -1036,11 +1042,54 @@ model massschuhe_order {
   customerId String?
   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  massschuheOrderHistories massschuhe_order_history[]
+
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+enum massschuhe_order_status {
+  Leistenerstellung //started
+
+  Bettungsherstellung
+  Halbprobenerstellung
+  Schafterstellung
+  Bodenerstellung
+
+  Geliefert //delivered
+}
+
+//as like as customer order history
+model massschuhe_order_history {
+  id String @id @default(uuid())
+
+  statusFrom OrderStatus
+  statusTo   OrderStatus
+  note       String?
+
+  //relation
+  massschuhe_orderId String
+  massschuhe_order   massschuhe_order @relation(fields: [massschuhe_orderId], references: [id], onDelete: Cascade)
+
+  partnerId String?
+  partner   User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  employeeId String?
+  employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  customerId String?
+  customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([createdAt])
-  @@index([updatedAt])
+  @@index([massschuhe_orderId])
+  @@index([partnerId])
+  @@index([employeeId])
+  @@index([customerId])
 }
 
 // {

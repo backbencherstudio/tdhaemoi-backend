@@ -7,7 +7,8 @@ import {
   getMassschuheOrderByCustomerId,
   updateMassschuheOrder,
   deleteMassschuheOrder,
-  getMassschuheOrderById
+  getMassschuheOrderById,
+  updateMassschuheOrderStatus
   
 } from "./massschuhe_order.controllers";
 
@@ -16,11 +17,13 @@ router.get("/get-by-customer/:customerId", verifyUser("ADMIN", "PARTNER"), getMa
 router.post("/create", verifyUser("ADMIN", "PARTNER"), createMassschuheOrder);
 router.get("/", verifyUser("ADMIN", "PARTNER"), getMassschuheOrder);
 router.get("/get/:id", verifyUser("ADMIN", "PARTNER"), getMassschuheOrderById);
+router.patch("/update-status", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrderStatus);
 
 
 router.put("/:id", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrder);
 router.patch("/:id", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrder);
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteMassschuheOrder);
+
 
 
 // router.post("/create", verifyUser("ADMIN", "PARTNER"), createMassschuheOrder);
