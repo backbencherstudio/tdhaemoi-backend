@@ -1085,6 +1085,7 @@ model massschuhe_order_history {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+
   @@index([createdAt])
   @@index([massschuhe_orderId])
   @@index([partnerId])
