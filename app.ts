@@ -41,17 +41,9 @@ app.use(
       "https://tdhaemoi-partner-dashbaord.vercel.app",
       "https://flux-genius-std-treatments.trycloudflare.com",
       "https://tdhaemoi-landing-page.vercel.app",
-      "https://regarded-dictionaries-worlds-restricted.trycloudflare.com",
-      "https://latina-cartoons-syntax-territories.trycloudflare.com",
-      "https://motor-soviet-rhode-hispanic.trycloudflare.com",
       "https://tdhaemoi-landing-page-x8dy.vercel.app",
-      "https://exclusive-began-intl-aka.trycloudflare.com",
       "https://tdhaemoi-landing-page.vercel.app",
-      "https://massage-limits-intro-rick.trycloudflare.com",
-      "https://vacations-acm-dropped-beatles.trycloudflare.com",
-      "https://nelson-hint-grand-continually.trycloudflare.com",
       "http://localhost:3003",
-      "https://nelson-hint-grand-continually.trycloudflare.com",
       "https://feetf1rst.vercel.app"
     ],
      credentials: true 
