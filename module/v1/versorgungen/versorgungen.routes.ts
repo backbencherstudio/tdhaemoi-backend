@@ -9,6 +9,7 @@ import {
   getSingleVersorgungen,
   patchVersorgungen,
   getSupplyStatus,
+  getSingleSupplyStatus,
   createSupplyStatus,
   updateSupplyStatus,
   deleteSupplyStatus
@@ -28,6 +29,7 @@ router.delete("/:id", verifyUser("PARTNER"), deleteVersorgungen);
 
 //current supply status
 router.get("/supply-status", verifyUser("PARTNER"), getSupplyStatus);
+router.get("/supply-status/:id", verifyUser("PARTNER"), getSingleSupplyStatus);
 router.post("/supply-status", verifyUser("PARTNER"), upload.single("image"), createSupplyStatus);
 router.patch("/supply-status/:id", verifyUser("PARTNER"), upload.single("image"), updateSupplyStatus);
 router.delete("/supply-status/:id", verifyUser("PARTNER"), deleteSupplyStatus);

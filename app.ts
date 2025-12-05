@@ -44,7 +44,8 @@ app.use(
       "https://tdhaemoi-landing-page-x8dy.vercel.app",
       "https://tdhaemoi-landing-page.vercel.app",
       "http://localhost:3003",
-      "https://feetf1rst.vercel.app"
+      "https://feetf1rst.vercel.app",
+      "https://feetf1rst-landing-page.vercel.app"
     ],
      credentials: true 
   })
