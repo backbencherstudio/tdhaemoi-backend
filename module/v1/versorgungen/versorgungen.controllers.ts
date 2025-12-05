@@ -29,8 +29,6 @@ export const getAllVersorgungen = async (req: Request, res: Response) => {
       filters.supplyStatus = { name: status as string };
     }
 
-   
-
     if (typeof diagnosis_status === "string" && diagnosis_status.length) {
       filters.diagnosis_status =
         diagnosis_status as Prisma.VersorgungenWhereInput["diagnosis_status"];
@@ -62,7 +60,7 @@ export const getAllVersorgungen = async (req: Request, res: Response) => {
     const formattedVersorgungen = versorgungenList.map(
       ({ store, ...rest }) => ({
         ...rest,
-        groessenMengen: store?.groessenMengen ?? null,
+        store: store?.groessenMengen ?? null,
         supplyStatus: {
           name: rest.supplyStatus?.name ?? null,
           price: rest.supplyStatus?.price ?? null,
@@ -70,7 +68,7 @@ export const getAllVersorgungen = async (req: Request, res: Response) => {
         }
       })
     );
-
+    // groessenMengen
     const totalPages = Math.ceil(totalCount / limitNumber);
 
     res.status(200).json({
@@ -1150,6 +1148,21 @@ export const getSingleVersorgungen = async (req: Request, res: Response) => {
 
     const versorgungen = await prisma.versorgungen.findUnique({
       where: { id },
+      include: {
+        supplyStatus: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            image: true,
+          },
+        },
+        store: {
+          select: {
+            groessenMengen: true,
+          },
+        },
+      },
     });
 
     if (!versorgungen) {
@@ -1158,10 +1171,18 @@ export const getSingleVersorgungen = async (req: Request, res: Response) => {
         message: "Versorgungen not found",
       });
     }
+    const formattedVersorgungen = {
+      ...versorgungen,
+      supplyStatus: versorgungen.supplyStatus ? {
+        ...versorgungen.supplyStatus,
+        image: versorgungen.supplyStatus.image ? getImageUrl(`/uploads/${versorgungen.supplyStatus.image}`) : null,
+      } : null,
+      store: versorgungen.store ? versorgungen.store.groessenMengen : null,
+    };
     res.status(200).json({
       success: true,
       message: "Versorgungen fetched successfully",
-      data: versorgungen,
+      data: formattedVersorgungen,
     });
   } catch (error) {
     console.error("Get Single Versorgungen error:", error);
