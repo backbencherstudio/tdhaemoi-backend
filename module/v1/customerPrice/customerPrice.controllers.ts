@@ -126,8 +126,6 @@ export const updatePrice = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const deletePrice = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -150,3 +148,4 @@ export const deletePrice = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+

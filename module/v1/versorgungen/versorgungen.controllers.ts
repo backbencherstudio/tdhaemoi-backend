@@ -8,7 +8,6 @@ const prisma = new PrismaClient();
 
 export const getAllVersorgungen = async (req: Request, res: Response) => {
   try {
-
     // lalso i need status this status is from supplyStatus table status
     const { page = 1, limit = 10, status, diagnosis_status } = req.query;
 
@@ -64,8 +63,10 @@ export const getAllVersorgungen = async (req: Request, res: Response) => {
         supplyStatus: {
           name: rest.supplyStatus?.name ?? null,
           price: rest.supplyStatus?.price ?? null,
-          image: rest.supplyStatus?.image ? getImageUrl(`/uploads/${rest.supplyStatus.image}`) : null,
-        }
+          image: rest.supplyStatus?.image
+            ? getImageUrl(`/uploads/${rest.supplyStatus.image}`)
+            : null,
+        },
       })
     );
     // groessenMengen
@@ -904,7 +905,6 @@ export const deleteVersorgungen = async (req: Request, res: Response) => {
   }
 };
 
-
 // export const getVersorgungenByDiagnosis = async (
 //   req: Request,
 //   res: Response
@@ -1047,7 +1047,8 @@ export const getVersorgungenByDiagnosis = async (
     }
 
     // Cast diagnosis_status to the Prisma enum type
-    const prismaDiagnosisStatus = diagnosis_status as Prisma.VersorgungenWhereInput["diagnosis_status"];
+    const prismaDiagnosisStatus =
+      diagnosis_status as Prisma.VersorgungenWhereInput["diagnosis_status"];
 
     // Build the filter query
     const whereClause: Prisma.VersorgungenWhereInput = {
@@ -1058,7 +1059,7 @@ export const getVersorgungenByDiagnosis = async (
     // If status filter is provided, filter by supplyStatus name
     if (status) {
       whereClause.supplyStatus = {
-        name: status as string
+        name: status as string,
       };
     }
 
@@ -1095,7 +1096,7 @@ export const getVersorgungenByDiagnosis = async (
     });
 
     // Format the response to include image URLs and consistent structure
-    const formattedVersorgungenList = versorgungenList.map(versorgung => ({
+    const formattedVersorgungenList = versorgungenList.map((versorgung) => ({
       id: versorgung.id,
       name: versorgung.name,
       rohlingHersteller: versorgung.rohlingHersteller,
@@ -1105,17 +1106,21 @@ export const getVersorgungenByDiagnosis = async (
       diagnosis_status: versorgung.diagnosis_status,
       createdAt: versorgung.createdAt,
       updatedAt: versorgung.updatedAt,
-      supplyStatus: versorgung.supplyStatus ? {
-        ...versorgung.supplyStatus,
-        image: versorgung.supplyStatus.image
-          ? getImageUrl(`/uploads/${versorgung.supplyStatus.image}`)
-          : null,
-      } : null,
-      store: versorgung.store ? {
-        id: versorgung.store.id,
-        name: versorgung.store.produktname,
-        groessenMengen: versorgung.store.groessenMengen,
-      } : null,
+      supplyStatus: versorgung.supplyStatus
+        ? {
+            ...versorgung.supplyStatus,
+            image: versorgung.supplyStatus.image
+              ? getImageUrl(`/uploads/${versorgung.supplyStatus.image}`)
+              : null,
+          }
+        : null,
+      store: versorgung.store
+        ? {
+            id: versorgung.store.id,
+            name: versorgung.store.produktname,
+            groessenMengen: versorgung.store.groessenMengen,
+          }
+        : null,
     }));
 
     const totalPages = Math.ceil(totalCount / limitNumber);
@@ -1141,7 +1146,7 @@ export const getVersorgungenByDiagnosis = async (
     });
   }
 };
- 
+
 export const getSingleVersorgungen = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -1173,10 +1178,14 @@ export const getSingleVersorgungen = async (req: Request, res: Response) => {
     }
     const formattedVersorgungen = {
       ...versorgungen,
-      supplyStatus: versorgungen.supplyStatus ? {
-        ...versorgungen.supplyStatus,
-        image: versorgungen.supplyStatus.image ? getImageUrl(`/uploads/${versorgungen.supplyStatus.image}`) : null,
-      } : null,
+      supplyStatus: versorgungen.supplyStatus
+        ? {
+            ...versorgungen.supplyStatus,
+            image: versorgungen.supplyStatus.image
+              ? getImageUrl(`/uploads/${versorgungen.supplyStatus.image}`)
+              : null,
+          }
+        : null,
       store: versorgungen.store ? versorgungen.store.groessenMengen : null,
     };
     res.status(200).json({
@@ -1229,10 +1238,19 @@ export const getSupplyStatus = async (req: Request, res: Response) => {
       select: {
         id: true,
         name: true,
+        description: true,
         price: true,
         image: true,
       },
     });
+
+    const allStatusNames = await prisma.supplyStatus.findMany({
+      where: { partnerId },
+      select: { name: true },
+      orderBy: { name: "asc" }, // optional
+    });
+
+    const statusList = allStatusNames.map((s) => s.name);
 
     const formattedSupplyStatus = supplyStatus.map((item) => ({
       ...item,
@@ -1243,6 +1261,7 @@ export const getSupplyStatus = async (req: Request, res: Response) => {
       success: true,
       message: "Supply status fetched successfully",
       data: formattedSupplyStatus,
+      status: statusList,
       pagination: {
         totalItems: totalCount,
         totalPages,
@@ -1270,6 +1289,7 @@ export const getSingleSupplyStatus = async (req: Request, res: Response) => {
       select: {
         id: true,
         name: true,
+        description: true,
         price: true,
         image: true,
         partner: {
@@ -1313,7 +1333,7 @@ export const getSingleSupplyStatus = async (req: Request, res: Response) => {
 
 export const createSupplyStatus = async (req: Request, res: Response) => {
   try {
-    const { name, price } = req.body;
+    const { name, price, description } = req.body;
     const image = req.file?.filename;
 
     const priceFloat = parseFloat(price);
@@ -1355,6 +1375,7 @@ export const createSupplyStatus = async (req: Request, res: Response) => {
         name,
         price: priceFloat,
         image,
+        description: description || null,
         partner: {
           connect: { id: partnerId },
         },
@@ -1391,7 +1412,7 @@ export const updateSupplyStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const partnerId = req.user.id;
-    const { name, price } = req.body;
+    const { name, price, description } = req.body;
 
     const image = req.file?.filename;
 
@@ -1408,7 +1429,7 @@ export const updateSupplyStatus = async (req: Request, res: Response) => {
     // Prepare update data
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
-
+    if (description !== undefined) updateData.description = description;
     if (price !== undefined) {
       const priceFloat = parseFloat(price);
       if (isNaN(priceFloat))

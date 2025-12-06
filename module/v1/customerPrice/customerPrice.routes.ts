@@ -15,5 +15,7 @@ router.get("/", verifyUser("PARTNER"), getAllPrices);
 router.get("/:id", verifyUser("PARTNER"), getPriceById);
 router.patch("/:id", verifyUser("PARTNER"), updatePrice);
 router.delete("/:id", verifyUser("PARTNER"), deletePrice);
+//-----------------------------------------------------
+
 
 export default router;

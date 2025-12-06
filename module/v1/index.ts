@@ -22,6 +22,7 @@ import bestellubersicht from "./bestellubersicht/Bestellubersicht.routes";
 import custom_shafts from "./custom_shafts/custom_shafts.routes";
 import customer_files from "./customer_files/customer_files.routes";
 import massschuhe_order from "./massschuhe_order/massschuhe_order.routes";
+import customer_settings from "./customer_settings/customer_settings.routes";
 
 const router = express.Router();
 
@@ -47,7 +48,8 @@ const moduleRoutes = [
   { path: "/bestellubersicht", route: bestellubersicht },
   { path: "/custom_shafts", route: custom_shafts },
   { path: "/customer-files", route: customer_files },
-  { path: "/massschuhe-order", route: massschuhe_order },  
+  { path: "/massschuhe-order", route: massschuhe_order },
+  { path: "/customer-settings", route: customer_settings },
 ];
 
 moduleRoutes.forEach(({ path, route }) => {

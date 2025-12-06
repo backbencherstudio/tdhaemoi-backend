@@ -959,241 +959,6 @@ export const updateCustomerSpecialFields = async (
   }
 };
 
-//----------------------------------------getCustomerById--------------------------------------------------
-// export const getCustomerById = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params;
-//     const customer = await prisma.customers.findUnique({
-//       where: { id: id },
-//       include: {
-//         versorgungen: true,
-//         einlagenAnswers: {
-//           orderBy: [{ category: "asc" }, { questionId: "asc" }],
-//         },
-//         screenerFile: true,
-//         customerHistorie: true,
-//       },
-//     });
-
-//     if (!customer) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Customer not found",
-//       });
-//     }
-
-//     const einlagenAnswersByCategory = customer.einlagenAnswers.reduce(
-//       (acc, answer) => {
-//         if (!acc[answer.category]) {
-//           acc[answer.category] = {
-//             category: answer.category,
-//             answers: [],
-//           };
-//         }
-
-//         const formattedAnswer = {
-//           questionId: parseInt(answer.questionId),
-//           selected: answer.answer,
-//         };
-//         acc[answer.category].answers.push(formattedAnswer);
-//         return acc;
-//       },
-//       {} as Record<string, any>
-//     );
-
-//     const screenerFilesWithImages = customer.screenerFile
-//       .sort(
-//         (a, b) =>
-//           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-//       ) // Sort by createdAt (latest first)
-//       .map((screener) => ({
-//         id: screener.id,
-//         customerId: screener.customerId,
-//         picture_10: screener.picture_10
-//           ? getImageUrl(`/uploads/${screener.picture_10}`)
-//           : null,
-//         picture_23: screener.picture_23
-//           ? getImageUrl(`/uploads/${screener.picture_23}`)
-//           : null,
-//         picture_11: screener.picture_11
-//           ? getImageUrl(`/uploads/${screener.picture_11}`)
-//           : null,
-//         picture_24: screener.picture_24
-//           ? getImageUrl(`/uploads/${screener.picture_24}`)
-//           : null,
-//         threed_model_left: screener.threed_model_left
-//           ? getImageUrl(`/uploads/${screener.threed_model_left}`)
-//           : null,
-//         threed_model_right: screener.threed_model_right
-//           ? getImageUrl(`/uploads/${screener.threed_model_right}`)
-//           : null,
-//         picture_17: screener.picture_17
-//           ? getImageUrl(`/uploads/${screener.picture_17}`)
-//           : null,
-//         picture_16: screener.picture_16
-//           ? getImageUrl(`/uploads/${screener.picture_16}`)
-//           : null,
-//         csvFile: screener.csvFile
-//           ? getImageUrl(`/uploads/${screener.csvFile}`)
-//           : null,
-//         createdAt: screener.createdAt,
-//         updatedAt: screener.updatedAt,
-//       }));
-
-//     const customerHistorieWithUrls = customer.customerHistorie.map(
-//       (history) => ({
-//         ...history,
-//         url: history.url ? getImageUrl(history.url) : null,
-//       })
-//     );
-
-//     const customerWithImages = {
-//       ...customer,
-//       einlagenAnswers: Object.values(einlagenAnswersByCategory),
-//       screenerFile: screenerFilesWithImages,
-//       customerHistorie: customerHistorieWithUrls,
-//     };
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Customer fetched successfully",
-//       data: [customerWithImages],
-//     });
-//   } catch (error: any) {
-//     console.error("Get Customer By ID Error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
-
-//optimize code of getCustomerById
-
-//----------------------------------------end optimize code of getCustomerById--------------------------------------------------
-//----------------------------------------getCustomerById--------------------------------------------------
-
-// export const getCustomerById = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params;
-//     const userId = req.user.id;
-
-//     // 1. Fetch customer first
-//     const customer = await prisma.customers.findUnique({ where: { id } });
-
-//     if (!customer) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Customer not found",
-//       });
-//     }
-
-//     // 2. Fetch related data in parallel
-//     const [
-//       versorgungen,
-//       einlagenAnswers,
-//       screenerFiles,
-//       customerHistories,
-//       werkstattzettel,
-//       partner,
-//       workshopNote,
-//     ] = await Promise.all([
-//       prisma.customer_versorgungen.findMany({ where: { customerId: id } }),
-//       prisma.einlagenAnswers.findMany({
-//         where: { customerId: id },
-//         orderBy: [{ category: "asc" }, { questionId: "asc" }],
-//       }),
-//       prisma.screener_file.findMany({
-//         where: { customerId: id },
-//         orderBy: { createdAt: "desc" },
-//       }),
-//       prisma.customerHistorie.findMany({ where: { customerId: id } }),
-//       prisma.werkstattzettel.findUnique({ where: { customerId: id } }),
-//       prisma.user.findUnique({ where: { id: customer.createdBy } }),
-//       prisma.workshopNote.findUnique({ where: { userId: userId } }),
-//     ]);
-
-//     // 3. Group einlagenAnswers by category
-//     const einlagenAnswersByCategory = new Map();
-//     einlagenAnswers.forEach((answer) => {
-//       if (!einlagenAnswersByCategory.has(answer.category)) {
-//         einlagenAnswersByCategory.set(answer.category, {
-//           category: answer.category,
-//           answers: [],
-//         });
-//       }
-//       einlagenAnswersByCategory.get(answer.category).answers.push({
-//         questionId: parseInt(answer.questionId),
-//         selected: answer.answer,
-//       });
-//     });
-
-//     // 4. Process screenerFiles images
-//     const processedScreenerFiles = screenerFiles.map((screener) => {
-//       const result = { ...screener };
-//       const imageFields = [
-//         "picture_10",
-//         "picture_23",
-//         "picture_11",
-//         "picture_24",
-//         "threed_model_left",
-//         "threed_model_right",
-//         "picture_17",
-//         "picture_16",
-//         "csvFile",
-//       ];
-
-//       imageFields.forEach((field) => {
-//         if (result[field]) {
-//           result[field] = getImageUrl(`/uploads/${result[field]}`);
-//         }
-//       });
-
-//       return result;
-//     });
-
-//     // 5. Process customer histories images
-//     const processedHistories = customerHistories.map((history) => ({
-//       ...history,
-//       url: history.url ? getImageUrl(history.url) : null,
-//     }));
-
-//     const processedPartner = partner
-//       ? {
-//           ...partner,
-//           image: partner.image
-//             ? getImageUrl(`/uploads/${partner.image}`)
-//             : null,
-//         }
-//       : null;
-
-//     const customerWithImages = {
-//       ...customer,
-//       versorgungen,
-//       einlagenAnswers: Array.from(einlagenAnswersByCategory.values()),
-//       screenerFile: processedScreenerFiles,
-//       customerHistorie: processedHistories,
-//       werkstattzettel,
-//       partner: processedPartner,
-//       workshopNote, // included fetched user
-//     };
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Customer fetched successfully",
-//       data: [customerWithImages],
-//     });
-//   } catch (error: any) {
-//     console.error("Get Customer By ID Error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
-
 
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
@@ -1362,35 +1127,71 @@ export const assignVersorgungToCustomer = async (
       return res
         .status(404)
         .json({ success: false, message: "Versorgung not found" });
+    // Get status from request body or use default
+    const { status } = req.body;
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "status is required (Alltagseinlagen, Sporteinlagen, or Businesseinlagen)",
+      });
+    }
+
     // Find existing record first
     const existingRecord = await prisma.customer_versorgungen.findFirst({
       where: {
         customerId,
-        status: versorgung.status,
+        status: status as any,
         diagnosis_status: versorgung.diagnosis_status,
       },
     });
-    const versorgungData = {
+    // Serialize material array to string for compatibility with current Prisma client
+    const materialString = serializeMaterialField(versorgung.material);
+    
+    const createData: any = {
       name: versorgung.name,
       rohlingHersteller: versorgung.rohlingHersteller,
       artikelHersteller: versorgung.artikelHersteller,
       versorgung: versorgung.versorgung,
-      material: serializeMaterialField(versorgung.material),
-      langenempfehlung: versorgung.langenempfehlung,
-      status: versorgung.status,
+      material: materialString,
+      status: status as any,
       diagnosis_status: versorgung.diagnosis_status,
+      customerId,
     };
+    
+    // Add optional fields if provided
+    if (req.body.cover_types !== undefined) {
+      createData.cover_types = req.body.cover_types;
+    }
+    if (req.body.laser_print_prices !== undefined) {
+      createData.laser_print_prices = req.body.laser_print_prices;
+    }
+    
     if (existingRecord) {
+      const updateData: any = {
+        name: versorgung.name,
+        rohlingHersteller: versorgung.rohlingHersteller,
+        artikelHersteller: versorgung.artikelHersteller,
+        versorgung: versorgung.versorgung,
+        material: materialString,
+        status: status as any,
+        diagnosis_status: versorgung.diagnosis_status,
+      };
+      
+      // Add optional fields if provided
+      if (req.body.cover_types !== undefined) {
+        updateData.cover_types = req.body.cover_types;
+      }
+      if (req.body.laser_print_prices !== undefined) {
+        updateData.laser_print_prices = req.body.laser_print_prices;
+      }
+      
       await prisma.customer_versorgungen.update({
         where: { id: existingRecord.id },
-        data: versorgungData,
+        data: updateData,
       });
     } else {
       await prisma.customer_versorgungen.create({
-        data: {
-          ...versorgungData,
-          customerId,
-        },
+        data: createData,
       });
     }
     const updatedCustomer = await prisma.customers.findUnique({

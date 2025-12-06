@@ -179,8 +179,6 @@ export const createOrder = async (req: Request, res: Response) => {
       prisma.customers.findUnique({
         where: { id: customerId },
         select: {
-          fußanalyse: true,
-          einlagenversorgung: true,
           fusslange1: true,
           fusslange2: true,
         },
@@ -188,15 +186,21 @@ export const createOrder = async (req: Request, res: Response) => {
       prisma.versorgungen.findUnique({
         where: { id: versorgungId },
         select: {
+          id: true,
           name: true,
           rohlingHersteller: true,
           artikelHersteller: true,
           versorgung: true,
           material: true,
-          langenempfehlung: true,
-          status: true,
           diagnosis_status: true,
           storeId: true,
+          supplyStatus: {
+            select: {
+              id: true,
+              price: true,
+              name: true,
+            },
+          },
         },
       }),
       prisma.werkstattzettel.findUnique({
@@ -211,11 +215,11 @@ export const createOrder = async (req: Request, res: Response) => {
         .json({ success: false, message: "Customer or Versorgung not found" });
     }
 
-    if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
+    if (!versorgung.supplyStatus || versorgung.supplyStatus.price == null) {
       return res.status(400).json({
         success: false,
         message:
-          "fußanalyse or einlagenversorgung price is not set for this customer",
+          "Supply status price is not set for this versorgung. Please assign a supply status with a price.",
       });
     }
 
@@ -226,7 +230,8 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    const totalPrice = customer.fußanalyse + customer.einlagenversorgung;
+    // Get price from supplyStatus instead of customer
+    const totalPrice = versorgung.supplyStatus.price;
 
     if (customer.fusslange1 == null || customer.fusslange2 == null) {
       return res.status(400).json({
@@ -253,8 +258,8 @@ export const createOrder = async (req: Request, res: Response) => {
           artikelHersteller: versorgung.artikelHersteller,
           versorgung: versorgung.versorgung,
           material: serializeMaterial(versorgung.material),
-          langenempfehlung: versorgung.langenempfehlung,
-          status: versorgung.status,
+          langenempfehlung: {}, // langenempfehlung not available in Versorgungen model
+          status: "Alltagseinlagen", // Default status since it's not in Versorgungen model
           diagnosis_status: versorgung.diagnosis_status,
         },
       });
@@ -267,8 +272,9 @@ export const createOrder = async (req: Request, res: Response) => {
           partnerId,
           orderNumber,
           werkstattzettelId,
-          fußanalyse: customer.fußanalyse,
-          einlagenversorgung: customer.einlagenversorgung,
+          versorgungId: versorgungId,
+          fußanalyse: null, // Price now comes from supplyStatus
+          einlagenversorgung: null, // Price now comes from supplyStatus
           totalPrice,
           productId: customerProduct.id,
           statusUpdate: new Date(),
@@ -403,8 +409,6 @@ const fetchCustomerData = async (customerId: string) => {
   return prisma.customers.findUnique({
     where: { id: customerId },
     select: {
-      fußanalyse: true,
-      einlagenversorgung: true,
       fusslange1: true,
       fusslange2: true,
     },
@@ -415,15 +419,21 @@ const fetchVersorgungData = async (versorgungId: string) => {
   return prisma.versorgungen.findUnique({
     where: { id: versorgungId },
     select: {
+      id: true,
       name: true,
       rohlingHersteller: true,
       artikelHersteller: true,
       versorgung: true,
       material: true,
-      langenempfehlung: true,
-      status: true,
       diagnosis_status: true,
       storeId: true,
+      supplyStatus: {
+        select: {
+          id: true,
+          price: true,
+          name: true,
+        },
+      },
     },
   });
 };
@@ -444,11 +454,11 @@ const validateData = (customer: any, versorgung: any, werkstattzettel: any) => {
     };
   }
 
-  if (customer.fußanalyse == null || customer.einlagenversorgung == null) {
+  if (!versorgung.supplyStatus || versorgung.supplyStatus.price == null) {
     return {
       success: false,
       message:
-        "fußanalyse or einlagenversorgung price is not set for this customer",
+        "Supply status price is not set for this versorgung. Please assign a supply status with a price.",
       status: 400,
     };
   }
@@ -472,42 +482,16 @@ const validateData = (customer: any, versorgung: any, werkstattzettel: any) => {
   return null;
 };
 
-const calculateTotalPrice = (customer: any): number =>
-  (customer.fußanalyse || 0) + (customer.einlagenversorgung || 0);
+const calculateTotalPrice = (versorgung: any): number =>
+  versorgung?.supplyStatus?.price || 0;
 
 const determineProductSize = (
   customer: any,
   versorgung: any
 ): string | null => {
-  const largerFusslange = Math.max(
-    Number(customer.fusslange1) + 5,
-    Number(customer.fusslange2) + 5
-  );
-
-  if (
-    !versorgung.langenempfehlung ||
-    typeof versorgung.langenempfehlung !== "object"
-  ) {
-    return null;
-  }
-
-  let matchedSizeKey: string | null = null;
-  let smallestDiff = Infinity;
-
-  for (const [sizeKey, sizeData] of Object.entries(
-    versorgung.langenempfehlung as any
-  )) {
-    const lengthValue = extractLengthValue(sizeData);
-    if (lengthValue === null) continue;
-
-    const diff = Math.abs(largerFusslange - lengthValue);
-    if (diff < smallestDiff) {
-      smallestDiff = diff;
-      matchedSizeKey = sizeKey;
-    }
-  }
-
-  return matchedSizeKey;
+  // langenempfehlung is not available in Versorgungen model
+  // Size determination should be done using store groessenMengen instead
+  return null;
 };
 
 const createOrderTransaction = async (
@@ -540,8 +524,8 @@ const createOrderTransaction = async (
       artikelHersteller: versorgung.artikelHersteller,
       versorgung: versorgung.versorgung,
       material: serializeMaterial(versorgung.material),
-      langenempfehlung: versorgung.langenempfehlung,
-      status: versorgung.status,
+      langenempfehlung: {}, // langenempfehlung not available in Versorgungen model
+      status: "Alltagseinlagen", // Default status since it's not in Versorgungen model
       diagnosis_status: versorgung.diagnosis_status,
     },
   });
@@ -554,8 +538,9 @@ const createOrderTransaction = async (
       partnerId,
       orderNumber,
       werkstattzettelId,
-      fußanalyse: customer.fußanalyse,
-      einlagenversorgung: customer.einlagenversorgung,
+      versorgungId: versorgung.id,
+      fußanalyse: null, // Price now comes from supplyStatus
+      einlagenversorgung: null, // Price now comes from supplyStatus
       totalPrice,
       productId: customerProduct.id,
       statusUpdate: new Date(),
@@ -1587,7 +1572,6 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
               id: true,
               name: true,
               material: true,
-              langenempfehlung: true,
             },
           },
           customer: {

@@ -1,13 +1,13 @@
 import express from "express";
 import { verifyUser } from "../../../middleware/verifyUsers";
 import {
-  assignVersorgungToCustomer,
+  // assignVersorgungToCustomer,
   createCustomers,
   deleteCustomer,
   getAllCustomers,
   getCustomerById,
   searchCustomers,
-  undoAssignVersorgungToCustomer,
+  // undoAssignVersorgungToCustomer,
   updateCustomer,
   updateCustomerSpecialFields,
   addScreenerFile,
@@ -61,17 +61,17 @@ router.patch(
   updateCustomerSpecialFields
 );
 
-router.post(
-  "/assign-versorgungen/:customerId/:versorgungenId",
-  verifyUser("ADMIN", "PARTNER"),
-  assignVersorgungToCustomer
-);
+// router.post(
+//   "/assign-versorgungen/:customerId/:versorgungenId",
+//   verifyUser("ADMIN", "PARTNER"),
+//   assignVersorgungToCustomer
+// );
 
-router.delete(
-  "/undo-versorgungen/:customerId/:versorgungenId",
-  verifyUser("ADMIN", "PARTNER"),
-  undoAssignVersorgungToCustomer
-);
+// router.delete(
+//   "/undo-versorgungen/:customerId/:versorgungenId",
+//   verifyUser("ADMIN", "PARTNER"),
+//   undoAssignVersorgungToCustomer
+// );
 
 router.post(
   "/screener-file/:customerId",

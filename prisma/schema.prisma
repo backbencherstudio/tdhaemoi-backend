@@ -51,6 +51,8 @@ model User {
   massschuheOrderHistories massschuhe_order_history[]
   supplyStatuses           supplyStatus[]
   versorgungens            Versorgungen[]
+  customerSettings         customer_settings?
+  customerVersorgungens    customer_versorgungen[]
 
   @@map("users")
 }
@@ -334,17 +336,19 @@ model Versorgungen {
 }
 
 model supplyStatus {
-  id        String   @id @default(uuid())
-  name      String
-  price     Float
-  image     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   partnerId String
   partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
-  versorgungen Versorgungen[]
+  versorgungen          Versorgungen[]
+  customerVersorgungens customer_versorgungen[]
 
   @@index([partnerId])
   @@index([createdAt])
@@ -385,7 +389,20 @@ model customer_price {
   einlagenversorgung Float?
 
   partnerId String
-  user      User   @relation(fields: [partnerId], references: [id])
+  partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model customer_settings {
+  id String @id @default(uuid())
+
+  partnerId String @unique
+  user      User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  cover_types        String[]
+  laser_print_prices Float[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -611,26 +628,50 @@ enum EventCategory {
 }
 
 model customer_versorgungen {
-  id                String                       @id @default(uuid())
-  name              String
+  id   String @id @default(uuid())
+  name String
+
+  /// Rohling Hersteller is come form "Stores in  produktname" field
   rohlingHersteller String
+
+  /// artikel Hersteller is come form "Stores in  hersteller" field
   artikelHersteller String
   versorgung        String
-  material          String
-  langenempfehlung  Json
-  status            versorgungenStatus
-  diagnosis_status  versorgungenDiagnosisStatus?
+
+  material String[]
+
+  // status           versorgungenStatus
+  diagnosis_status versorgungenDiagnosisStatus?
+
+  status             versorgungenStatus
+  cover_types        String?
+  laser_print_prices Float?
+
+  // createdBy String
+  updatedBy String?
+
+  partnerId String?
+  partner   User?   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  storeId String?
+  store   Stores? @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // supplyStatusId String?
+  // supplyStatus   supplyStatus? @relation(fields: [supplyStatusId], references: [id], onDelete: Cascade)
+  // // massschuheOrders massschuhe_order[]
+
+  customerOrders customerOrders[]
 
   customerId String
-  customer   customers @relation("customerVersorgungen", fields: [customerId], references: [id])
+  customer   customers @relation("customerVersorgungen", fields: [customerId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  supplyStatus   supplyStatus? @relation(fields: [supplyStatusId], references: [id])
+  supplyStatusId String?
 
-  @@unique([customerId, status, diagnosis_status])
   @@index([id, name])
   @@index([customerId])
-  @@index([status])
   @@index([createdAt])
 }
 
@@ -683,6 +724,8 @@ model customerOrders {
   priority                Priority?               @default(Normal)
   customerHistories       customerHistorie[]      @relation("OrderCustomerHistorie")
   customerOrdersHistories customerOrdersHistory[]
+  customerVersorgungen    customer_versorgungen?  @relation(fields: [customer_versorgungenId], references: [id])
+  customer_versorgungenId String?
 
   @@unique([partnerId, orderNumber]) // Unique per partner
   @@index([customerId])
@@ -825,9 +868,10 @@ model Stores {
 
   storesHistory StoresHistory[] // History of stock changes
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  customerOrders customerOrders[]
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  customerOrders        customerOrders[]
+  customerVersorgungens customer_versorgungen[]
 
   @@index([id, produktname])
   @@map("stores")
@@ -1037,6 +1081,8 @@ enum custom_shafts_status {
 model massschuhe_order {
   id String @id @default(uuid())
 
+  orderNumber Int?
+
   arztliche_diagnose    String?
   usführliche_diagnose String?
   rezeptnummer          String?
@@ -1077,6 +1123,7 @@ model massschuhe_order {
   updatedAt                DateTime                   @updatedAt
   massschuheOrderHistories massschuhe_order_history[]
 
+  @@unique([userId, orderNumber]) // Unique per partner
   @@index([createdAt])
   @@index([updatedAt])
 }
@@ -1096,11 +1143,14 @@ enum massschuhe_order_status {
 model massschuhe_order_history {
   id String @id @default(uuid())
 
-  statusFrom OrderStatus
-  statusTo   OrderStatus
-  note       String?
+  statusFrom massschuhe_order_status?
+  statusTo   massschuhe_order_status
 
-  //relation
+  note String?
+
+  startedAt  DateTime  @default(now()) // when the step begins
+  finishedAt DateTime? // when the step is finished
+
   massschuhe_orderId String
   massschuhe_order   massschuhe_order @relation(fields: [massschuhe_orderId], references: [id], onDelete: Cascade)
 

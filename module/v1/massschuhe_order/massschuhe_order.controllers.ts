@@ -4,6 +4,95 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Get next order number for a partner (starts from 1000)
+const getNextOrderNumberForPartner = async (
+  tx: any,
+  userId: string
+): Promise<number> => {
+  const maxOrder = await tx.massschuhe_order.findFirst({
+    where: { 
+      userId,
+      orderNumber: { not: null } // Filter out null orderNumbers
+    },
+    orderBy: { orderNumber: "desc" },
+    select: { orderNumber: true },
+  });
+  // Always start from 1000, even if previous orders have lower numbers
+  return maxOrder && maxOrder.orderNumber !== null && maxOrder.orderNumber >= 1000
+    ? maxOrder.orderNumber + 1 
+    : 1000;
+};
+
+// Helper function to format date as "DD.MM.YY HH:MMAM/PM" (24-hour format with AM/PM indicator)
+const formatDateTime = (date: Date | null | undefined): string | null => {
+  if (!date) return null;
+  
+  const d = new Date(date);
+  const day = d.getDate().toString().padStart(2, "0");
+  const month = (d.getMonth() + 1).toString().padStart(2, "0");
+  const year = d.getFullYear().toString().slice(-2);
+  
+  const hours = d.getHours();
+  const minutes = d.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const formattedHours = hours.toString().padStart(2, "0");
+  
+  return `${day}.${month}.${year} ${formattedHours}:${minutes}${ampm}`;
+};
+
+// Helper function to format order with status history
+const formatOrderWithStatusHistory = (order: any) => {
+  // Group history by statusTo to get Started/Finished for each status
+  const statusHistoryMap = new Map();
+  
+  order.massschuheOrderHistories?.forEach((history: any) => {
+    const status = history.statusTo;
+    if (!statusHistoryMap.has(status)) {
+      statusHistoryMap.set(status, {
+        status,
+        startedAt: history.startedAt,
+        finishedAt: history.finishedAt,
+        started: formatDateTime(history.startedAt),
+        finished: formatDateTime(history.finishedAt),
+      });
+    } else {
+      // If multiple entries for same status, use the earliest startedAt and latest finishedAt
+      const existing = statusHistoryMap.get(status);
+      if (history.startedAt && (!existing.startedAt || history.startedAt < existing.startedAt)) {
+        existing.startedAt = history.startedAt;
+        existing.started = formatDateTime(history.startedAt);
+      }
+      if (history.finishedAt && (!existing.finishedAt || history.finishedAt > existing.finishedAt)) {
+        existing.finishedAt = history.finishedAt;
+        existing.finished = formatDateTime(history.finishedAt);
+      }
+    }
+  });
+
+  // Convert map to array and sort by status order
+  const statusOrder = [
+    "Leistenerstellung",
+    "Bettungsherstellung",
+    "Halbprobenerstellung",
+    "Schafterstellung",
+    "Bodenerstellung",
+    "Geliefert",
+  ];
+  
+  const statusHistory = Array.from(statusHistoryMap.values()).sort((a, b) => {
+    const indexA = statusOrder.indexOf(a.status);
+    const indexB = statusOrder.indexOf(b.status);
+    return indexA - indexB;
+  });
+
+  // Remove massschuheOrderHistories from the response
+  const { massschuheOrderHistories, ...orderWithoutHistory } = order;
+  
+  return {
+    ...orderWithoutHistory,
+    statusHistory,
+  };
+};
 
 // model massschuhe_order {
 //   id String @id @default(uuid())
@@ -93,7 +182,6 @@ const prisma = new PrismaClient();
 //   @@index([employeeId])
 //   @@index([customerId])
 // }
-
 
 export const createMassschuheOrder = async (req: Request, res: Response) => {
   try {
@@ -193,98 +281,93 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
       return false;
     };
 
-    const createData = {
-      arztliche_diagnose,
-      usführliche_diagnose,
-      rezeptnummer,
-      durchgeführt_von,
-      note,
-      albprobe_geplant: convertToBoolean(albprobe_geplant),
-      kostenvoranschlag: convertToBoolean(kostenvoranschlag),
-      userId,
-      employeeId,
-      customerId,
+    // Use transaction with retry logic to handle race conditions
+    let retries = 3;
+    let result;
+    
+    while (retries > 0) {
+      try {
+        result = await prisma.$transaction(async (tx) => {
+          // Get next order number for this partner
+          const orderNumber = await getNextOrderNumberForPartner(tx, userId);
 
-      delivery_date,
-      telefon,
-      filiale,
-      kunde,
-      email,
-      button_text,
-      fußanalyse,
-      einlagenversorgung,
-      customer_note,
-      location,
-    } as Prisma.massschuhe_orderUncheckedCreateInput;
+          const createData = {
+            orderNumber,
+            arztliche_diagnose,
+            usführliche_diagnose,
+            rezeptnummer,
+            durchgeführt_von,
+            note,
+            albprobe_geplant: convertToBoolean(albprobe_geplant),
+            kostenvoranschlag: convertToBoolean(kostenvoranschlag),
+            userId,
+            employeeId,
+            customerId,
 
-    const massschuheOrder = await prisma.massschuhe_order.create({
-      data: createData,
-    });
+            delivery_date,
+            telefon,
+            filiale,
+            kunde,
+            email,
+            button_text,
+            fußanalyse,
+            einlagenversorgung,
+            customer_note,
+            location,
+          } as Prisma.massschuhe_orderUncheckedCreateInput;
 
+          const massschuheOrder = await tx.massschuhe_order.create({
+            data: createData,
+          });
 
+      await tx.customerHistorie.create({
+        data: {
+          customerId,
+          category: "Bestellungen",
+          note: "Massschuhe order created",
+          eventId: massschuheOrder.id,
+          system_note: "Massschuhe order created",
+        },
+      });
 
-    // id String @id @default(uuid())
+      // Create initial order history entry (UTC)
+      await tx.massschuhe_order_history.create({
+        data: {
+          massschuhe_orderId: massschuheOrder.id,
+          statusFrom: null,
+          statusTo: massschuheOrder.status,
+          partnerId: userId,
+          employeeId: employeeId || null,
+          customerId: customerId || null,
+          note: "Order created",
+          startedAt: new Date(), // UTC by default in JS
+        },
+      });
 
-    // statusFrom OrderStatus
-    // statusTo   OrderStatus
-    // note       String?
-  
-    // //relation
-    // massschuhe_orderId String
-    // massschuhe_order   massschuhe_order @relation(fields: [massschuhe_orderId], references: [id], onDelete: Cascade)
-  
-    // partnerId String?
-    // partner   User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull)
-  
-    // employeeId String?
-    // employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
-  
-    // customerId String?
-    // customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  
-    // createdAt DateTime @default(now()
+          return massschuheOrder;
+        });
+        break; // Success, exit retry loop
+      } catch (error: any) {
+        // Check if it's a unique constraint violation on orderNumber
+        if (
+          error.code === "P2002" &&
+          error.meta?.target?.includes("orderNumber") &&
+          retries > 1
+        ) {
+          retries--;
+          // Wait a bit before retrying (exponential backoff)
+          await new Promise((resolve) => setTimeout(resolve, 100 * (4 - retries)));
+          continue;
+        }
+        throw error; // Re-throw if not a retryable error or out of retries
+      }
+    }
 
-    //create a customer history entry
-    await prisma.customerHistorie.create({
-      data: {
-        customerId,
-        category: "Bestellungen",
-        note: "Massschuhe order created",
-        eventId: massschuheOrder.id,
-        system_note: "Massschuhe order created",
-      },
-    });
+    if (!result) {
+      throw new Error("Failed to create order after retries");
+    }
 
-  //i need to create a massschuhe order history entry
-  // await prisma.massschuhe_order_history.create({
-  //   data: {
-  //     massschuhe_orderId: massschuheOrder.id,
-  //     statusFrom: "Leistenerstellung",
-  //     statusTo: "Leistenerstellung",
-
-  //     note: "Massschuhe order created",
-  //   },
-  // });
-
-    // Create a stores history entry only when a valid store exists for this partner
-    // const partnerStore = await prisma.stores.findFirst({
-    //   where: { userId },
-    //   select: { id: true, userId: true },
-    // });
-
-    // if (partnerStore) {
-    //   await prisma.storesHistory.create({
-    //     data: {
-    //       storeId: partnerStore.id,
-    //       changeType: "sales",
-    //       newStock: 0,
-    //       reason: "massschuhe order created",
-    //       partnerId: partnerStore.userId,
-    //       customerId,
-    //       orderId: massschuheOrder.id,
-    //     },
-    //   });
-    // }
+    const massschuheOrder = result;
 
     return res.status(201).json({
       success: true,
@@ -339,17 +422,19 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
-        // include: {
-        //   user: {
-        //     select: {
-        //       id: true,
-        //       name: true,
-        //       email: true,
-        //       role: true,
-        //       phone: true,
-        //     },
-        //   },
-        // },
+        include: {
+          massschuheOrderHistories: {
+            orderBy: { startedAt: "desc" },
+            select: {
+              id: true,
+              statusFrom: true,
+              statusTo: true,
+              startedAt: true,
+              finishedAt: true,
+              note: true,
+            },
+          },
+        },
       }),
     ]);
 
@@ -358,18 +443,17 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
-    // Format response
-    // const formattedOrders = massschuheOrders.map(({ user, ...rest }) => ({
-    //   ...rest,
-    //   partner: user || null,
-    // }));
+    // Format orders with status history (Started/Finished timestamps)
+    const formattedOrders = massschuheOrders.map((order) =>
+      formatOrderWithStatusHistory(order)
+    );
 
     return res.status(200).json({
       success: true,
       message: search
         ? `Found ${totalItems} order(s) matching "${search}"`
         : "Massschuhe orders fetched successfully",
-      data: massschuheOrders,
+      data: formattedOrders,
       pagination: {
         totalItems,
         totalPages,
@@ -411,6 +495,19 @@ export const getMassschuheOrderByCustomerId = async (
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
+        include: {
+          massschuheOrderHistories: {
+            orderBy: { startedAt: "desc" },
+            select: {
+              id: true,
+              statusFrom: true,
+              statusTo: true,
+              startedAt: true,
+              finishedAt: true,
+              note: true,
+            },
+          },
+        },
       }),
       prisma.customers.findUnique({
         where: { id: customerId },
@@ -433,10 +530,15 @@ export const getMassschuheOrderByCustomerId = async (
       });
     }
 
+    // Format orders with status history (Started/Finished timestamps)
+    const formattedOrders = massschuheOrders.map((order) =>
+      formatOrderWithStatusHistory(order)
+    );
+
     return res.status(200).json({
       success: true,
       message: "Massschuhe order fetched successfully",
-      data: massschuheOrders,
+      data: formattedOrders,
       pagination: {
         totalItems,
         totalPages,
@@ -699,6 +801,19 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
 
     const massschuheOrder = await prisma.massschuhe_order.findUnique({
       where: { id },
+      include: {
+        massschuheOrderHistories: {
+          orderBy: { startedAt: "desc" },
+          select: {
+            id: true,
+            statusFrom: true,
+            statusTo: true,
+            startedAt: true,
+            finishedAt: true,
+            note: true,
+          },
+        },
+      },
     });
     if (!massschuheOrder) {
       return res.status(404).json({
@@ -706,10 +821,14 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
         message: "Massschuhe order not found",
       });
     }
+
+    // Format order with status history (Started/Finished timestamps)
+    const formattedOrder = formatOrderWithStatusHistory(massschuheOrder);
+
     return res.status(200).json({
       success: true,
       message: "Massschuhe order fetched successfully",
-      data: massschuheOrder,
+      data: formattedOrder,
     });
   } catch (error: any) {
     console.error("Get Massschuhe Order By Id Error:", error);
@@ -721,9 +840,13 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateMassschuheOrderStatus = async (req: Request, res: Response) => {
+export const updateMassschuheOrderStatus = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const { orderIds, status } = req.body;
+    const userId = req.user.id;
 
     // Validate input
     if (!Array.isArray(orderIds) || orderIds.length === 0) {
@@ -757,95 +880,134 @@ export const updateMassschuheOrderStatus = async (req: Request, res: Response) =
         statusList,
       });
     }
-    // i need to show some data with response
-    // Update all orders with matching IDs
-    const updatedOrders = await prisma.massschuhe_order.updateMany({
+
+    // Get current orders to track status changes
+    const currentOrders = await prisma.massschuhe_order.findMany({
       where: { id: { in: orderIds } },
-      data: { status },
+      select: {
+        id: true,
+        status: true,
+        userId: true,
+        employeeId: true,
+        customerId: true,
+      },
     });
-    //check updated orders is success or not
-    if (updatedOrders.count === 0) {
-      return res.status(400).json({
+
+    if (currentOrders.length === 0) {
+      return res.status(404).json({
         success: false,
-        message: "No orders updated",
+        message: "No orders found with the provided IDs",
       });
     }
 
-    // id String @id @default(uuid())
+    // Verify ownership for all orders
+    const unauthorizedOrders = currentOrders.filter(
+      (order) => order.userId !== userId
+    );
+    if (unauthorizedOrders.length > 0) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to update some of these orders",
+      });
+    }
 
-    // arztliche_diagnose    String?
-    // usführliche_diagnose String?
-    // rezeptnummer          String?
-    // durchgeführt_von     String?
-    // note                  String?
-  
-    // albprobe_geplant   Boolean? @default(false)
-    // kostenvoranschlag  Boolean? @default(false)
-    // //-------------------------------------------------
-    // //workload section
-    // delivery_date      String?
-    // telefon            String?
-    // filiale            String? //location
-    // kunde              String? //customer name
-    // email              String?
-    // button_text        String?
-    // // PREISAUSWAHL
-    // fußanalyse        Float?
-    // einlagenversorgung Float?
-    // customer_note      String?
-    // location           String?
-    // //-------------------------------------------------
-    // status  massschuhe_order_status @default(Leistenerstellung)
-  
-    // //-------------------------------------------------
-  
-    // //relation with users
-    // userId String?
-    // user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
-    // employeeId String?
-    // employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
-  
-    // customerId String?
-    // customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  
-    // createdAt DateTime @default(now())
-    // updatedAt DateTime @updatedAt
+    // Use transaction to ensure data consistency
+    const result = await prisma.$transaction(async (tx) => {
+      const now = new Date();
 
+      // Update all orders with matching IDs
+      await tx.massschuhe_order.updateMany({
+        where: { id: { in: orderIds } },
+        data: { status },
+      });
 
-    // Fetch the updated orders to show desired fields
-    const orders = await prisma.massschuhe_order.findMany({
-      where: { id: { in: orderIds } },
-      select: { 
-        id: true,
-        status: true,
-        arztliche_diagnose: true,
-        usführliche_diagnose: true,
-        rezeptnummer: true,
-        durchgeführt_von: true,
-        note: true,
-        albprobe_geplant: true,
-        kostenvoranschlag: true,
-        delivery_date: true,
-        telefon: true,
-        filiale: true,
-        kunde: true,
-        email: true,
-        button_text: true,
-        fußanalyse: true,
-        einlagenversorgung: true,
-        location: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      // For each order, update history
+      for (const order of currentOrders) {
+        // Mark the previous status as finished (if there's an active history entry)
+        const previousHistory = await tx.massschuhe_order_history.findFirst({
+          where: {
+            massschuhe_orderId: order.id,
+            statusTo: order.status,
+            finishedAt: null, // Only update entries that haven't been finished
+          },
+          orderBy: { startedAt: "desc" },
+        });
+
+        if (previousHistory) {
+          // Mark previous status as finished
+          await tx.massschuhe_order_history.update({
+            where: { id: previousHistory.id },
+            data: { finishedAt: now },
+          });
+        }
+
+        // Create new history entry for the new status
+        await tx.massschuhe_order_history.create({
+          data: {
+            massschuhe_orderId: order.id,
+            statusFrom: order.status,
+            statusTo: status,
+            partnerId: userId,
+            employeeId: order.employeeId || null,
+            customerId: order.customerId || null,
+            note: `Status changed from ${order.status} to ${status}`,
+            startedAt: now,
+          },
+        });
+      }
+
+      // Fetch the updated orders with history
+      const updatedOrders = await tx.massschuhe_order.findMany({
+        where: { id: { in: orderIds } },
+        select: {
+          id: true,
+          status: true,
+          arztliche_diagnose: true,
+          usführliche_diagnose: true,
+          rezeptnummer: true,
+          durchgeführt_von: true,
+          note: true,
+          albprobe_geplant: true,
+          kostenvoranschlag: true,
+          delivery_date: true,
+          telefon: true,
+          filiale: true,
+          kunde: true,
+          email: true,
+          button_text: true,
+          fußanalyse: true,
+          einlagenversorgung: true,
+          location: true,
+          createdAt: true,
+          updatedAt: true,
+          massschuheOrderHistories: {
+            orderBy: { startedAt: "desc" },
+            select: {
+              id: true,
+              statusFrom: true,
+              statusTo: true,
+              startedAt: true,
+              finishedAt: true,
+              note: true,
+            },
+          },
+        },
+      });
+
+      return updatedOrders;
     });
+
+    // Format orders with status history (Started/Finished timestamps)
+    const formattedOrders = result.map((order) =>
+      formatOrderWithStatusHistory(order)
+    );
 
     return res.status(200).json({
       success: true,
       message: "Massschuhe order status updated successfully",
-      updatedCount: orders,
+      updatedCount: formattedOrders.length,
+      data: formattedOrders,
     });
-
   } catch (error: any) {
     console.error("Update Massschuhe Order Status Error:", error);
 
@@ -856,4 +1018,3 @@ export const updateMassschuheOrderStatus = async (req: Request, res: Response) =
     });
   }
 };
-
