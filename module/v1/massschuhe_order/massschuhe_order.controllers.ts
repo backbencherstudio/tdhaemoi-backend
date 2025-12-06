@@ -4,39 +4,51 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Valid statuses for massschuhe orders
+const VALID_STATUSES = [
+  "Leistenerstellung",
+  "Bettungsherstellung",
+  "Halbprobenerstellung",
+  "Schafterstellung",
+  "Bodenerstellung",
+  "Geliefert",
+] as const;
+
 // Get next order number for a partner (starts from 1000)
 const getNextOrderNumberForPartner = async (
   tx: any,
   userId: string
 ): Promise<number> => {
   const maxOrder = await tx.massschuhe_order.findFirst({
-    where: { 
+    where: {
       userId,
-      orderNumber: { not: null } // Filter out null orderNumbers
+      orderNumber: { not: null }, // Filter out null orderNumbers
     },
     orderBy: { orderNumber: "desc" },
     select: { orderNumber: true },
   });
   // Always start from 1000, even if previous orders have lower numbers
-  return maxOrder && maxOrder.orderNumber !== null && maxOrder.orderNumber >= 1000
-    ? maxOrder.orderNumber + 1 
+  return maxOrder &&
+    maxOrder.orderNumber !== null &&
+    maxOrder.orderNumber >= 1000
+    ? maxOrder.orderNumber + 1
     : 1000;
 };
 
 // Helper function to format date as "DD.MM.YY HH:MMAM/PM" (24-hour format with AM/PM indicator)
 const formatDateTime = (date: Date | null | undefined): string | null => {
   if (!date) return null;
-  
+
   const d = new Date(date);
   const day = d.getDate().toString().padStart(2, "0");
   const month = (d.getMonth() + 1).toString().padStart(2, "0");
   const year = d.getFullYear().toString().slice(-2);
-  
+
   const hours = d.getHours();
   const minutes = d.getMinutes().toString().padStart(2, "0");
   const ampm = hours >= 12 ? "PM" : "AM";
   const formattedHours = hours.toString().padStart(2, "0");
-  
+
   return `${day}.${month}.${year} ${formattedHours}:${minutes}${ampm}`;
 };
 
@@ -44,7 +56,7 @@ const formatDateTime = (date: Date | null | undefined): string | null => {
 const formatOrderWithStatusHistory = (order: any) => {
   // Group history by statusTo to get Started/Finished for each status
   const statusHistoryMap = new Map();
-  
+
   order.massschuheOrderHistories?.forEach((history: any) => {
     const status = history.statusTo;
     if (!statusHistoryMap.has(status)) {
@@ -58,11 +70,17 @@ const formatOrderWithStatusHistory = (order: any) => {
     } else {
       // If multiple entries for same status, use the earliest startedAt and latest finishedAt
       const existing = statusHistoryMap.get(status);
-      if (history.startedAt && (!existing.startedAt || history.startedAt < existing.startedAt)) {
+      if (
+        history.startedAt &&
+        (!existing.startedAt || history.startedAt < existing.startedAt)
+      ) {
         existing.startedAt = history.startedAt;
         existing.started = formatDateTime(history.startedAt);
       }
-      if (history.finishedAt && (!existing.finishedAt || history.finishedAt > existing.finishedAt)) {
+      if (
+        history.finishedAt &&
+        (!existing.finishedAt || history.finishedAt > existing.finishedAt)
+      ) {
         existing.finishedAt = history.finishedAt;
         existing.finished = formatDateTime(history.finishedAt);
       }
@@ -78,7 +96,7 @@ const formatOrderWithStatusHistory = (order: any) => {
     "Bodenerstellung",
     "Geliefert",
   ];
-  
+
   const statusHistory = Array.from(statusHistoryMap.values()).sort((a, b) => {
     const indexA = statusOrder.indexOf(a.status);
     const indexB = statusOrder.indexOf(b.status);
@@ -87,7 +105,7 @@ const formatOrderWithStatusHistory = (order: any) => {
 
   // Remove massschuheOrderHistories from the response
   const { massschuheOrderHistories, ...orderWithoutHistory } = order;
-  
+
   return {
     ...orderWithoutHistory,
     statusHistory,
@@ -284,7 +302,7 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
     // Use transaction with retry logic to handle race conditions
     let retries = 3;
     let result;
-    
+
     while (retries > 0) {
       try {
         result = await prisma.$transaction(async (tx) => {
@@ -320,29 +338,29 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
             data: createData,
           });
 
-      await tx.customerHistorie.create({
-        data: {
-          customerId,
-          category: "Bestellungen",
-          note: "Massschuhe order created",
-          eventId: massschuheOrder.id,
-          system_note: "Massschuhe order created",
-        },
-      });
+          await tx.customerHistorie.create({
+            data: {
+              customerId,
+              category: "Bestellungen",
+              note: "Massschuhe order created",
+              eventId: massschuheOrder.id,
+              system_note: "Massschuhe order created",
+            },
+          });
 
-      // Create initial order history entry (UTC)
-      await tx.massschuhe_order_history.create({
-        data: {
-          massschuhe_orderId: massschuheOrder.id,
-          statusFrom: null,
-          statusTo: massschuheOrder.status,
-          partnerId: userId,
-          employeeId: employeeId || null,
-          customerId: customerId || null,
-          note: "Order created",
-          startedAt: new Date(), // UTC by default in JS
-        },
-      });
+          // Create initial order history entry (UTC)
+          await tx.massschuhe_order_history.create({
+            data: {
+              massschuhe_orderId: massschuheOrder.id,
+              statusFrom: null,
+              statusTo: massschuheOrder.status,
+              partnerId: userId,
+              employeeId: employeeId || null,
+              customerId: customerId || null,
+              note: "Order created",
+              startedAt: new Date(), // UTC by default in JS
+            },
+          });
 
           return massschuheOrder;
         });
@@ -356,7 +374,9 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
         ) {
           retries--;
           // Wait a bit before retrying (exponential backoff)
-          await new Promise((resolve) => setTimeout(resolve, 100 * (4 - retries)));
+          await new Promise((resolve) =>
+            setTimeout(resolve, 100 * (4 - retries))
+          );
           continue;
         }
         throw error; // Re-throw if not a retryable error or out of retries
@@ -399,19 +419,41 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
       userId,
     };
 
+    // Add status filter
+    if (req.query.status) {
+      const status = req.query.status as string;
+
+      // Validate status
+      if (!VALID_STATUSES.includes(status as any)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status: "${status}"`,
+          validStatuses: VALID_STATUSES,
+          suggestion: `Did you mean one of these? ${VALID_STATUSES.join(", ")}`,
+        });
+      }
+
+      where.status = status;
+    }
+
     // Add search functionality - search across multiple fields
     if (search) {
-      where.AND = [
-        {
-          OR: [
-            { arztliche_diagnose: { contains: search, mode: "insensitive" } },
-            { usführliche_diagnose: { contains: search, mode: "insensitive" } },
-            { rezeptnummer: { contains: search, mode: "insensitive" } },
-            { durchgeführt_von: { contains: search, mode: "insensitive" } },
-            { note: { contains: search, mode: "insensitive" } },
-          ],
-        },
-      ];
+      const searchConditions = {
+        OR: [
+          { arztliche_diagnose: { contains: search, mode: "insensitive" } },
+          { usführliche_diagnose: { contains: search, mode: "insensitive" } },
+          { rezeptnummer: { contains: search, mode: "insensitive" } },
+          { durchgeführt_von: { contains: search, mode: "insensitive" } },
+          { note: { contains: search, mode: "insensitive" } },
+        ],
+      };
+
+      // If status filter exists, combine with AND
+      if (where.status) {
+        where.AND = [searchConditions];
+      } else {
+        where.AND = [searchConditions];
+      }
     }
 
     // Get total count and orders in parallel
@@ -448,11 +490,19 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
       formatOrderWithStatusHistory(order)
     );
 
+    // Build response message
+    let message = "Massschuhe orders fetched successfully";
+    if (req.query.status && search) {
+      message = `Found ${totalItems} order(s) with status "${req.query.status}" matching "${search}"`;
+    } else if (req.query.status) {
+      message = `Found ${totalItems} order(s) with status "${req.query.status}"`;
+    } else if (search) {
+      message = `Found ${totalItems} order(s) matching "${search}"`;
+    }
+
     return res.status(200).json({
       success: true,
-      message: search
-        ? `Found ${totalItems} order(s) matching "${search}"`
-        : "Massschuhe orders fetched successfully",
+      message,
       data: formattedOrders,
       pagination: {
         totalItems,
@@ -462,6 +512,7 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
         hasNextPage,
         hasPrevPage,
         ...(search && { search }),
+        ...(req.query.status && { status: req.query.status }),
       },
     });
   } catch (error: any) {
@@ -488,6 +539,24 @@ export const getMassschuheOrderByCustomerId = async (
     const where: any = {
       customerId,
     };
+
+    // Add status filter
+    if (req.query.status) {
+      const status = req.query.status as string;
+
+      // Validate status
+      if (!VALID_STATUSES.includes(status as any)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status: "${status}"`,
+          validStatuses: VALID_STATUSES,
+          suggestion: `Did you mean one of these? ${VALID_STATUSES.join(", ")}`,
+        });
+      }
+
+      where.status = status;
+    }
+
     const [totalItems, massschuheOrders] = await Promise.all([
       prisma.massschuhe_order.count({ where }),
       prisma.massschuhe_order.findMany({
@@ -535,9 +604,15 @@ export const getMassschuheOrderByCustomerId = async (
       formatOrderWithStatusHistory(order)
     );
 
+    // Build response message
+    let message = "Massschuhe order fetched successfully";
+    if (req.query.status) {
+      message = `Found ${totalItems} order(s) with status "${req.query.status}"`;
+    }
+
     return res.status(200).json({
       success: true,
-      message: "Massschuhe order fetched successfully",
+      message,
       data: formattedOrders,
       pagination: {
         totalItems,
@@ -546,6 +621,7 @@ export const getMassschuheOrderByCustomerId = async (
         itemsPerPage: limit,
         hasNextPage,
         hasPrevPage,
+        ...(req.query.status && { status: req.query.status }),
       },
     });
   } catch (error) {
@@ -813,6 +889,14 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
             note: true,
           },
         },
+        employee: {
+          select: {
+            id: true,
+            employeeName: true,
+            email: true,
+            accountName: true,
+          },
+        },
       },
     });
     if (!massschuheOrder) {
@@ -863,21 +947,13 @@ export const updateMassschuheOrderStatus = async (
       });
     }
 
-    // Allowed statuses
-    const statusList = [
-      "Leistenerstellung",
-      "Bettungsherstellung",
-      "Halbprobenerstellung",
-      "Schafterstellung",
-      "Bodenerstellung",
-      "Geliefert",
-    ];
-
-    if (!statusList.includes(status)) {
+    // Validate status
+    if (!VALID_STATUSES.includes(status as any)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid status",
-        statusList,
+        message: `Invalid status: "${status}"`,
+        validStatuses: VALID_STATUSES,
+        suggestion: `Did you mean one of these? ${VALID_STATUSES.join(", ")}`,
       });
     }
 
