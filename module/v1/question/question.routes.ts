@@ -31,12 +31,14 @@ router.get("/get-questions", verifyUser("PARTNER"), getQuestions);
 
 // router.put("/shoes/:customerId", setShoesAnswers);
 
+
+//--------------------------------------------------------
 // // Shoe questionnaire routes
-// router.get("/", getQuestionsFlow);
+router.get("admin/", getQuestionsFlow);
 
-// router.get("/:categoryTitle", getQuestionsFlow);
+router.get("admin/:categoryTitle", getQuestionsFlow);
 
-// router.get("/:categoryTitle/:subCategoryTitle", getQuestionsFlow);
+router.get("admin/:categoryTitle/:subCategoryTitle", getQuestionsFlow);
 
 router.post(
   "/controll-questions",
