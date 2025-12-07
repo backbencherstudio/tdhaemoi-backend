@@ -7,7 +7,9 @@ import {
   updateStorage,
   getStorageChartData,
   getStorageHistory,
-  getStoragePerformer
+  getStoragePerformer,
+  getStoreOverviews,
+  updateOverviewStatus
 } from "./storage.controllers";
 import { verifyUser } from "../../../middleware/verifyUsers";
 
@@ -21,5 +23,8 @@ router.delete("/delete/:id", verifyUser("PARTNER", "ADMIN"), deleteStorage);
 router.get("/chart-data", verifyUser("PARTNER", "ADMIN"), getStorageChartData);
 router.get("/history/:id", verifyUser("PARTNER", "ADMIN"), getStorageHistory);
 router.get("/performer", verifyUser("PARTNER", "ADMIN"), getStoragePerformer);
+//store overviwe
+router.get("/store-overview", verifyUser("PARTNER", "ADMIN"), getStoreOverviews);
+router.patch("/update-overview-statu", verifyUser("PARTNER", "ADMIN"), updateOverviewStatus);
 
 export default router;

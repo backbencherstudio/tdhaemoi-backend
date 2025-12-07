@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, StoreOrderOverviewStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -840,6 +840,236 @@ export const getStoragePerformer = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("getStoragePerformer error:", error);
     res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+//-----------------------------------------------------------------------------
+export const getStoreOverviews = async (req: Request, res: Response) => {
+  try {
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+    const search = (req.query.search as string) || "";
+
+    const totalItems = await prisma.storeOrderOverview.count();
+    const totalPages = Math.ceil(totalItems / limit);
+
+    // i need to search by store name
+    const storeOverviews = await prisma.storeOrderOverview.findMany({
+      where: {
+        OR: [
+          { partner: {
+            OR: [
+              { busnessName: { contains: search, mode: "insensitive" } },
+              { name: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
+            ],
+          } },
+          { store: { produktname: { contains: search, mode: "insensitive" } } },
+        ],
+        partner: {
+          OR: [
+            { busnessName: { contains: search, mode: "insensitive" } },
+            { name: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+          ],
+        },
+        store: {
+          produktname: { contains: search, mode: "insensitive" },
+        },
+      },
+      include: {
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            busnessName: true,
+            email: true,
+          },
+        },
+      },
+      skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: "Store overviews fetched successfully",
+      data: storeOverviews,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+
+export const updateOverviewStatus = async (req: Request, res: Response) => {
+  try {
+    const { ids, status } = req.body;
+
+    const missingField = ["ids", "status"].find((field) => !req.body[field]);
+    if (missingField) {
+      return res.status(400).json({ message: `${missingField} is required` });
+    }
+
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ message: "ids must be an array" });
+    }
+
+    const validStatuses = [
+      "In_bearbeitung",
+      "Versendet",
+      "Geliefert",
+      "Storniert",
+    ];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status", validStatuses });
+    }
+
+    const records = await prisma.storeOrderOverview.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, status: true },
+    });
+
+    if (records.length === 0) {
+      return res.status(404).json({ message: "No records found for given IDs" });
+    }
+
+    const deliveredIds = records
+      .filter((r) => r.status === "Geliefert")
+      .map((r) => r.id);
+
+    if (deliveredIds.length > 0) {
+      return res.status(403).json({
+        success: false,
+        message: "Some orders are already delivered and cannot be updated",
+        deliveredIds,
+      });
+    }
+
+    // If status is "Geliefert", update store quantities before updating status
+    if (status === "Geliefert") {
+      // Fetch StoreOrderOverview records with full data including store relation
+      const orderOverviews = await prisma.storeOrderOverview.findMany({
+        where: { id: { in: ids } },
+        include: {
+          store: {
+            select: {
+              id: true,
+              groessenMengen: true,
+              mindestbestand: true,
+            },
+          },
+        },
+      });
+
+      // Group by storeId to update each store once
+      const storeUpdates = new Map<string, {
+        store: any;
+        orders: typeof orderOverviews;
+      }>();
+
+      for (const order of orderOverviews) {
+        if (!order.store) continue;
+
+        const storeId = order.store.id;
+        if (!storeUpdates.has(storeId)) {
+          storeUpdates.set(storeId, {
+            store: order.store,
+            orders: [],
+          });
+        }
+        storeUpdates.get(storeId)!.orders.push(order);
+      }
+
+      // Update each store's groessenMengen
+      for (const [storeId, { store, orders }] of storeUpdates) {
+        const groessenMengen = store.groessenMengen as Record<string, any>;
+        const mindestbestand = store.mindestbestand || 0;
+        const updatedGroessenMengen = { ...groessenMengen };
+
+        // Process each order for this store
+        for (const order of orders) {
+          const sizeKey = String(order.size);
+
+          if (!updatedGroessenMengen[sizeKey]) {
+            // If size doesn't exist, create it
+            updatedGroessenMengen[sizeKey] = {
+              length: order.length,
+              quantity: order.auto_order_quantity,
+              mindestmenge: mindestbestand,
+            };
+          } else {
+            // Update existing size entry
+            const sizeEntry = updatedGroessenMengen[sizeKey];
+            const currentQuantity = typeof sizeEntry === "object" && "quantity" in sizeEntry
+              ? Number(sizeEntry.quantity || 0)
+              : typeof sizeEntry === "number"
+              ? sizeEntry
+              : 0;
+
+            const newQuantity = currentQuantity + order.auto_order_quantity;
+            const mindestmenge = sizeEntry && typeof sizeEntry === "object" && "mindestmenge" in sizeEntry
+              ? Number(sizeEntry.mindestmenge || mindestbestand)
+              : mindestbestand;
+
+            updatedGroessenMengen[sizeKey] = {
+              ...(typeof sizeEntry === "object" ? sizeEntry : {}),
+              length: order.length,
+              quantity: newQuantity,
+              mindestmenge: mindestmenge,
+            };
+          }
+        }
+
+        // Recalculate overall Status
+        const newStatus = calculateStatus(updatedGroessenMengen, mindestbestand);
+
+        // Update the store
+        await prisma.stores.update({
+          where: { id: storeId },
+          data: {
+            groessenMengen: updatedGroessenMengen as any,
+            Status: newStatus,
+          },
+        });
+      }
+    }
+
+    // Update the StoreOrderOverview status
+    const updatedOverview = await prisma.storeOrderOverview.updateMany({
+      where: { id: { in: ids } },
+      data: { status },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Overview statuses updated successfully",
+      data: updatedOverview,
+    });
+
+  } catch (error) {
+    console.error("updateOverviewStatus error:", error);
+    return res.status(500).json({
       success: false,
       message: "Something went wrong",
       error: error instanceof Error ? error.message : "Unknown error",
