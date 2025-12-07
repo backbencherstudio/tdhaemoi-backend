@@ -717,3 +717,200 @@ export const changePassword = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
+// model partner_settings {
+//   id String @id @default(uuid())
+
+//   partnerId String @unique
+//   partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+//   orthotech Boolean @default(false)
+//   opannrit  Boolean @default(false)
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([partnerId])
+//   @@index([createdAt])
+//   @@index([updatedAt])
+//   @@map("partner_settings")
+// }
+
+
+
+// model partner_settings {
+//   id String @id @default(uuid())
+
+//   partnerId String @unique
+//   partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+//   orthotech Boolean @default(false)
+//   opannrit  Boolean @default(false)
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([partnerId])
+//   @@index([createdAt])
+//   @@index([updatedAt])
+//   @@map("partner_settings")
+// }
+export const managePartnerSettings = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.user;
+    const { orthotech, opannrit } = req.body;
+
+    // this orthotech and opannrit are boolean values
+    if (orthotech !== undefined && typeof orthotech !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: "orthotech must be a boolean value",
+      });
+    }
+    if (opannrit !== undefined && typeof opannrit !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: "opannrit must be a boolean value",
+      });
+    }
+    
+    // Validate input
+    if (orthotech === undefined && opannrit === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one setting (orthotech or opannrit) is required",
+      });
+    }
+
+    const partner = await prisma.user.findUnique({
+      where: { id },
+    });
+    
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: "Partner not found",
+      });
+    }
+    
+    if (partner.role !== "PARTNER") {
+      return res.status(400).json({
+        success: false,
+        message: "You are not authorized to manage partner settings",
+      });
+    }
+
+    // Check if partner_settings exists, then create or update
+    // This ensures only one partner_settings record exists per partner
+    // Using type assertion in case Prisma client hasn't been regenerated
+    const partnersSettingsModel = (prisma as any).partners_settings;
+    if (!partnersSettingsModel) {
+      return res.status(500).json({
+        success: false,
+        message: "Partner settings model not available. Please regenerate Prisma client.",
+        error: "Model not found in Prisma client",
+      });
+    }
+
+    const existingSettings = await partnersSettingsModel.findUnique({
+      where: { partnerId: id },
+    });
+
+    let partnerSettings;
+    if (existingSettings) {
+      // Update existing settings
+      partnerSettings = await partnersSettingsModel.update({
+        where: { id: existingSettings.id },
+        data: {
+          ...(orthotech !== undefined && { orthotech }),
+          ...(opannrit !== undefined && { opannrit }),
+        },
+      });
+    } else {
+      // Create new settings
+      partnerSettings = await partnersSettingsModel.create({
+        data: {
+          partnerId: id,
+          orthotech: orthotech ?? false,
+          opannrit: opannrit ?? false,
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Partner settings saved successfully",
+      data: partnerSettings,
+    });
+  } catch (error: any) {
+    console.error("managePartnerSettings error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error?.message || "Unknown error",
+    });
+  }
+};
+
+export const getPartnerSettings = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.user;
+    
+    const partner = await prisma.user.findUnique({
+      where: { id },
+    });
+    
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: "Partner not found",
+      });
+    }
+    
+    if (partner.role !== "PARTNER") {
+      return res.status(400).json({
+        success: false,
+        message: "You are not authorized to view partner settings",
+      });
+    }
+
+    const partnersSettingsModel = (prisma as any).partners_settings;
+    if (!partnersSettingsModel) {
+      return res.status(500).json({
+        success: false,
+        message: "Partner settings model not available. Please regenerate Prisma client.",
+        error: "Model not found in Prisma client",
+      });
+    }
+
+    const partnerSettings = await partnersSettingsModel.findUnique({
+      where: { partnerId: id },
+    });
+
+    if (!partnerSettings) {
+      return res.status(200).json({
+        success: true,
+        message: "Partner settings not found. Default values returned.",
+        data: {
+          orthotech: false,
+          opannrit: false,
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Partner settings fetched successfully",
+      data: partnerSettings,
+    });
+  } catch (error: any) {
+    console.error("Error in getPartnerSettings:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error?.message || "Unknown error",
+    });
+  }
+};

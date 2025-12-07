@@ -9,12 +9,17 @@ import {
   forgotPasswordSendOtp,
   forgotPasswordVerifyOtp,
   resetPassword,
-  changePassword
+  changePassword,
+  managePartnerSettings,
+  getPartnerSettings
 } from "./partners.controllers";
 import { verifyUser } from "../../../middleware/verifyUsers";
 import upload from "../../../config/multer.config";
 
 const router = express.Router();
+
+router.post("/manage-partner-settings", verifyUser("PARTNER"), managePartnerSettings);
+router.get("/get-partner-settings", verifyUser("PARTNER"), getPartnerSettings);
 
 router.post("/create", verifyUser("ADMIN"), upload.single("image"), createPartnership);
 
@@ -45,5 +50,6 @@ router.post("/forgot-password/reset", resetPassword);
 
 // Add this route before the export
 router.post("/change-password", verifyUser("PARTNER", "ADMIN"), changePassword);
+
 
 export default router;

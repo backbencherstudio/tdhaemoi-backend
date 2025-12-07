@@ -19,10 +19,43 @@ interface GroessenMengen {
 export const dailyReport = () => {
   cron.schedule("*/60 * * * * *", async () => {
     try {
-      // Get all stores where orthotech: true
-      const allStores = await prisma.stores.findMany({
+      // Check if partners_settings model is available
+      const partnersSettingsModel = (prisma as any).partners_settings;
+      if (!partnersSettingsModel) {
+        console.error("partners_settings model not available in Prisma client. Please regenerate Prisma client.");
+        return;
+      }
+
+      // Get all partners_settings where orthotech: true
+      const partnersWithOrthotech = await partnersSettingsModel.findMany({
         where: {
           orthotech: true,
+        },
+        include: {
+          partner: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      console.log(`Found ${partnersWithOrthotech.length} partners with orthotech: true`);
+
+      // Get all stores for these partners
+      const partnerIds = partnersWithOrthotech.map((ps: any) => ps.partnerId);
+      
+      if (partnerIds.length === 0) {
+        console.log("No partners with orthotech: true found");
+        return;
+      }
+
+      const allStores = await prisma.stores.findMany({
+        where: {
+          userId: {
+            in: partnerIds,
+          },
         },
         include: {
           user: {
@@ -34,7 +67,7 @@ export const dailyReport = () => {
         },
       });
 
-      console.log(`Found ${allStores.length} stores with orthotech: true`);
+      console.log(`Found ${allStores.length} stores for partners with orthotech: true`);
 
       // Process each store
       for (const store of allStores) {

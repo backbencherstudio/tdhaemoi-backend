@@ -54,6 +54,7 @@ model User {
   customerSettings         customer_settings?
   customerVersorgungens    customer_versorgungen[]
   storeOrderOverviews      StoreOrderOverview[]
+  partnersSettings          partners_settings?
 
   @@map("users")
 }
@@ -956,6 +957,24 @@ enum ChangeType {
   sales
   createStock
   updateStock
+}
+
+model partners_settings {
+  id String @id @default(uuid())
+
+  partnerId String @unique
+  partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  orthotech Boolean @default(false)
+  opannrit  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([partnerId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@map("partners_settings")
 }
 
 model Bestellubersicht {
