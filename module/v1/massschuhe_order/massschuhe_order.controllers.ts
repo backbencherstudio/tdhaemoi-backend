@@ -1212,14 +1212,22 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 export const getMassschuheRevenueChart = async (req: Request, res: Response) => {
   try {
-    // Optional query params: from, to (ISO dates). Default: last 30 days (UTC)
-    const toParam = req.query.to ? new Date(String(req.query.to)) : new Date();
-    const fromParam = req.query.from
-      ? new Date(String(req.query.from))
-      : new Date(Date.UTC(toParam.getUTCFullYear(), toParam.getUTCMonth(), toParam.getUTCDate() - 30));
+    // Optional query params: from, to (ISO dates).
+    // Default: full current month (UTC): [1st day, 1st of next month)
+    const today = new Date();
+    const defaultFrom = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+    const defaultTo = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
 
-    const from = new Date(Date.UTC(fromParam.getUTCFullYear(), fromParam.getUTCMonth(), fromParam.getUTCDate()));
-    const to = new Date(Date.UTC(toParam.getUTCFullYear(), toParam.getUTCMonth(), toParam.getUTCDate() + 1)); // inclusive end
+    const rawFrom = req.query.from ? new Date(String(req.query.from)) : defaultFrom;
+    const rawTo = req.query.to ? new Date(String(req.query.to)) : null;
+
+    // If only from is provided, set to to the first day of the next month of from
+    const computedTo = rawTo
+      ? new Date(Date.UTC(rawTo.getUTCFullYear(), rawTo.getUTCMonth(), rawTo.getUTCDate() + 1))
+      : new Date(Date.UTC(rawFrom.getUTCFullYear(), rawFrom.getUTCMonth() + 1, 1));
+
+    const from = new Date(Date.UTC(rawFrom.getUTCFullYear(), rawFrom.getUTCMonth(), rawFrom.getUTCDate()));
+    const to = computedTo; // exclusive end
 
     // Get all delivered history entries in range with price fields from order
     const histories = await prisma.massschuhe_order_history.findMany({
@@ -1263,7 +1271,23 @@ export const getMassschuheRevenueChart = async (req: Request, res: Response) => 
       entry.revenue += price;
     }
 
-    const points = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
+    // Fill missing days with zeros across the range
+    const points: { date: string; count: number; revenue: number }[] = [];
+    for (
+      let d = new Date(from.getTime());
+      d < to;
+      d = new Date(d.getTime() + 24 * 60 * 60 * 1000)
+    ) {
+      const dateKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
+        d.getUTCDate()
+      ).padStart(2, "0")}`;
+      if (byDay.has(dateKey)) {
+        points.push(byDay.get(dateKey)!);
+      } else {
+        points.push({ date: dateKey, count: 0, revenue: 0 });
+      }
+    }
+
     const totalCount = points.reduce((s, p) => s + p.count, 0);
     const totalRevenue = points.reduce((s, p) => s + p.revenue, 0);
 
