@@ -739,6 +739,8 @@ model customerOrders {
   customerVersorgungen    customer_versorgungen?  @relation(fields: [customer_versorgungenId], references: [id])
   customer_versorgungenId String?
 
+  barcodeLabel String?
+
   @@unique([partnerId, orderNumber]) // Unique per partner
   @@index([customerId])
   @@index([partnerId])

@@ -19,7 +19,9 @@ import {
   getLast30DaysOrderEinlagen,
   getOrdersHistory,
   getSupplyInfo,
-  getPicture2324ByOrderId
+  getPicture2324ByOrderId,
+  getBarcodeLabel,
+  uploadBarcodeLabel
 } from "./customerOrders.controllers";
 import upload from "../../../config/multer.config";
  
@@ -94,5 +96,9 @@ router.get("/lest30days/einlagen", verifyUser("ADMIN", "PARTNER"), getLast30Days
 router.get("/history/orders/:orderId", verifyUser("ADMIN", "PARTNER"), getOrdersHistory);
 router.get("/supply-info/:orderId", verifyUser("ADMIN", "PARTNER"), getSupplyInfo);
 router.get("/picture-23-24/:orderId", verifyUser("ADMIN", "PARTNER"), getPicture2324ByOrderId);
+
+router.get("/barcode-label/:orderId", verifyUser("ADMIN", "PARTNER"), getBarcodeLabel);
+// Upload barcode label using multer - replaces existing barcode if one exists
+router.post("/upload-barcode-label/:orderId", verifyUser("ADMIN", "PARTNER"), upload.fields([{ name: "image", maxCount: 1 }]), uploadBarcodeLabel);
 
 export default router;

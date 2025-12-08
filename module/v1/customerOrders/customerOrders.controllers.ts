@@ -154,7 +154,6 @@ export const createOrder = async (req: Request, res: Response) => {
     const {
       customerId,
       versorgungId,
-      
 
       einlagentyp,
       überzug,
@@ -217,7 +216,7 @@ export const createOrder = async (req: Request, res: Response) => {
             },
           },
         },
-      })
+      }),
     ]);
 
     console.log("============================", versorgung?.storeId);
@@ -299,7 +298,9 @@ export const createOrder = async (req: Request, res: Response) => {
           email: werkstattEmail ?? null,
           geschaeftsstandort: geschaeftsstandort ?? null,
           mitarbeiter: mitarbeiter ?? null,
-          fertigstellungBis: fertigstellungBis ? new Date(fertigstellungBis) : null,
+          fertigstellungBis: fertigstellungBis
+            ? new Date(fertigstellungBis)
+            : null,
           versorgung: werkstattVersorgung ?? null,
           fussanalysePreis: fussanalysePreis ?? undefined,
           einlagenversorgungPreis: einlagenversorgungPreis ?? undefined,
@@ -886,6 +887,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
           updatedAt: true,
           priority: true,
           bezahlt: true,
+          barcodeLabel: true,
           customer: {
             select: {
               id: true,
@@ -910,6 +912,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
     const formattedOrders = orders.map((order) => ({
       ...order,
       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+      barcodeLabel: order.barcodeLabel ? getImageUrl(`/uploads/${order.barcodeLabel}`) : null,
     }));
 
     const totalPages = Math.ceil(totalCount / limit);
@@ -3072,12 +3075,11 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
       // Track initial status from order creation
       let statusStartTime = order.createdAt;
       let statusAssignee =
-        (order as any).mitarbeiter ||
-        (order as any).partner?.name ||
-        "System";
+        (order as any).mitarbeiter || (order as any).partner?.name || "System";
       let statusAssigneeId =
         (order as any).werkstattEmployeeId || (order as any).partnerId || null;
-      let statusAssigneeType: "employee" | "partner" | "system" = (order as any).werkstattEmployeeId
+      let statusAssigneeType: "employee" | "partner" | "system" = (order as any)
+        .werkstattEmployeeId
         ? "employee"
         : (order as any).partnerId
         ? "partner"
@@ -3137,7 +3139,9 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
           (order as any).partner?.name ||
           "System",
         assigneeId:
-          (order as any).werkstattEmployeeId || (order as any).partnerId || null,
+          (order as any).werkstattEmployeeId ||
+          (order as any).partnerId ||
+          null,
         assigneeType: (order as any).werkstattEmployeeId
           ? "employee"
           : (order as any).partnerId
@@ -3463,6 +3467,211 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong while fetching picture 23 24",
+      error: error.message,
+    });
+  }
+};
+
+export const getBarcodeLabel = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required",
+      });
+    }
+
+    // Get order with partner info (avatar, address) and customer info
+    const order = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: {
+        orderNumber: true,
+        orderStatus: true,
+        createdAt: true,
+        updatedAt: true,
+        customer: {
+          select: {
+            vorname: true,
+            nachname: true,
+            customerNumber: true,
+          },
+        },
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            hauptstandort: true,
+            busnessName: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Get the time when order status changed to "Ausgeführt" if applicable
+    let completedAt: Date | null = null;
+    if (order.orderStatus === "Ausgeführt") {
+      const statusHistory = await prisma.customerOrdersHistory.findFirst({
+        where: {
+          orderId: orderId,
+          statusTo: "Ausgeführt",
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        select: {
+          createdAt: true,
+        },
+      });
+      completedAt = statusHistory?.createdAt || null;
+    }
+
+    // Format partner address from hauptstandort array
+    const partnerAddress = order.partner.hauptstandort
+      ? order.partner.hauptstandort.join(", ")
+      : null;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        partner: {
+          name: order.partner.name || order.partner.busnessName || null,
+          image: order.partner.image
+            ? getImageUrl(`/uploads/${order.partner.image}`)
+            : null,
+          address: partnerAddress,
+        },
+        customer: `${order.customer.vorname} ${order.customer.nachname}`,
+        customerNumber: order.customer.customerNumber,
+        orderNumber: order.orderNumber,
+        orderStatus: order.orderStatus,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+        completedAt: completedAt, // Time when status changed to "Ausgeführt"
+      },
+    });
+  } catch (error: any) {
+    console.error("Get Barcode Label Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching barcode label",
+      error: error.message,
+    });
+  }
+};
+
+export const uploadBarcodeLabel = async (req: Request, res: Response) => {
+  const files = req.files as any;
+
+  const cleanupFiles = () => {
+    if (!files) return;
+    Object.keys(files).forEach((key) => {
+      files[key].forEach((file: any) => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (err) {
+          console.error(`Failed to delete file ${file.path}`, err);
+        }
+      });
+    });
+  };
+
+  try {
+    const { orderId } = req.params;
+
+    if (!files || !files.image || !files.image[0]) {
+      return res.status(400).json({
+        success: false,
+        message: "Barcode label image file is required",
+      });
+    }
+
+    const imageFile = files.image[0];
+
+
+
+    // Check if order exists and get current barcode label
+    const existingOrder = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: { id: true, barcodeLabel: true },
+    });
+
+    if (!existingOrder) {
+      cleanupFiles();
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Delete old barcode label file if it exists
+    if (existingOrder.barcodeLabel) {
+      const oldBarcodePath = path.join(
+        process.cwd(),
+        "uploads",
+        existingOrder.barcodeLabel
+      );
+      if (fs.existsSync(oldBarcodePath)) {
+        try {
+          fs.unlinkSync(oldBarcodePath);
+          console.log(`Deleted old barcode label file: ${oldBarcodePath}`);
+        } catch (err) {
+          console.error(
+            `Failed to delete old barcode label file: ${oldBarcodePath}`,
+            err
+          );
+        }
+      }
+    }
+
+    // Update order with new barcode label filename
+    const updatedOrder = await prisma.customerOrders.update({
+      where: { id: orderId },
+      data: {
+        barcodeLabel: imageFile.filename,
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        barcodeLabel: true,
+        customer: {
+          select: {
+            vorname: true,
+            nachname: true,
+            customerNumber: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Barcode label uploaded successfully",
+      data: {
+        orderId: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        barcodeLabel: updatedOrder.barcodeLabel
+          ? getImageUrl(`/uploads/${updatedOrder.barcodeLabel}`)
+          : null,
+        customer: `${updatedOrder.customer.vorname} ${updatedOrder.customer.nachname}`,
+        customerNumber: updatedOrder.customer.customerNumber,
+      },
+    });
+  } catch (error: any) {
+    cleanupFiles();
+    console.error("Upload Barcode Label Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while uploading barcode label",
       error: error.message,
     });
   }
