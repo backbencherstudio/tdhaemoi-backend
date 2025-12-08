@@ -54,7 +54,7 @@ model User {
   customerSettings         customer_settings?
   customerVersorgungens    customer_versorgungen[]
   storeOrderOverviews      StoreOrderOverview[]
-  partnersSettings          partners_settings?
+  partnersSettings         partners_settings?
 
   @@map("users")
 }
@@ -1190,6 +1190,27 @@ enum massschuhe_order_status {
 
   Geliefert //delivered
 }
+
+// model massschuhe_status_treack {
+//   id String @id @default(uuid())
+
+//   massschuhe_orderId String
+//   massschuhe_order   massschuhe_order @relation(fields: [massschuhe_orderId], references: [id], onDelete: Cascade)
+
+//   statusFrom massschuhe_order_status?
+//   statusTo   massschuhe_order_status
+//   note       String?
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([massschuhe_orderId])
+//   @@index([statusFrom])
+//   @@index([statusTo])
+//   @@index([createdAt])
+//   @@index([updatedAt])
+//   @@map("massschuhe_status_treack")
+// }
 
 //as like as customer order history
 model massschuhe_order_history {

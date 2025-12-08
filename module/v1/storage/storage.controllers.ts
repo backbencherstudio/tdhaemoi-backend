@@ -13,7 +13,10 @@ const prisma = new PrismaClient();
  * @param mindestbestand - Global minimum stock level threshold (fallback)
  * @returns "Voller Bestand" if all sizes >= threshold, otherwise "Niedriger Bestand"
  */
-const calculateStatus = (groessenMengen: any, mindestbestand: number): string => {
+const calculateStatus = (
+  groessenMengen: any,
+  mindestbestand: number
+): string => {
   if (!groessenMengen || typeof groessenMengen !== "object") {
     return "Niedriger Bestand";
   }
@@ -381,7 +384,10 @@ export const updateStorage = async (req: Request, res: Response) => {
     delete updatedData.Status;
 
     // Clean groessenMengen in updates – never persist warningStatus
-    if (updatedData.groessenMengen && typeof updatedData.groessenMengen === "object") {
+    if (
+      updatedData.groessenMengen &&
+      typeof updatedData.groessenMengen === "object"
+    ) {
       const sizes = updatedData.groessenMengen as Record<string, any>;
       const cleaned: Record<string, any> = {};
       for (const sizeKey of Object.keys(sizes)) {
@@ -429,39 +435,43 @@ export const updateStorage = async (req: Request, res: Response) => {
         }
         return;
       }
-    
+
       // Handle groessenMengen separately
       if (prefix === "groessenMengen") {
         for (const size of Object.keys({ ...oldVal, ...newVal })) {
           const oldSize = oldVal[size];
           const newSize = newVal[size];
-    
+
           if (!oldSize || !newSize) continue;
-    
+
           if (oldSize.length !== newSize.length) {
-            changes.push(`groessenMengen.${size}.length: ${oldSize.length} → ${newSize.length}`);
+            changes.push(
+              `groessenMengen.${size}.length: ${oldSize.length} → ${newSize.length}`
+            );
           }
           if (oldSize.quantity !== newSize.quantity) {
-            changes.push(`groessenMengen.${size}.quantity: ${oldSize.quantity} → ${newSize.quantity}`);
+            changes.push(
+              `groessenMengen.${size}.quantity: ${oldSize.quantity} → ${newSize.quantity}`
+            );
           }
         }
         return;
       }
-    
+
       // Generic deep object comparison (other objects)
       for (const key of Object.keys({ ...oldVal, ...newVal })) {
         compareValues(`${prefix}.${key}`, oldVal[key], newVal[key]);
       }
     }
-    
+
     // Only check the fields that were updated
     for (const key of Object.keys(updatedData)) {
       const oldVal = (oldStore as any)[key];
       const newVal = (newStore as any)[key];
-    
+
       compareValues(key, oldVal, newVal);
     }
-    
+
     // Create history entry
     await prisma.storesHistory.create({
       data: {
@@ -469,11 +479,12 @@ export const updateStorage = async (req: Request, res: Response) => {
         changeType: "updateStock",
         partnerId,
         reason: "Store updated",
-        text: changes.length > 0 ? changes.join(", ") : "No main changes detected",
+        text:
+          changes.length > 0 ? changes.join(", ") : "No main changes detected",
         status: "STOCK_UPDATE",
       },
     });
-    
+
     // -------------------------------------------------------------------
 
     return res.status(200).json({
@@ -610,7 +621,8 @@ export const getStorageChartData = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: "Storage chart data (current inventory value) fetched successfully",
+      message:
+        "Storage chart data (current inventory value) fetched successfully",
       data,
     });
   } catch (error) {
@@ -850,7 +862,6 @@ export const getStoragePerformer = async (req: Request, res: Response) => {
 //-----------------------------------------------------------------------------
 export const getStoreOverviews = async (req: Request, res: Response) => {
   try {
-
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
@@ -863,13 +874,15 @@ export const getStoreOverviews = async (req: Request, res: Response) => {
     const storeOverviews = await prisma.storeOrderOverview.findMany({
       where: {
         OR: [
-          { partner: {
-            OR: [
-              { busnessName: { contains: search, mode: "insensitive" } },
-              { name: { contains: search, mode: "insensitive" } },
-              { email: { contains: search, mode: "insensitive" } },
-            ],
-          } },
+          {
+            partner: {
+              OR: [
+                { busnessName: { contains: search, mode: "insensitive" } },
+                { name: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
+              ],
+            },
+          },
           { store: { produktname: { contains: search, mode: "insensitive" } } },
         ],
         partner: {
@@ -897,7 +910,7 @@ export const getStoreOverviews = async (req: Request, res: Response) => {
       take: limit,
       orderBy: { createdAt: "desc" },
     });
-    
+
     res.status(200).json({
       success: true,
       message: "Store overviews fetched successfully",
@@ -919,7 +932,6 @@ export const getStoreOverviews = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 export const updateOverviewStatus = async (req: Request, res: Response) => {
   try {
@@ -951,7 +963,9 @@ export const updateOverviewStatus = async (req: Request, res: Response) => {
     });
 
     if (records.length === 0) {
-      return res.status(404).json({ message: "No records found for given IDs" });
+      return res
+        .status(404)
+        .json({ message: "No records found for given IDs" });
     }
 
     const deliveredIds = records
@@ -983,10 +997,13 @@ export const updateOverviewStatus = async (req: Request, res: Response) => {
       });
 
       // Group by storeId to update each store once
-      const storeUpdates = new Map<string, {
-        store: any;
-        orders: typeof orderOverviews;
-      }>();
+      const storeUpdates = new Map<
+        string,
+        {
+          store: any;
+          orders: typeof orderOverviews;
+        }
+      >();
 
       for (const order of orderOverviews) {
         if (!order.store) continue;
@@ -1021,16 +1038,20 @@ export const updateOverviewStatus = async (req: Request, res: Response) => {
           } else {
             // Update existing size entry
             const sizeEntry = updatedGroessenMengen[sizeKey];
-            const currentQuantity = typeof sizeEntry === "object" && "quantity" in sizeEntry
-              ? Number(sizeEntry.quantity || 0)
-              : typeof sizeEntry === "number"
-              ? sizeEntry
-              : 0;
+            const currentQuantity =
+              typeof sizeEntry === "object" && "quantity" in sizeEntry
+                ? Number(sizeEntry.quantity || 0)
+                : typeof sizeEntry === "number"
+                ? sizeEntry
+                : 0;
 
             const newQuantity = currentQuantity + order.auto_order_quantity;
-            const mindestmenge = sizeEntry && typeof sizeEntry === "object" && "mindestmenge" in sizeEntry
-              ? Number(sizeEntry.mindestmenge || mindestbestand)
-              : mindestbestand;
+            const mindestmenge =
+              sizeEntry &&
+              typeof sizeEntry === "object" &&
+              "mindestmenge" in sizeEntry
+                ? Number(sizeEntry.mindestmenge || mindestbestand)
+                : mindestbestand;
 
             updatedGroessenMengen[sizeKey] = {
               ...(typeof sizeEntry === "object" ? sizeEntry : {}),
@@ -1042,7 +1063,10 @@ export const updateOverviewStatus = async (req: Request, res: Response) => {
         }
 
         // Recalculate overall Status
-        const newStatus = calculateStatus(updatedGroessenMengen, mindestbestand);
+        const newStatus = calculateStatus(
+          updatedGroessenMengen,
+          mindestbestand
+        );
 
         // Update the store
         await prisma.stores.update({
@@ -1066,10 +1090,48 @@ export const updateOverviewStatus = async (req: Request, res: Response) => {
       message: "Overview statuses updated successfully",
       data: updatedOverview,
     });
-
   } catch (error) {
     console.error("updateOverviewStatus error:", error);
     return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const getStoreOverviewById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const storeOverview = await prisma.storeOrderOverview.findFirst({
+      where: { id },
+      include: {
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            busnessName: true,
+            email: true,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            produktname: true,
+            // groessenMengen: true,
+            // mindestbestand: true,
+          },
+        },
+      },
+    });
+    res.status(200).json({
+      success: true,
+      message: "Store overview fetched successfully",
+      data: storeOverview,
+    });
+  } catch (error) {
+    res.status(500).json({
       success: false,
       message: "Something went wrong",
       error: error instanceof Error ? error.message : "Unknown error",

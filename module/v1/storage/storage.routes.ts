@@ -9,7 +9,8 @@ import {
   getStorageHistory,
   getStoragePerformer,
   getStoreOverviews,
-  updateOverviewStatus
+  updateOverviewStatus,
+  getStoreOverviewById
 } from "./storage.controllers";
 import { verifyUser } from "../../../middleware/verifyUsers";
 
@@ -26,5 +27,6 @@ router.get("/performer", verifyUser("PARTNER", "ADMIN"), getStoragePerformer);
 //store overviwe
 router.get("/store-overview", verifyUser("PARTNER", "ADMIN"), getStoreOverviews);
 router.patch("/update-overview-statu", verifyUser("PARTNER", "ADMIN"), updateOverviewStatus);
+router.get("/get-store-overview-by-id/:id", verifyUser("PARTNER", "ADMIN"), getStoreOverviewById);
 
 export default router;

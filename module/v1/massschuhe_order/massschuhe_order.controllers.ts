@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, $Enums } from "@prisma/client";
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 
@@ -1091,6 +1091,199 @@ export const updateMassschuheOrderStatus = async (
       success: false,
       message: "Something went wrong while updating massschuhe order status",
       error: error.message || error,
+    });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Stats for massschuhe orders (current vs previous month)
+// ---------------------------------------------------------------------------
+export const getMassschuheOrderStats = async (req: Request, res: Response) => {
+  try {
+    const now = new Date();
+    const startOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const startOfNextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    const startOfPrevMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+
+    const waitingStatuses: $Enums.massschuhe_order_status[] = [
+      "Bettungsherstellung",
+      "Halbprobenerstellung",
+      "Schafterstellung",
+      "Bodenerstellung",
+    ];
+
+    const calculateChange = (current: number, previous: number) => {
+      if (previous === 0) {
+        return current > 0 ? 100 : 0;
+      }
+      return ((current - previous) / previous) * 100;
+    };
+
+    const [
+      completedCurrent,
+      completedPrevious,
+      waitingCurrent,
+      waitingPrevious,
+      activeCurrent,
+      activePrevious,
+    ] = await Promise.all([
+      prisma.massschuhe_order_history.count({
+        where: {
+          statusTo: "Geliefert",
+          startedAt: {
+            gte: startOfCurrentMonth,
+            lt: startOfNextMonth,
+          },
+        },
+      }),
+      prisma.massschuhe_order_history.count({
+        where: {
+          statusTo: "Geliefert",
+          startedAt: {
+            gte: startOfPrevMonth,
+            lt: startOfCurrentMonth,
+          },
+        },
+      }),
+      prisma.massschuhe_order_history.count({
+        where: {
+          statusTo: { in: waitingStatuses },
+          startedAt: {
+            gte: startOfCurrentMonth,
+            lt: startOfNextMonth,
+          },
+        },
+      }),
+      prisma.massschuhe_order_history.count({
+        where: {
+          statusTo: { in: waitingStatuses },
+          startedAt: {
+            gte: startOfPrevMonth,
+            lt: startOfCurrentMonth,
+          },
+        },
+      }),
+      // Active = orders not delivered (snapshot)
+      prisma.massschuhe_order.count({
+        where: { status: { not: "Geliefert" } },
+      }),
+      // Approximate previous active snapshot: orders created before current month and not delivered now
+      prisma.massschuhe_order.count({
+        where: {
+          status: { not: "Geliefert" },
+          createdAt: { lt: startOfCurrentMonth },
+        },
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Massschuhe order stats fetched successfully",
+      data: {
+        completed: {
+          current: completedCurrent,
+          previous: completedPrevious,
+          changePercent: calculateChange(completedCurrent, completedPrevious),
+        },
+        waitingToStart: {
+          current: waitingCurrent,
+          previous: waitingPrevious,
+          changePercent: calculateChange(waitingCurrent, waitingPrevious),
+        },
+        active: {
+          current: activeCurrent,
+          previous: activePrevious,
+          changePercent: calculateChange(activeCurrent, activePrevious),
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("Error in getMassschuheOrderStats:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching massschuhe order stats",
+      error: error?.message || "Unknown error",
+    });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Revenue / orders line chart (delivered orders)
+// ---------------------------------------------------------------------------
+export const getMassschuheRevenueChart = async (req: Request, res: Response) => {
+  try {
+    // Optional query params: from, to (ISO dates). Default: last 30 days (UTC)
+    const toParam = req.query.to ? new Date(String(req.query.to)) : new Date();
+    const fromParam = req.query.from
+      ? new Date(String(req.query.from))
+      : new Date(Date.UTC(toParam.getUTCFullYear(), toParam.getUTCMonth(), toParam.getUTCDate() - 30));
+
+    const from = new Date(Date.UTC(fromParam.getUTCFullYear(), fromParam.getUTCMonth(), fromParam.getUTCDate()));
+    const to = new Date(Date.UTC(toParam.getUTCFullYear(), toParam.getUTCMonth(), toParam.getUTCDate() + 1)); // inclusive end
+
+    // Get all delivered history entries in range with price fields from order
+    const histories = await prisma.massschuhe_order_history.findMany({
+      where: {
+        statusTo: "Geliefert",
+        startedAt: {
+          gte: from,
+          lt: to,
+        },
+      },
+      select: {
+        startedAt: true,
+        massschuhe_order: {
+          select: {
+            fußanalyse: true,
+            einlagenversorgung: true,
+          },
+        },
+      },
+    });
+
+    // Aggregate by day
+    const byDay = new Map<
+      string,
+      { date: string; count: number; revenue: number }
+    >();
+
+    for (const h of histories) {
+      const d = h.startedAt;
+      const dateKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
+        d.getUTCDate()
+      ).padStart(2, "0")}`;
+      const price =
+        Number(h.massschuhe_order?.fußanalyse ?? 0) +
+        Number(h.massschuhe_order?.einlagenversorgung ?? 0);
+      if (!byDay.has(dateKey)) {
+        byDay.set(dateKey, { date: dateKey, count: 0, revenue: 0 });
+      }
+      const entry = byDay.get(dateKey)!;
+      entry.count += 1;
+      entry.revenue += price;
+    }
+
+    const points = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
+    const totalCount = points.reduce((s, p) => s + p.count, 0);
+    const totalRevenue = points.reduce((s, p) => s + p.revenue, 0);
+
+    return res.status(200).json({
+      success: true,
+      message: "Massschuhe revenue chart fetched successfully",
+      data: {
+        from: from.toISOString(),
+        to: to.toISOString(),
+        points,
+        totalCount,
+        totalRevenue,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error in getMassschuheRevenueChart:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching revenue chart",
+      error: error?.message || "Unknown error",
     });
   }
 };

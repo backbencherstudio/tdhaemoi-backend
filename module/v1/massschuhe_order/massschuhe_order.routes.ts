@@ -8,8 +8,9 @@ import {
   updateMassschuheOrder,
   deleteMassschuheOrder,
   getMassschuheOrderById,
-  updateMassschuheOrderStatus
-  
+  updateMassschuheOrderStatus,
+  getMassschuheOrderStats,
+  getMassschuheRevenueChart,
 } from "./massschuhe_order.controllers";
 
 const router = express.Router();
@@ -18,11 +19,14 @@ router.post("/create", verifyUser("ADMIN", "PARTNER"), createMassschuheOrder);
 router.get("/", verifyUser("ADMIN", "PARTNER"), getMassschuheOrder);
 router.get("/get/:id", verifyUser("ADMIN", "PARTNER"), getMassschuheOrderById);
 router.patch("/update-status", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrderStatus);
+router.get("/stats", verifyUser("ADMIN", "PARTNER"), getMassschuheOrderStats);
+router.get("/stats/revenue", verifyUser("ADMIN", "PARTNER"), getMassschuheRevenueChart);
 
 
 router.put("/:id", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrder);
 router.patch("/:id", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrder);
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteMassschuheOrder);
+
 
 
 
