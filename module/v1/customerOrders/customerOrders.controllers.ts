@@ -1249,7 +1249,6 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
               customerNumber: true,
             },
           },
-          geschaeftsstandort: true,
           // partner: {
           //   select: {
           //     id: true,
