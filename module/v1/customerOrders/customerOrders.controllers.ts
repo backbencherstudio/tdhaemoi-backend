@@ -3489,6 +3489,7 @@ export const getBarcodeLabel = async (req: Request, res: Response) => {
       select: {
         orderNumber: true,
         orderStatus: true,
+        geschaeftsstandort: true,
         createdAt: true,
         updatedAt: true,
         customer: {
@@ -3548,15 +3549,13 @@ export const getBarcodeLabel = async (req: Request, res: Response) => {
           image: order.partner.image
             ? getImageUrl(`/uploads/${order.partner.image}`)
             : null,
-          address: partnerAddress,
         },
         customer: `${order.customer.vorname} ${order.customer.nachname}`,
         customerNumber: order.customer.customerNumber,
         orderNumber: order.orderNumber,
         orderStatus: order.orderStatus,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt,
         completedAt: completedAt, // Time when status changed to "Ausgeführt"
+        partnerAddress: order.geschaeftsstandort,
       },
     });
   } catch (error: any) {
