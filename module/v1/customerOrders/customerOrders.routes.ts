@@ -15,7 +15,6 @@ import {
   deleteOrder,
   getOrdersByCustomerId,
   getLast40DaysOrderStats,
-  createWerkstattzettel,
   getEinlagenInProduktion,
   getLast30DaysOrderEinlagen,
   getOrdersHistory,
@@ -88,12 +87,6 @@ router.delete(
 );
 
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteOrder);
-
-router.post(
-  "/werkstattzettel/:customerId",
-  verifyUser("ADMIN", "PARTNER"),
-  createWerkstattzettel
-);
 
 router.get("/lest30days/einlagen", verifyUser("ADMIN", "PARTNER"), getLast30DaysOrderEinlagen);
 

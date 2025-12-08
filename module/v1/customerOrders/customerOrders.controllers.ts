@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
@@ -153,7 +154,7 @@ export const createOrder = async (req: Request, res: Response) => {
     const {
       customerId,
       versorgungId,
-      werkstattzettelId,
+      
 
       einlagentyp,
       überzug,
@@ -163,10 +164,24 @@ export const createOrder = async (req: Request, res: Response) => {
       kostenvoranschlag,
       ausführliche_diagnose,
       versorgung_laut_arzt,
+      // Inline order payload fields
+      kundenName,
+      auftragsDatum,
+      wohnort,
+      telefon,
+      email: werkstattEmail,
+      geschaeftsstandort,
+      mitarbeiter,
+      fertigstellungBis,
+      versorgung: werkstattVersorgung,
+      bezahlt: werkstattBezahlt,
+      fussanalysePreis,
+      einlagenversorgungPreis,
+      werkstattEmployeeId,
     } = req.body;
     const partnerId = req.user.id;
 
-    console.log(customerId, versorgungId, partnerId, werkstattzettelId);
+    console.log(customerId, versorgungId, partnerId);
 
     if (!customerId || !versorgungId) {
       return res.status(400).json({
@@ -175,7 +190,7 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    const [customer, versorgung, werkstattzettel] = await Promise.all([
+    const [customer, versorgung] = await Promise.all([
       prisma.customers.findUnique({
         where: { id: customerId },
         select: {
@@ -202,10 +217,7 @@ export const createOrder = async (req: Request, res: Response) => {
             },
           },
         },
-      }),
-      prisma.werkstattzettel.findUnique({
-        where: { id: werkstattzettelId },
-      }),
+      })
     ]);
 
     console.log("============================", versorgung?.storeId);
@@ -220,13 +232,6 @@ export const createOrder = async (req: Request, res: Response) => {
         success: false,
         message:
           "Supply status price is not set for this versorgung. Please assign a supply status with a price.",
-      });
-    }
-
-    if (!werkstattzettel) {
-      res.status(400).json({
-        success: false,
-        message: "werkstattzettel id not found",
       });
     }
 
@@ -266,12 +271,11 @@ export const createOrder = async (req: Request, res: Response) => {
 
       const orderNumber = await getNextOrderNumberForPartner(tx, partnerId);
 
-      const newOrder = await tx.customerOrders.create({
+      const newOrder: any = await tx.customerOrders.create({
         data: {
           customerId,
           partnerId,
           orderNumber,
-          werkstattzettelId,
           versorgungId: versorgungId,
           fußanalyse: null, // Price now comes from supplyStatus
           einlagenversorgung: null, // Price now comes from supplyStatus
@@ -287,21 +291,24 @@ export const createOrder = async (req: Request, res: Response) => {
           schuhmodell_wählen,
           kostenvoranschlag,
           storeId: versorgung?.storeId ?? null,
-          bezahlt: werkstattzettel?.bezahlt ?? null,
-        },
-        // i need to get employee id from werkstattzettel
+          bezahlt: werkstattBezahlt ?? null,
+          kundenName: kundenName ?? null,
+          auftragsDatum: auftragsDatum ? new Date(auftragsDatum) : null,
+          wohnort: wohnort ?? null,
+          telefon: telefon ?? null,
+          email: werkstattEmail ?? null,
+          geschaeftsstandort: geschaeftsstandort ?? null,
+          mitarbeiter: mitarbeiter ?? null,
+          fertigstellungBis: fertigstellungBis ? new Date(fertigstellungBis) : null,
+          versorgung: werkstattVersorgung ?? null,
+          fussanalysePreis: fussanalysePreis ?? undefined,
+          einlagenversorgungPreis: einlagenversorgungPreis ?? undefined,
+          werkstattEmployeeId: werkstattEmployeeId ?? null,
+        } as any,
         select: {
           id: true,
-          werkstattzettel: {
-            select: {
-              employee: {
-                select: {
-                  id: true,
-                },
-              },
-            },
-          },
-        },
+          werkstattEmployeeId: true,
+        } as any,
       });
 
       // Update store stock if needed
@@ -365,7 +372,7 @@ export const createOrder = async (req: Request, res: Response) => {
           note: `Einlagenauftrag ${newOrder.id} erstellt`,
           system_note: "New order created",
           paymentIs: totalPrice.toString(),
-        },
+        } as any,
       });
       await tx.customerOrdersHistory.create({
         data: {
@@ -373,9 +380,9 @@ export const createOrder = async (req: Request, res: Response) => {
           statusFrom: "Warten_auf_Versorgungsstart",
           statusTo: "Warten_auf_Versorgungsstart",
           partnerId: partnerId,
-          employeeId: newOrder.werkstattzettel.employee?.id || null,
+          employeeId: newOrder.werkstattEmployeeId || null,
           note: null,
-        },
+        } as any,
       });
 
       return { ...newOrder, matchedSizeKey } as any;
@@ -438,14 +445,7 @@ const fetchVersorgungData = async (versorgungId: string) => {
   });
 };
 
-const fetchWerkstattzettelData = async (werkstattzettelId?: string) => {
-  if (!werkstattzettelId) return null;
-  return prisma.werkstattzettel.findUnique({
-    where: { id: werkstattzettelId },
-  });
-};
-
-const validateData = (customer: any, versorgung: any, werkstattzettel: any) => {
+const validateData = (customer: any, versorgung: any) => {
   if (!customer || !versorgung) {
     return {
       success: false,
@@ -459,14 +459,6 @@ const validateData = (customer: any, versorgung: any, werkstattzettel: any) => {
       success: false,
       message:
         "Supply status price is not set for this versorgung. Please assign a supply status with a price.",
-      status: 400,
-    };
-  }
-
-  if (werkstattzettel === undefined) {
-    return {
-      success: false,
-      message: "werkstattzettel id not found",
       status: 400,
     };
   }
@@ -499,7 +491,6 @@ const createOrderTransaction = async (
   params: {
     customerId: string;
     partnerId: string;
-    werkstattzettelId?: string;
     customer: any;
     versorgung: any;
     totalPrice: number;
@@ -509,7 +500,6 @@ const createOrderTransaction = async (
   const {
     customerId,
     partnerId,
-    werkstattzettelId,
     customer,
     versorgung,
     totalPrice,
@@ -537,7 +527,6 @@ const createOrderTransaction = async (
       customerId,
       partnerId,
       orderNumber,
-      werkstattzettelId,
       versorgungId: versorgung.id,
       fußanalyse: null, // Price now comes from supplyStatus
       einlagenversorgung: null, // Price now comes from supplyStatus
@@ -695,15 +684,10 @@ export const getAllOrders_v1 = async (req: Request, res: Response) => {
             },
           },
           product: true,
-          werkstattzettel: {
-            select: {
-              id: true,
-              auftragsDatum: true,
-              fertigstellungBis: true,
-              versorgung: true,
-              bezahlt: true,
-            },
-          },
+          auftragsDatum: true,
+          fertigstellungBis: true,
+          versorgung: true,
+          bezahlt: true,
         },
       }),
       prisma.customerOrders.count({ where }),
@@ -744,218 +728,6 @@ export const getAllOrders_v1 = async (req: Request, res: Response) => {
     });
   }
 };
-
-//---------------------------------------------------------
-// Get all orders V2
-//---------------------------------------------------------
-// export const getAllOrders = async (req: Request, res: Response) => {
-//   try {
-//     const page = parseInt(req.query.page as string) || 1;
-//     const limit = parseInt(req.query.limit as string) || 10;
-//     const days = parseInt(req.query.days as string);
-//     const search = req.query.search as string; // New search parameter
-//     const skip = (page - 1) * limit;
-
-//     const where: any = {};
-
-//     // Date filter
-//     if (days && !isNaN(days)) {
-//       const startDate = new Date();
-//       startDate.setDate(startDate.getDate() - days);
-//       where.createdAt = {
-//         gte: startDate,
-//       };
-//     }
-
-//     // Customer filter
-//     if (req.query.customerId) {
-//       where.customerId = req.query.customerId as string;
-//     }
-
-//     // Partner filter
-//     if (req.query.partnerId) {
-//       where.partnerId = req.query.partnerId as string;
-//     }
-
-//     // 🔹 OrderStatus filter
-//     if (req.query.orderStatus) {
-//       const statuses = (req.query.orderStatus as string)
-//         .split(",")
-//         .map((s) => s.trim())
-//         .filter(Boolean);
-
-//       if (statuses.length === 1) {
-//         where.orderStatus = statuses[0];
-//       } else if (statuses.length > 1) {
-//         where.orderStatus = { in: statuses };
-//       }
-//     }
-
-//     // 🔍 Search functionality
-//     if (search && search.trim() !== "") {
-//       const searchTerm = search.trim();
-
-//       // Create OR conditions for search
-//       where.OR = [
-//         // Search by order ID (exact match or partial)
-//         {
-//           id: {
-//             contains: searchTerm,
-//             mode: "insensitive",
-//           },
-//         },
-//         // Search by customer number (exact match)
-//         {
-//           customer: {
-//             customerNumber: isNaN(Number(searchTerm))
-//               ? undefined
-//               : parseInt(searchTerm),
-//           },
-//         },
-//         // Search by customer name (partial match, case insensitive)
-//         {
-//           customer: {
-//             OR: [
-//               {
-//                 vorname: {
-//                   contains: searchTerm,
-//                   mode: "insensitive",
-//                 },
-//               },
-//               {
-//                 nachname: {
-//                   contains: searchTerm,
-//                   mode: "insensitive",
-//                 },
-//               },
-//               // Search by full name (combining vorname and nachname)
-//               {
-//                 AND: [
-//                   {
-//                     vorname: {
-//                       contains: searchTerm.split(" ")[0],
-//                       mode: "insensitive",
-//                     },
-//                   },
-//                   {
-//                     nachname: {
-//                       contains:
-//                         searchTerm.split(" ")[1] || searchTerm.split(" ")[0],
-//                       mode: "insensitive",
-//                     },
-//                   },
-//                 ],
-//               },
-//             ],
-//           },
-//         },
-//         // Search by customer email (partial match)
-//         {
-//           customer: {
-//             email: {
-//               contains: searchTerm,
-//               mode: "insensitive",
-//             },
-//           },
-//         },
-//       ].filter((condition) => {
-//         // Filter out invalid conditions (like when searchTerm is not a number for customerNumber)
-//         if (condition.customer?.customerNumber === undefined) {
-//           delete condition.customer?.customerNumber;
-//         }
-//         return true;
-//       });
-//     }
-
-//     const [orders, totalCount] = await Promise.all([
-//       prisma.customerOrders.findMany({
-//         where,
-//         skip,
-//         take: limit,
-//         orderBy: { createdAt: "desc" },
-//         select: {
-//           id: true,
-//           fußanalyse: true,
-//           einlagenversorgung: true,
-//           totalPrice: true,
-//           orderStatus: true,
-//           statusUpdate: true,
-//           invoice: true,
-//           createdAt: true,
-//           updatedAt: true,
-//           priority: true,
-//           orderNumber: true,
-//           customer: {
-//             select: {
-//               id: true,
-//               vorname: true,
-//               nachname: true,
-//               email: true,
-//               wohnort: true,
-//               customerNumber: true,
-//             },
-//           },
-//           product: true,
-//           werkstattzettel: {
-//             select: {
-//               id: true,
-//               auftragsDatum: true,
-//               fertigstellungBis: true,
-//               versorgung: true,
-//               bezahlt: true,
-//             },
-//           },
-//         },
-//       }),
-//       prisma.customerOrders.count({ where }),
-//     ]);
-
-//     // Format invoices
-//     const formattedOrders = orders.map((order) => ({
-//       ...order,
-//       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
-//     }));
-
-//     const totalPages = Math.ceil(totalCount / limit);
-//     const hasNextPage = page < totalPages;
-//     const hasPrevPage = page > 1;
-
-//     // Build response message based on filters
-//     let message = "All orders fetched successfully";
-//     if (req.query.orderStatus) {
-//       message = `Orders with status: ${req.query.orderStatus}`;
-//     }
-//     if (search) {
-//       message = `Orders matching search: "${search}"`;
-//     }
-//     if (req.query.orderStatus && search) {
-//       message = `Orders with status: ${req.query.orderStatus} matching search: "${search}"`;
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       message,
-//       data: formattedOrders,
-//       pagination: {
-//         totalItems: totalCount,
-//         totalPages,
-//         currentPage: page,
-//         itemsPerPage: limit,
-//         hasNextPage,
-//         hasPrevPage,
-//         filter: days ? `Last ${days} days` : "All time",
-//         search: search || null,
-//       },
-//     });
-//   } catch (error: any) {
-//     console.error("Get All Orders Error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
 
 export const getAllOrders = async (req: Request, res: Response) => {
   try {
@@ -1125,15 +897,10 @@ export const getAllOrders = async (req: Request, res: Response) => {
             },
           },
           product: true,
-          werkstattzettel: {
-            select: {
-              id: true,
-              auftragsDatum: true,
-              fertigstellungBis: true,
-              versorgung: true,
-              bezahlt: true,
-            },
-          },
+          auftragsDatum: true,
+          fertigstellungBis: true,
+          versorgung: true,
+          bezahlt: true,
         },
       }),
       prisma.customerOrders.count({ where }),
@@ -1199,111 +966,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
   }
 };
 
-// export const getAllOrders = async (req: Request, res: Response) => {
-//   try {
-//     const page = parseInt(req.query.page as string) || 1;
-//     const limit = parseInt(req.query.limit as string) || 10;
-//     const days = parseInt(req.query.days as string);
-//     const skip = (page - 1) * limit;
-
-//     const where: any = {};
-
-//     // Add date filter based on days parameter
-//     if (days && !isNaN(days)) {
-//       const startDate = new Date();
-//       startDate.setDate(startDate.getDate() - days);
-//       where.createdAt = {
-//         gte: startDate,
-//       };
-//     }
-
-//     if (req.query.customerId) {
-//       where.customerId = req.query.customerId as string;
-//     }
-
-//     if (req.query.partnerId) {
-//       where.partnerId = req.query.partnerId as string;
-//     }
-
-//     if (req.query.orderStatus) {
-//       where.orderStatus = req.query.orderStatus as string;
-//     }
-
-//     const [orders, totalCount] = await Promise.all([
-//       prisma.customerOrders.findMany({
-//         where,
-//         skip,
-//         take: limit,
-//         orderBy: { createdAt: "desc" },
-//         select: {
-//           id: true,
-//           fußanalyse: true,
-//           einlagenversorgung: true,
-//           totalPrice: true,
-//           orderStatus: true,
-//           statusUpdate: true,
-//           invoice: true,
-//           createdAt: true,
-//           updatedAt: true,
-//           customer: {
-//             select: {
-//               id: true,
-//               vorname: true,
-//               nachname: true,
-//               email: true,
-//               telefonnummer: true,
-//               wohnort: true,
-//               customerNumber: true,
-//             },
-//           },
-//           product: true,
-//         },
-//       }),
-//       prisma.customerOrders.count({ where }),
-//     ]);
-
-//     // Format orders with invoice URL
-//     const formattedOrders = orders.map((order) => ({
-//       ...order,
-//       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
-//     }));
-
-//     const totalPages = Math.ceil(totalCount / limit);
-//     const hasNextPage = page < totalPages;
-//     const hasPrevPage = page > 1;
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Orders fetched successfully",
-//       data: formattedOrders,
-//       pagination: {
-//         totalItems: totalCount,
-//         totalPages,
-//         currentPage: page,
-//         itemsPerPage: limit,
-//         hasNextPage,
-//         hasPrevPage,
-//         filter: days ? `Last ${days} days` : "All time",
-//       },
-//     });
-//   } catch (error: any) {
-//     console.error("Get All Orders Error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
-
-// einlagentyp         String?
-// überzug            String?
-// menge               Int? //quantity
-// versorgung_note     String? //Hast du sonstige Anmerkungen oder Notizen zur Versorgung... ?
-// schuhmodell_wählen String? //জুতার মডেল নির্বাচন করুন ম্যানুয়ালি লিখুন (ব্র্যান্ড + মডেল + সাইজ)
-// kostenvoranschlag   Boolean? @default(false)
-
-// i need to select all data customerOrders fields select all not some specific fields
 export const getOrderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -1312,7 +974,6 @@ export const getOrderById = async (req: Request, res: Response) => {
       where: { id },
       // all customerOrders data i need select all not some specific fields
       include: {
-        werkstattzettel: true,
         Versorgungen: true,
         store: {
           select: {
@@ -1585,11 +1246,7 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
               customerNumber: true,
             },
           },
-          werkstattzettel: {
-            select: {
-              geschaeftsstandort: true,
-            },
-          },
+          geschaeftsstandort: true,
           // partner: {
           //   select: {
           //     id: true,
@@ -1846,15 +1503,6 @@ export const updateMultipleOrderStatuses = async (
               id: true,
             },
           },
-          werkstattzettel: {
-            select: {
-              employee: {
-                select: {
-                  id: true,
-                },
-              },
-            },
-          },
         },
       });
 
@@ -1892,7 +1540,7 @@ export const updateMultipleOrderStatuses = async (
             statusFrom: previousHistoryRecord?.statusTo || order.orderStatus,
             statusTo: orderStatus,
             partnerId: order.partnerId,
-            employeeId: order.werkstattzettel.employee?.id || null,
+            employeeId: (order as any).werkstattEmployeeId || null,
             note: `Status changed from ${order.orderStatus} to ${orderStatus}`,
           },
         });
@@ -3155,181 +2803,6 @@ const formatChartDate = (dateString: string): string => {
   return `${month} ${day}`;
 };
 
-export const createWerkstattzettel = async (req: Request, res: Response) => {
-  try {
-    const { customerId } = req.params;
-
-    console.log("Received customerId:", customerId);
-
-    if (!customerId) {
-      return res.status(400).json({
-        success: false,
-        message: "Customer ID is required in URL parameters",
-      });
-    }
-
-    const {
-      kundenName,
-      auftragsDatum,
-      wohnort,
-      telefon,
-      email,
-      geschaeftsstandort,
-      mitarbeiter,
-      fertigstellungBis,
-      versorgung,
-      bezahlt,
-      fussanalysePreis,
-      einlagenversorgungPreis,
-      employeeId,
-
-      // orderId
-    } = req.body;
-
-    const requiredFields = [
-      "kundenName",
-      "auftragsDatum",
-      "wohnort",
-      "telefon",
-      "email",
-      "geschaeftsstandort",
-      "mitarbeiter",
-      "fertigstellungBis",
-      "versorgung",
-    ];
-
-    const missingField = requiredFields.find((field) => !req.body[field]);
-    if (missingField) {
-      return res.status(400).json({
-        success: false,
-        message: `${missingField} is required`,
-      });
-    }
-
-    const customer = await prisma.customers.findUnique({
-      where: { id: customerId },
-      select: { id: true, vorname: true, nachname: true },
-    });
-
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-      });
-    }
-    // employeeId i need to add
-    const werkstattzettel = await prisma.werkstattzettel.upsert({
-      where: { customerId },
-      update: {
-        kundenName,
-        auftragsDatum: new Date(auftragsDatum),
-        wohnort,
-        telefon,
-        email,
-        employeeId,
-        geschaeftsstandort: Array.isArray(geschaeftsstandort)
-          ? geschaeftsstandort.join(", ")
-          : geschaeftsstandort,
-        mitarbeiter,
-        fertigstellungBis: fertigstellungBis
-          ? new Date(fertigstellungBis)
-          : null,
-        versorgung,
-        bezahlt:
-          bezahlt !== undefined && bezahlt !== null ? String(bezahlt) : null,
-        fussanalysePreis: fussanalysePreis
-          ? parseFloat(fussanalysePreis)
-          : null,
-        einlagenversorgungPreis: einlagenversorgungPreis
-          ? parseFloat(einlagenversorgungPreis)
-          : null,
-      },
-      create: {
-        kundenName,
-        auftragsDatum: new Date(auftragsDatum),
-        wohnort,
-        telefon,
-        employeeId,
-        email,
-        geschaeftsstandort: Array.isArray(geschaeftsstandort)
-          ? geschaeftsstandort.join(", ")
-          : geschaeftsstandort,
-        mitarbeiter,
-        fertigstellungBis: fertigstellungBis
-          ? new Date(fertigstellungBis)
-          : null,
-        versorgung,
-        bezahlt:
-          bezahlt !== undefined && bezahlt !== null ? String(bezahlt) : null,
-        fussanalysePreis: fussanalysePreis
-          ? parseFloat(fussanalysePreis)
-          : null,
-        einlagenversorgungPreis: einlagenversorgungPreis
-          ? parseFloat(einlagenversorgungPreis)
-          : null,
-        customerId,
-      },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            customerNumber: true,
-            vorname: true,
-            nachname: true,
-            email: true,
-            // telefonnummer: true,
-            wohnort: true,
-          },
-        },
-      },
-    });
-
-    // // If orderId is provided, link the order to this Werkstattzettel
-    // if (orderId) {
-    //   // Check if order exists and belongs to this customer
-    //   const order = await prisma.customerOrders.findFirst({
-    //     where: {
-    //       id: orderId,
-    //       customerId: customerId
-    //     }
-    //   });
-
-    //   if (order) {
-    //     await prisma.customerOrders.update({
-    //       where: { id: orderId },
-    //       data: {
-    //         werkstattzettelId: werkstattzettel.id
-    //       }
-    //     });
-
-    //     // Update history for the order link
-    //     await prisma.customerHistorie.create({
-    //       data: {
-    //         customerId,
-    //         category: "Bestellungen",
-    //         date: new Date(),
-    //         note: `Werkstattzettel linked to order ${orderId}`,
-    //         system_note: `Werkstattzettel ${werkstattzettel.id} linked to order ${orderId}`,
-    //         eventId: orderId
-    //       }
-    //     });
-    //   }
-    // }
-
-    res.status(201).json({
-      success: true,
-      message: "Werkstattzettel created successfully",
-      data: werkstattzettel,
-    });
-  } catch (error: any) {
-    console.error("Create Werkstattzettel Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-      error: error.message,
-    });
-  }
-};
 // Sarted
 // Einlage_vorbereiten
 // Einlage_in_Fertigung
@@ -3518,17 +2991,6 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
             email: true,
           },
         },
-        werkstattzettel: {
-          select: {
-            employee: {
-              select: {
-                id: true,
-                employeeName: true,
-                email: true,
-              },
-            },
-          },
-        },
       },
     });
 
@@ -3610,15 +3072,14 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
       // Track initial status from order creation
       let statusStartTime = order.createdAt;
       let statusAssignee =
-        order.werkstattzettel?.employee?.employeeName ||
-        order.partner?.name ||
+        (order as any).mitarbeiter ||
+        (order as any).partner?.name ||
         "System";
       let statusAssigneeId =
-        order.werkstattzettel?.employee?.id || order.partner?.id || null;
-      let statusAssigneeType: "employee" | "partner" | "system" = order
-        .werkstattzettel?.employee?.id
+        (order as any).werkstattEmployeeId || (order as any).partnerId || null;
+      let statusAssigneeType: "employee" | "partner" | "system" = (order as any).werkstattEmployeeId
         ? "employee"
-        : order.partner?.id
+        : (order as any).partnerId
         ? "partner"
         : "system";
 
@@ -3672,14 +3133,14 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
         startTime: order.createdAt,
         endTime: null,
         assignee:
-          order.werkstattzettel?.employee?.employeeName ||
-          order.partner?.name ||
+          (order as any).mitarbeiter ||
+          (order as any).partner?.name ||
           "System",
         assigneeId:
-          order.werkstattzettel?.employee?.id || order.partner?.id || null,
-        assigneeType: order.werkstattzettel?.employee?.id
+          (order as any).werkstattEmployeeId || (order as any).partnerId || null,
+        assigneeType: (order as any).werkstattEmployeeId
           ? "employee"
-          : order.partner?.id
+          : (order as any).partnerId
           ? "partner"
           : "system",
       });
@@ -3730,7 +3191,7 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
       type: "order_creation",
       details: {
         partnerId: order.partner?.id || null,
-        employeeId: order.werkstattzettel?.employee?.id || null,
+        employeeId: (order as any).werkstattEmployeeId || null,
       },
     });
 

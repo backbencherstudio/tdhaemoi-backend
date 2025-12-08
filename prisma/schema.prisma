@@ -264,7 +264,6 @@ model Employees {
   createdAt                DateTime                   @default(now())
   updatedAt                DateTime                   @updatedAt
   appointmentEmployees     AppointmentEmployee[]
-  werkstattzettels         Werkstattzettel[]
   massschuheOrders         massschuhe_order[]
   customerOrdersHistories  customerOrdersHistory[]
   massschuheOrderHistories massschuhe_order_history[]
@@ -453,7 +452,6 @@ model customers {
   versorgungen          customer_versorgungen[] @relation("customerVersorgungen")
   ausfuhrliche_diagnose String?
   customerOrders        customerOrders[]
-  werkstattzettel       Werkstattzettel?
   custom_shafts         custom_shafts[]
 
   kundeSteuernummer String? // Kunde Steuernummer
@@ -706,8 +704,6 @@ model customerOrders {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  werkstattzettel   Werkstattzettel? @relation(fields: [werkstattzettelId], references: [id], onDelete: SetNull, name: "WerkstattzettelOrdersRelation")
-  werkstattzettelId String?
   StoresHistory     StoresHistory[]  @relation("OrderStoresHistory")
 
   ausführliche_diagnose String?
@@ -722,6 +718,20 @@ model customerOrders {
 
   storeId String?
   store   Stores? @relation(fields: [storeId], references: [id], onDelete: SetNull)
+
+  // Werkstattzettel (inline fields to avoid extra API)
+  kundenName         String?
+  auftragsDatum      DateTime?
+  wohnort            String?
+  telefon            String?
+  email              String?
+  geschaeftsstandort String?
+  mitarbeiter        String?
+  fertigstellungBis  DateTime?
+  versorgung         String?
+  fussanalysePreis        Float?
+  einlagenversorgungPreis Float?
+  werkstattEmployeeId String?
 
   priority                Priority?               @default(Normal)
   customerHistories       customerHistorie[]      @relation("OrderCustomerHistorie")
@@ -764,41 +774,6 @@ model customerOrdersHistory {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-model Werkstattzettel {
-  id String @id @default(uuid())
-
-  kundenName         String? // Name Kunde - ghfghfghfg
-  auftragsDatum      DateTime? // Datum des Auftrags - mm/dd/yyyy
-  wohnort            String? // Wohnort - fdgdf
-  telefon            String? // Telefon - 01777577371
-  email              String? // E-Mail - brugger.thertrewaV@gmail.com
-  geschaeftsstandort String? // Geschäftstandort - Bremen
-  mitarbeiter        String? // Mitarbeiter - Johannes
-  fertigstellungBis  DateTime? // Fertigstellung bis - mm/dd/yyyy
-  versorgung         String? // Versorgung - Rohling 339821769, mit Pelotte
-  bezahlt            String? // Bezahlt - strinhg naw
-
-  //relation with employe but optional
-  employeeId String?
-  employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
-
-  // Preise section
-  fussanalysePreis        Float? // Fußanalyse - 100€
-  einlagenversorgungPreis Float? // Einlagenversorgung - 50€
-
-  customerId String     @unique
-  customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-
-  //eeher i select orders or massschuhe orders not broth together
-  orders customerOrders[] @relation(name: "WerkstattzettelOrdersRelation")
-  // massschuheOrders massschuhe_order[] @relation(name: "massschuhe_order_relation")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("werkstattzettel")
 }
 
 model customerProduct {
@@ -1154,6 +1129,7 @@ model massschuhe_order {
   // PREISAUSWAHL
   fußanalyse        Float?
   einlagenversorgung Float?
+  
   customer_note      String?
   location           String?
   //-------------------------------------------------

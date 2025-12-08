@@ -643,7 +643,6 @@ export const deleteCustomer = async (req: Request, res: Response) => {
             product: true,
           },
         },
-        werkstattzettel: true,
         custom_shafts: true,
         customer_files: true,
         StoresHistory: true,
@@ -735,14 +734,7 @@ export const deleteCustomer = async (req: Request, res: Response) => {
         where: { customerId: id },
       });
 
-      // 3. Delete werkstattzettel (SetNull, but we want to delete it)
-      if (customer.werkstattzettel) {
-        await tx.werkstattzettel.delete({
-          where: { customerId: id },
-        }).catch(() => {
-          // Ignore if already deleted
-        });
-      }
+      // 3. Werkstattzettel model removed - data is now in customerOrders
 
       // 4. Delete custom_shafts (no cascade on customer relation)
       await tx.custom_shafts.deleteMany({
@@ -997,7 +989,6 @@ export const getCustomerById = async (req: Request, res: Response) => {
       einlagenAnswers,
       screenerFiles,
       customerHistories,
-      werkstattzettel,
       partner,
       workshopNote,
       allScreenerDates, // Get all available dates for the dropdown
@@ -1009,7 +1000,6 @@ export const getCustomerById = async (req: Request, res: Response) => {
       }),
       prisma.screener_file.findMany(screenerFileQuery),
       prisma.customerHistorie.findMany({ where: { customerId: id } }),
-      prisma.werkstattzettel.findUnique({ where: { customerId: id } }),
       prisma.user.findUnique({ where: { id: customer.createdBy } }),
       prisma.workshopNote.findUnique({ where: { userId: userId } }),
       // Get all screener dates for dropdown options (full ISO strings)
@@ -1085,7 +1075,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
       einlagenAnswers: Array.from(einlagenAnswersByCategory.values()),
       screenerFile: processedScreenerFiles,
       customerHistorie: processedHistories,
-      werkstattzettel,
+      // werkstattzettel,
       partner: processedPartner,
       workshopNote,
     };
