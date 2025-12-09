@@ -1105,7 +1105,9 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
     const startOfNextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
     const startOfPrevMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
 
-    const waitingStatuses: $Enums.massschuhe_order_status[] = [
+    // Status buckets
+    const waitingToStartStatus: $Enums.massschuhe_order_status = "Leistenerstellung";
+    const activeStatuses: $Enums.massschuhe_order_status[] = [
       "Bettungsherstellung",
       "Halbprobenerstellung",
       "Schafterstellung",
@@ -1127,16 +1129,13 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
       activeCurrent,
       activePrevious,
     ] = await Promise.all([
-      prisma.massschuhe_order_history.count({
-        where: {
-          statusTo: "Geliefert",
-          startedAt: {
-            gte: startOfCurrentMonth,
-            lt: startOfNextMonth,
-          },
-        },
+      // Completed = current snapshot of delivered orders
+      prisma.massschuhe_order.count({
+        where: { status: "Geliefert" },
       }),
-      prisma.massschuhe_order_history.count({
+      // Delivered last month (distinct orders)
+      prisma.massschuhe_order_history
+        .findMany({
         where: {
           statusTo: "Geliefert",
           startedAt: {
@@ -1144,36 +1143,46 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
             lt: startOfCurrentMonth,
           },
         },
+          distinct: [Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId],
+          select: { massschuhe_orderId: true },
+        })
+        .then((rows) => rows.length),
+      // Waiting to start = current snapshot in initial status
+      prisma.massschuhe_order.count({
+        where: { status: waitingToStartStatus },
       }),
-      prisma.massschuhe_order_history.count({
+      // Previous month: distinct orders that entered waiting-to-start
+      prisma.massschuhe_order_history
+        .findMany({
         where: {
-          statusTo: { in: waitingStatuses },
-          startedAt: {
-            gte: startOfCurrentMonth,
-            lt: startOfNextMonth,
-          },
-        },
-      }),
-      prisma.massschuhe_order_history.count({
-        where: {
-          statusTo: { in: waitingStatuses },
+            statusTo: waitingToStartStatus,
           startedAt: {
             gte: startOfPrevMonth,
             lt: startOfCurrentMonth,
           },
         },
-      }),
-      // Active = orders not delivered (snapshot)
+          distinct: [Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId],
+          select: { massschuhe_orderId: true },
+        })
+        .then((rows) => rows.length),
+      // Active = current snapshot in mid statuses
       prisma.massschuhe_order.count({
-        where: { status: { not: "Geliefert" } },
+        where: { status: { in: activeStatuses } },
       }),
-      // Approximate previous active snapshot: orders created before current month and not delivered now
-      prisma.massschuhe_order.count({
-        where: {
-          status: { not: "Geliefert" },
-          createdAt: { lt: startOfCurrentMonth },
-        },
-      }),
+      // Previous month: distinct orders that entered active statuses
+      prisma.massschuhe_order_history
+        .findMany({
+          where: {
+            statusTo: { in: activeStatuses },
+            startedAt: {
+              gte: startOfPrevMonth,
+              lt: startOfCurrentMonth,
+            },
+          },
+          distinct: [Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId],
+          select: { massschuhe_orderId: true },
+        })
+        .then((rows) => rows.length),
     ]);
 
     return res.status(200).json({
