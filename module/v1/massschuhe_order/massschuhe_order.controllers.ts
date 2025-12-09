@@ -1101,12 +1101,19 @@ export const updateMassschuheOrderStatus = async (
 export const getMassschuheOrderStats = async (req: Request, res: Response) => {
   try {
     const now = new Date();
-    const startOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const startOfNextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-    const startOfPrevMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const startOfCurrentMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+    );
+    const startOfNextMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+    );
+    const startOfPrevMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)
+    );
 
     // Status buckets
-    const waitingToStartStatus: $Enums.massschuhe_order_status = "Leistenerstellung";
+    const waitingToStartStatus: $Enums.massschuhe_order_status =
+      "Leistenerstellung";
     const activeStatuses: $Enums.massschuhe_order_status[] = [
       "Bettungsherstellung",
       "Halbprobenerstellung",
@@ -1136,14 +1143,16 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
       // Delivered last month (distinct orders)
       prisma.massschuhe_order_history
         .findMany({
-        where: {
-          statusTo: "Geliefert",
-          startedAt: {
-            gte: startOfPrevMonth,
-            lt: startOfCurrentMonth,
+          where: {
+            statusTo: "Geliefert",
+            startedAt: {
+              gte: startOfPrevMonth,
+              lt: startOfCurrentMonth,
+            },
           },
-        },
-          distinct: [Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId],
+          distinct: [
+            Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId,
+          ],
           select: { massschuhe_orderId: true },
         })
         .then((rows) => rows.length),
@@ -1154,14 +1163,16 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
       // Previous month: distinct orders that entered waiting-to-start
       prisma.massschuhe_order_history
         .findMany({
-        where: {
+          where: {
             statusTo: waitingToStartStatus,
-          startedAt: {
-            gte: startOfPrevMonth,
-            lt: startOfCurrentMonth,
+            startedAt: {
+              gte: startOfPrevMonth,
+              lt: startOfCurrentMonth,
+            },
           },
-        },
-          distinct: [Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId],
+          distinct: [
+            Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId,
+          ],
           select: { massschuhe_orderId: true },
         })
         .then((rows) => rows.length),
@@ -1179,7 +1190,9 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
               lt: startOfCurrentMonth,
             },
           },
-          distinct: [Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId],
+          distinct: [
+            Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId,
+          ],
           select: { massschuhe_orderId: true },
         })
         .then((rows) => rows.length),
@@ -1219,23 +1232,46 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 // Revenue / orders line chart (delivered orders)
 // ---------------------------------------------------------------------------
-export const getMassschuheRevenueChart = async (req: Request, res: Response) => {
+export const getMassschuheRevenueChart = async (
+  req: Request,
+  res: Response
+) => {
   try {
     // Optional query params: from, to (ISO dates).
     // Default: full current month (UTC): [1st day, 1st of next month)
     const today = new Date();
-    const defaultFrom = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-    const defaultTo = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
+    const defaultFrom = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)
+    );
+    const defaultTo = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1)
+    );
 
-    const rawFrom = req.query.from ? new Date(String(req.query.from)) : defaultFrom;
+    const rawFrom = req.query.from
+      ? new Date(String(req.query.from))
+      : defaultFrom;
     const rawTo = req.query.to ? new Date(String(req.query.to)) : null;
 
     // If only from is provided, set to to the first day of the next month of from
     const computedTo = rawTo
-      ? new Date(Date.UTC(rawTo.getUTCFullYear(), rawTo.getUTCMonth(), rawTo.getUTCDate() + 1))
-      : new Date(Date.UTC(rawFrom.getUTCFullYear(), rawFrom.getUTCMonth() + 1, 1));
+      ? new Date(
+          Date.UTC(
+            rawTo.getUTCFullYear(),
+            rawTo.getUTCMonth(),
+            rawTo.getUTCDate() + 1
+          )
+        )
+      : new Date(
+          Date.UTC(rawFrom.getUTCFullYear(), rawFrom.getUTCMonth() + 1, 1)
+        );
 
-    const from = new Date(Date.UTC(rawFrom.getUTCFullYear(), rawFrom.getUTCMonth(), rawFrom.getUTCDate()));
+    const from = new Date(
+      Date.UTC(
+        rawFrom.getUTCFullYear(),
+        rawFrom.getUTCMonth(),
+        rawFrom.getUTCDate()
+      )
+    );
     const to = computedTo; // exclusive end
 
     // Get all delivered history entries in range with price fields from order
@@ -1266,9 +1302,9 @@ export const getMassschuheRevenueChart = async (req: Request, res: Response) => 
 
     for (const h of histories) {
       const d = h.startedAt;
-      const dateKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
-        d.getUTCDate()
-      ).padStart(2, "0")}`;
+      const dateKey = `${d.getUTCFullYear()}-${String(
+        d.getUTCMonth() + 1
+      ).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
       const price =
         Number(h.massschuhe_order?.fußanalyse ?? 0) +
         Number(h.massschuhe_order?.einlagenversorgung ?? 0);
@@ -1287,9 +1323,9 @@ export const getMassschuheRevenueChart = async (req: Request, res: Response) => 
       d < to;
       d = new Date(d.getTime() + 24 * 60 * 60 * 1000)
     ) {
-      const dateKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
-        d.getUTCDate()
-      ).padStart(2, "0")}`;
+      const dateKey = `${d.getUTCFullYear()}-${String(
+        d.getUTCMonth() + 1
+      ).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
       if (byDay.has(dateKey)) {
         points.push(byDay.get(dateKey)!);
       } else {
@@ -1316,6 +1352,96 @@ export const getMassschuheRevenueChart = async (req: Request, res: Response) => 
     return res.status(500).json({
       success: false,
       message: "Something went wrong while fetching revenue chart",
+      error: error?.message || "Unknown error",
+    });
+  }
+};
+
+export const getMassschuheFooterAnalysis = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const now = new Date();
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+    // Consider orders that are not yet delivered
+    const openOrders = await prisma.massschuhe_order.findMany({
+      where: { status: { not: "Geliefert" } },
+      select: {
+        id: true,
+        createdAt: true,
+        status: true,
+        massschuheOrderHistories: {
+          orderBy: { startedAt: "desc" },
+          select: { statusTo: true, startedAt: true, finishedAt: true },
+        },
+      },
+    });
+
+    let outlierDays = 0;
+    let over30 = 0;
+    let over50 = 0;
+    let totalDays = 0;
+    let overdueCount = 0;
+    let stuckCount = 0;
+    let totalStuckStageDays = 0;
+
+    for (const order of openOrders) {
+      const created = order.createdAt ? new Date(order.createdAt) : null;
+      if (!created) continue;
+      const ageDays = Math.floor((now.getTime() - created.getTime()) / MS_PER_DAY);
+      overdueCount += 1;
+      totalDays += ageDays;
+      if (ageDays > outlierDays) outlierDays = ageDays;
+      if (ageDays >= 30) over30 += 1;
+      if (ageDays >= 50) over50 += 1;
+
+      // Determine how long the order has been in its current stage
+      const latestHistory = order.massschuheOrderHistories?.find(
+        (h) => h.statusTo === order.status
+      );
+      const stageStart = latestHistory?.startedAt
+        ? new Date(latestHistory.startedAt)
+        : created;
+      const stageAgeDays = Math.floor(
+        (now.getTime() - stageStart.getTime()) / MS_PER_DAY
+      );
+
+      // Count orders stuck >10 days in the same status
+      if (stageAgeDays >= 10) {
+        stuckCount += 1;
+        totalStuckStageDays += stageAgeDays;
+      }
+    }
+
+    const averageDays = overdueCount > 0 ? Math.round(totalDays / overdueCount) : 0;
+    const averageStuckDays =
+      stuckCount > 0 ? Math.round(totalStuckStageDays / stuckCount) : 0;
+
+    return res.status(200).json({
+      success: true,
+      message: "Massschuhe footer analysis fetched successfully",
+      data: {
+        Ausreisser: {
+          outlierDays, // longest-running open order in days
+          thresholds: {
+            over30: { days: 30, count: over30 },
+            over50: { days: 50, count: over50 },
+          },
+        },
+        ueberfaelligeFaelle: {
+          count: stuckCount, // open orders stuck >10 days in current status
+          averageDays: averageStuckDays, // average days stuck in current status
+        },
+        trigger: "Shows orders that have not been completed for a long time.",
+      },
+    });
+  } catch (error: any) {
+    console.error("Error in getMassschuheFooterAnalysis:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching footer analysis",
       error: error?.message || "Unknown error",
     });
   }
