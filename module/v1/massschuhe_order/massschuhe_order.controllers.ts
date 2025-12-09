@@ -1446,3 +1446,218 @@ export const getMassschuheFooterAnalysis = async (
     });
   }
 };
+
+// ---------------------------------------------------------------------------
+// Production timeline (average production time per month for a given year)
+// ---------------------------------------------------------------------------
+export const getMassschuheProductionTimeline = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const now = new Date();
+    const yearParam = req.query.year
+      ? Number(req.query.year)
+      : now.getUTCFullYear();
+    const year = Number.isFinite(yearParam) ? yearParam : now.getUTCFullYear();
+
+    const from = new Date(Date.UTC(year, 0, 1));
+    const to = new Date(Date.UTC(year + 1, 0, 1));
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+    // Delivered histories in the given year with order creation timestamps
+    const histories = await prisma.massschuhe_order_history.findMany({
+      where: {
+        statusTo: "Geliefert",
+        startedAt: { gte: from, lt: to },
+      },
+      select: {
+        startedAt: true,
+        massschuhe_orderId: true,
+        massschuhe_order: { select: { createdAt: true } },
+      },
+    });
+
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Marz",
+      "Apr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Dez",
+    ];
+
+    const monthSums = Array(12).fill(0);
+    const monthCounts = Array(12).fill(0);
+
+    // Deduplicate by orderId to avoid double-counting multiple delivered entries
+    const deliveredByOrderId = new Map<
+      string,
+      { deliveredAt: Date; createdAt: Date }
+    >();
+
+    for (const h of histories) {
+      const orderId = h.massschuhe_orderId;
+      const deliveredAt = h.startedAt;
+      const createdAt = h.massschuhe_order?.createdAt
+        ? new Date(h.massschuhe_order.createdAt)
+        : null;
+      if (!orderId || !createdAt) continue;
+
+      const existing = deliveredByOrderId.get(orderId);
+      // keep earliest deliveredAt in the year for that order
+      if (!existing || deliveredAt < existing.deliveredAt) {
+        deliveredByOrderId.set(orderId, { deliveredAt, createdAt });
+      }
+    }
+
+    for (const { deliveredAt, createdAt } of deliveredByOrderId.values()) {
+      const durationDays = Math.max(
+        0,
+        (deliveredAt.getTime() - createdAt.getTime()) / MS_PER_DAY
+      );
+      const m = deliveredAt.getUTCMonth();
+      monthSums[m] += durationDays;
+      monthCounts[m] += 1;
+    }
+
+    const points = monthNames.map((month, idx) => {
+      const count = monthCounts[idx];
+      const avg = count > 0 ? parseFloat((monthSums[idx] / count).toFixed(1)) : 0;
+      return { month, averageDays: avg, count };
+    });
+
+    const totalDelivered = monthCounts.reduce((s, c) => s + c, 0);
+    const overallAverage =
+      totalDelivered > 0
+        ? parseFloat(
+            (
+              monthSums.reduce((s, v) => s + v, 0) / totalDelivered
+            ).toFixed(1)
+          )
+        : 0;
+
+    return res.status(200).json({
+      success: true,
+      message: "Massschuhe production timeline fetched successfully",
+      data: {
+        year,
+        points,
+        totalDelivered,
+        overallAverageDays: overallAverage,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error in getMassschuheProductionTimeline:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching production timeline",
+      error: error?.message || "Unknown error",
+    });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Production summary (current month avg vs previous month avg)
+// ---------------------------------------------------------------------------
+export const getMassschuheProductionSummary = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const now = new Date();
+    const startOfCurrentMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+    );
+    const startOfNextMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+    );
+    const startOfPrevMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)
+    );
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+    // Fetch delivered histories across prev + current month (for dedup)
+    const histories = await prisma.massschuhe_order_history.findMany({
+      where: {
+        statusTo: "Geliefert",
+        startedAt: { gte: startOfPrevMonth, lt: startOfNextMonth },
+      },
+      select: {
+        startedAt: true,
+        massschuhe_orderId: true,
+        massschuhe_order: { select: { createdAt: true } },
+      },
+    });
+
+    // Deduplicate per order per bucket (prev/current)
+    const buckets: Record<
+      "current" | "previous",
+      Map<string, { deliveredAt: Date; createdAt: Date }>
+    > = { current: new Map(), previous: new Map() };
+
+    for (const h of histories) {
+      const orderId = h.massschuhe_orderId;
+      const deliveredAt = h.startedAt;
+      const createdAt = h.massschuhe_order?.createdAt
+        ? new Date(h.massschuhe_order.createdAt)
+        : null;
+      if (!orderId || !createdAt) continue;
+
+      const bucket =
+        deliveredAt >= startOfCurrentMonth && deliveredAt < startOfNextMonth
+          ? "current"
+          : deliveredAt >= startOfPrevMonth && deliveredAt < startOfCurrentMonth
+          ? "previous"
+          : null;
+      if (!bucket) continue;
+
+      const existing = buckets[bucket].get(orderId);
+      if (!existing || deliveredAt < existing.deliveredAt) {
+        buckets[bucket].set(orderId, { deliveredAt, createdAt });
+      }
+    }
+
+    const calcAverage = (entries: Map<string, { deliveredAt: Date; createdAt: Date }>) => {
+      let sum = 0;
+      let count = 0;
+      for (const { deliveredAt, createdAt } of entries.values()) {
+        const days = Math.max(
+          0,
+          (deliveredAt.getTime() - createdAt.getTime()) / MS_PER_DAY
+        );
+        sum += days;
+        count += 1;
+      }
+      return { count, avg: count > 0 ? parseFloat((sum / count).toFixed(1)) : 0 };
+    };
+
+    const currentStats = calcAverage(buckets.current);
+    const previousStats = calcAverage(buckets.previous);
+    const delta = parseFloat((currentStats.avg - previousStats.avg).toFixed(1));
+
+    return res.status(200).json({
+      success: true,
+      message: "Massschuhe production summary fetched successfully",
+      data: {
+        currentAverageDays: currentStats.avg,
+        previousAverageDays: previousStats.avg,
+        deltaDays: delta,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error in getMassschuheProductionSummary:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching production summary",
+      error: error?.message || "Unknown error",
+    });
+  }
+};
+

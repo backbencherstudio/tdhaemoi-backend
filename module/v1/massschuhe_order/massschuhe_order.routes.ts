@@ -11,7 +11,9 @@ import {
   updateMassschuheOrderStatus,
   getMassschuheOrderStats,
   getMassschuheRevenueChart,
-  getMassschuheFooterAnalysis
+  getMassschuheFooterAnalysis,
+  getMassschuheProductionTimeline,
+  getMassschuheProductionSummary,
 } from "./massschuhe_order.controllers";
 
 const router = express.Router();
@@ -24,6 +26,9 @@ router.patch("/update-status", verifyUser("ADMIN", "PARTNER"), updateMassschuheO
 router.get("/stats", verifyUser("ADMIN", "PARTNER"), getMassschuheOrderStats);
 router.get("/stats/revenue", verifyUser("ADMIN", "PARTNER"), getMassschuheRevenueChart);
 router.get("/stats/footer-analysis", verifyUser("ADMIN", "PARTNER"), getMassschuheFooterAnalysis);
+router.get("/stats/production-timeline", verifyUser("ADMIN", "PARTNER"), getMassschuheProductionTimeline);
+router.get("/stats/production-summary", verifyUser("ADMIN", "PARTNER"), getMassschuheProductionSummary);
+
 
 router.put("/:id", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrder);
 router.patch("/:id", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrder);
