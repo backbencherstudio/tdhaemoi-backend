@@ -120,8 +120,10 @@ export const createCustomers = async (req: Request, res: Response) => {
       sonstiges,
       geburtsdatum,
       billingType,
-      gender
-
+      gender,
+      land,
+      ort,
+      straße,
     } = req.body;
 
     const existingCustomer = await prisma.customers.findUnique({
@@ -179,6 +181,9 @@ export const createCustomers = async (req: Request, res: Response) => {
           geburtsdatum: geburtsdatum || null,
           billingType: billingType || null,
           gender: gender || null,
+          land: land || null,
+          ort: ort || null,
+          straße: straße || null,
         },
       });
 
