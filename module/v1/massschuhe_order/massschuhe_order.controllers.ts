@@ -1,6 +1,8 @@
 import { Prisma, PrismaClient, massschuhe_order_status } from "@prisma/client";
 import { Request, Response } from "express";
 import { getImageUrl } from "../../../utils/base_utl";
+import fs from "fs";
+import path from "path";
 
 const prisma = new PrismaClient();
 
@@ -485,10 +487,20 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
-    // Format orders with status history (Started/Finished timestamps)
-    const formattedOrders = massschuheOrders.map((order) =>
-      formatOrderWithStatusHistory(order)
-    );
+    // Format orders with status history (Started/Finished timestamps) and pdf urls
+    const formattedOrders = massschuheOrders.map((order) => {
+      const o: any = order;
+      const formatted = formatOrderWithStatusHistory(o);
+      return {
+        ...formatted,
+        bodenerstellungpdf: o.bodenerstellungpdf
+          ? getImageUrl(`/uploads/${o.bodenerstellungpdf}`)
+          : null,
+          geliefertpdf: o.geliefertpdf
+          ? getImageUrl(`/uploads/${o.geliefertpdf}`)
+          : null,
+      };
+    });
 
     // Build response message
     let message = "Massschuhe orders fetched successfully";
@@ -908,8 +920,9 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
         user: {
           select: {
             id: true,
-            name: true,
+            busnessName: true,
             email: true,
+            phone: true,
             image: true,
           },
         },
@@ -918,7 +931,7 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
             id: true,
             employeeName: true,
             email: true,
-            accountName: true,
+            accountName: true
           },
         },
       },
@@ -931,19 +944,29 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
     }
 
     // Format order with status history (Started/Finished timestamps)
-    const formattedOrder = formatOrderWithStatusHistory(massschuheOrder);
-    const partnerWithImage = massschuheOrder.user
+    const orderAny: any = massschuheOrder;
+    const formattedOrder = formatOrderWithStatusHistory(orderAny);
+    const partnerWithImage = orderAny.user
       ? {
-          ...massschuheOrder.user,
-          image: massschuheOrder.user.image
-            ? getImageUrl(`/uploads/${massschuheOrder.user.image}`)
+          ...orderAny.user,
+          image: orderAny.user.image
+            ? getImageUrl(`/uploads/${orderAny.user.image}`)
             : null,
         }
       : null;
     return res.status(200).json({
       success: true,
       message: "Massschuhe order fetched successfully",
-      data: { ...formattedOrder, partner: partnerWithImage },
+      data: {
+        ...formattedOrder,
+        partner: partnerWithImage,
+        bodenerstellungpdf: orderAny.bodenerstellungpdf
+          ? getImageUrl(`/uploads/${orderAny.bodenerstellungpdf}`)
+          : null,
+          geliefertpdf: orderAny.geliefertpdf
+          ? getImageUrl(`/uploads/${orderAny.geliefertpdf}`)
+          : null,
+      },
     });
   } catch (error: any) {
     console.error("Get Massschuhe Order By Id Error:", error);
@@ -1121,6 +1144,123 @@ export const updateMassschuheOrderStatus = async (
     return res.status(500).json({
       success: false,
       message: "Something went wrong while updating massschuhe order status",
+      error: error.message || error,
+    });
+  }
+};
+
+export const uploadMassschuheOrderPdf = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user.id;
+    const files = req.files as any;
+
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "orderId is required",
+      });
+    }
+
+    const order: any = await prisma.massschuhe_order.findFirst({
+      where: { id: orderId, userId },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Massschuhe order not found",
+      });
+    }
+
+    const bodenerstellungFile = files?.bodenerstellungpdf?.[0] || null;
+    const geliefertFile = files?.geliefertpdf?.[0] || null;
+
+    if (!bodenerstellungFile && !geliefertFile) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one file (bodenerstellungpdf or geliefertpdf) is required",
+      });
+    }
+
+    const bodenerstellungFileName = bodenerstellungFile?.filename ?? null;
+    const geliefertFileName = geliefertFile?.filename ?? null;
+
+    const data: any = {};
+    if (bodenerstellungFileName) {
+      // delete old file if exists
+      if (order?.bodenerstellungpdf) {
+        const oldPath = path.join(process.cwd(), "uploads", order.bodenerstellungpdf);
+        if (fs.existsSync(oldPath)) {
+          try {
+            fs.unlinkSync(oldPath);
+          } catch (e) {
+            console.error(`Failed to delete old bodenerstellungpdf ${oldPath}`, e);
+          }
+        }
+      }
+      data.bodenerstellungpdf = bodenerstellungFileName;
+    }
+    if (geliefertFileName) {
+      if (order?.geliefertpdf) {
+        const oldPath = path.join(process.cwd(), "uploads", order.geliefertpdf);
+        if (fs.existsSync(oldPath)) {
+          try {
+            fs.unlinkSync(oldPath);
+          } catch (e) {
+            console.error(`Failed to delete old geliefertpdf ${oldPath}`, e);
+          }
+        }
+      }
+      data.geliefertpdf = geliefertFileName;
+    }
+
+    await prisma.massschuhe_order.update({
+      where: { id: orderId },
+      data,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Massschuhe order PDFs uploaded successfully",
+      data: {
+        orderId,
+        ...data,
+        bodenerstellungpdf: bodenerstellungFileName
+          ? getImageUrl(`/uploads/${bodenerstellungFileName}`)
+          : null,
+          geliefertpdf: geliefertFileName
+          ? getImageUrl(`/uploads/${geliefertFileName}`)
+          : null,
+      },
+    });
+  } catch (error: any) {
+    // Cleanup any uploaded files on error (mirror createCustomers behavior)
+    const files = req.files as any;
+    if (files) {
+      try {
+        const fs = require("fs");
+        Object.keys(files).forEach((key) => {
+          files[key].forEach((file: any) => {
+            if (file?.path) {
+              try {
+                fs.unlinkSync(file.path);
+              } catch (e) {
+                console.error(`Failed to delete file ${file.path}`, e);
+              }
+            }
+          });
+        });
+      } catch (cleanupErr) {
+        console.error("Cleanup uploaded files failed:", cleanupErr);
+      }
+    }
+
+    console.error("Upload Massschuhe Order Pdf Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while uploading massschuhe order pdf",
       error: error.message || error,
     });
   }
@@ -1691,3 +1831,19 @@ export const getMassschuheProductionSummary = async (
     });
   }
 };
+
+export const getMassschuheProfitCount = async (req: Request, res: Response) => {
+  try {
+    const partnerId = req.user.id;
+
+
+
+  } catch (error: any) {
+    console.error("Error in getMassschuheProfitCount:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching profit count",
+      error: error?.message || "Unknown error",
+    });
+  }
+}

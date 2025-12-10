@@ -1507,9 +1507,12 @@ export const searchCustomers = async (req: Request, res: Response) => {
       location,
       id,
       name,
+      geburtsdatum,
+      customerNumber,
       limit = 10,
       page = 1,
     } = req.query;
+    // supports: ?geburtsdatum=2000-01-01&customerNumber=123456
     
     const userId = req.user.id;
     const userRole = req.user.role;
@@ -1521,7 +1524,16 @@ export const searchCustomers = async (req: Request, res: Response) => {
     const pageNumber = Math.max(parseInt(page as string) || 1, 1);
     const skip = (pageNumber - 1) * limitNumber;
 
-    if (!search && !email && !phone && !location && !id && !name) {
+    if (
+      !search &&
+      !email &&
+      !phone &&
+      !location &&
+      !id &&
+      !name &&
+      !geburtsdatum &&
+      !customerNumber
+    ) {
       return res.status(200).json({
         success: true,
         message: "No search criteria provided",
@@ -1595,6 +1607,17 @@ export const searchCustomers = async (req: Request, res: Response) => {
       searchConditions.id = id.trim();
     }
 
+    if (geburtsdatum && typeof geburtsdatum === "string" && geburtsdatum.trim()) {
+      searchConditions.geburtsdatum = geburtsdatum.trim();
+    }
+
+    if (customerNumber) {
+      const num = Number(customerNumber);
+      if (Number.isFinite(num)) {
+        searchConditions.customerNumber = num;
+      }
+    }
+
     let whereConditions: any = {};
 
     if (userRole === "ADMIN") {
@@ -1624,6 +1647,8 @@ export const searchCustomers = async (req: Request, res: Response) => {
           // telefonnummer: true,
           telefon: true,
           wohnort: true,
+          customerNumber: true,
+          geburtsdatum: true,
           createdAt: true,
         },
         take: limitNumber,
@@ -1641,6 +1666,8 @@ export const searchCustomers = async (req: Request, res: Response) => {
         email: customer.email,
         phone: customer.telefon,
         location: customer.wohnort,
+        customerNumber: customer.customerNumber,
+        geburtsdatum: customer.geburtsdatum,
         createdAt: customer.createdAt,
       })),
     };
