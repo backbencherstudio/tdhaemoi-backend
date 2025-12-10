@@ -1,6 +1,5 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, PrismaClient, massschuhe_order_status } from "@prisma/client";
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { getImageUrl } from "../../../utils/base_utl";
 
 const prisma = new PrismaClient();
@@ -532,7 +531,6 @@ export const getMassschuheOrderByCustomerId = async (
 ) => {
   try {
     const { customerId } = req.params;
-    const userId = req.user.id;
     // add pagination
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -558,16 +556,6 @@ export const getMassschuheOrderByCustomerId = async (
 
       where.status = status;
     }
-    //i also get partner Data With image with baseurl
-    const partner = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        name: true,
-        email: true,
-        image: true,
-        phone: true,
-      },
-    });
     const [totalItems, massschuheOrders] = await Promise.all([
       prisma.massschuhe_order.count({ where }),
       prisma.massschuhe_order.findMany({
@@ -576,7 +564,7 @@ export const getMassschuheOrderByCustomerId = async (
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          partner: {
+          user: {
             select: {
               name: true,
               email: true,
@@ -621,11 +609,11 @@ export const getMassschuheOrderByCustomerId = async (
     // Format orders with status history (Started/Finished timestamps) and partner image
     const formattedOrders = massschuheOrders.map((order) => {
       const formatted = formatOrderWithStatusHistory(order);
-      const partnerWithImage = order.partner
+      const partnerWithImage = order.user
         ? {
-            ...order.partner,
-            image: order.partner.image
-              ? getImageUrl(`/uploads/${order.partner.image}`)
+            ...order.user,
+            image: order.user.image
+              ? getImageUrl(`/uploads/${order.user.image}`)
               : null,
           }
         : null;
@@ -917,6 +905,14 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
             note: true,
           },
         },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
         employee: {
           select: {
             id: true,
@@ -936,11 +932,18 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
 
     // Format order with status history (Started/Finished timestamps)
     const formattedOrder = formatOrderWithStatusHistory(massschuheOrder);
-
+    const partnerWithImage = massschuheOrder.user
+      ? {
+          ...massschuheOrder.user,
+          image: massschuheOrder.user.image
+            ? getImageUrl(`/uploads/${massschuheOrder.user.image}`)
+            : null,
+        }
+      : null;
     return res.status(200).json({
       success: true,
       message: "Massschuhe order fetched successfully",
-      data: formattedOrder,
+      data: { ...formattedOrder, partner: partnerWithImage },
     });
   } catch (error: any) {
     console.error("Get Massschuhe Order By Id Error:", error);
@@ -1140,8 +1143,8 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
     );
 
     // Status buckets
-    const waitingToStartStatus = "Leistenerstellung";
-    const activeStatuses = [
+    const waitingToStartStatus: massschuhe_order_status = "Leistenerstellung";
+    const activeStatuses: massschuhe_order_status[] = [
       "Bettungsherstellung",
       "Halbprobenerstellung",
       "Schafterstellung",

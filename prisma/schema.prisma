@@ -1131,6 +1131,8 @@ model massschuhe_order {
   // PREISAUSWAHL
   fußanalyse        Float?
   einlagenversorgung Float?
+
+  
   
   customer_note      String?
   location           String?
