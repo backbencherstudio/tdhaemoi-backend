@@ -1,6 +1,7 @@
-import { Prisma, $Enums } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
+import { getImageUrl } from "../../../utils/base_utl";
 
 const prisma = new PrismaClient();
 
@@ -332,7 +333,7 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
             einlagenversorgung,
             customer_note,
             location,
-          } as Prisma.massschuhe_orderUncheckedCreateInput;
+          };
 
           const massschuheOrder = await tx.massschuhe_order.create({
             data: createData,
@@ -531,6 +532,7 @@ export const getMassschuheOrderByCustomerId = async (
 ) => {
   try {
     const { customerId } = req.params;
+    const userId = req.user.id;
     // add pagination
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -556,7 +558,16 @@ export const getMassschuheOrderByCustomerId = async (
 
       where.status = status;
     }
-
+    //i also get partner Data With image with baseurl
+    const partner = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        name: true,
+        email: true,
+        image: true,
+        phone: true,
+      },
+    });
     const [totalItems, massschuheOrders] = await Promise.all([
       prisma.massschuhe_order.count({ where }),
       prisma.massschuhe_order.findMany({
@@ -565,6 +576,14 @@ export const getMassschuheOrderByCustomerId = async (
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
+          partner: {
+            select: {
+              name: true,
+              email: true,
+              image: true,
+              phone: true,
+            },
+          },
           massschuheOrderHistories: {
             orderBy: { startedAt: "desc" },
             select: {
@@ -599,10 +618,19 @@ export const getMassschuheOrderByCustomerId = async (
       });
     }
 
-    // Format orders with status history (Started/Finished timestamps)
-    const formattedOrders = massschuheOrders.map((order) =>
-      formatOrderWithStatusHistory(order)
-    );
+    // Format orders with status history (Started/Finished timestamps) and partner image
+    const formattedOrders = massschuheOrders.map((order) => {
+      const formatted = formatOrderWithStatusHistory(order);
+      const partnerWithImage = order.partner
+        ? {
+            ...order.partner,
+            image: order.partner.image
+              ? getImageUrl(`/uploads/${order.partner.image}`)
+              : null,
+          }
+        : null;
+      return { ...formatted, partner: partnerWithImage };
+    });
 
     // Build response message
     let message = "Massschuhe order fetched successfully";
@@ -1112,9 +1140,8 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
     );
 
     // Status buckets
-    const waitingToStartStatus: $Enums.massschuhe_order_status =
-      "Leistenerstellung";
-    const activeStatuses: $Enums.massschuhe_order_status[] = [
+    const waitingToStartStatus = "Leistenerstellung";
+    const activeStatuses = [
       "Bettungsherstellung",
       "Halbprobenerstellung",
       "Schafterstellung",
@@ -1150,9 +1177,7 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
               lt: startOfCurrentMonth,
             },
           },
-          distinct: [
-            Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId,
-          ],
+          distinct: ["massschuhe_orderId"] as const,
           select: { massschuhe_orderId: true },
         })
         .then((rows) => rows.length),
@@ -1170,9 +1195,7 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
               lt: startOfCurrentMonth,
             },
           },
-          distinct: [
-            Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId,
-          ],
+          distinct: ["massschuhe_orderId"] as const,
           select: { massschuhe_orderId: true },
         })
         .then((rows) => rows.length),
@@ -1190,9 +1213,7 @@ export const getMassschuheOrderStats = async (req: Request, res: Response) => {
               lt: startOfCurrentMonth,
             },
           },
-          distinct: [
-            Prisma.Massschuhe_order_historyScalarFieldEnum.massschuhe_orderId,
-          ],
+          distinct: ["massschuhe_orderId"] as const,
           select: { massschuhe_orderId: true },
         })
         .then((rows) => rows.length),
@@ -1390,7 +1411,9 @@ export const getMassschuheFooterAnalysis = async (
     for (const order of openOrders) {
       const created = order.createdAt ? new Date(order.createdAt) : null;
       if (!created) continue;
-      const ageDays = Math.floor((now.getTime() - created.getTime()) / MS_PER_DAY);
+      const ageDays = Math.floor(
+        (now.getTime() - created.getTime()) / MS_PER_DAY
+      );
       overdueCount += 1;
       totalDays += ageDays;
       if (ageDays > outlierDays) outlierDays = ageDays;
@@ -1415,7 +1438,8 @@ export const getMassschuheFooterAnalysis = async (
       }
     }
 
-    const averageDays = overdueCount > 0 ? Math.round(totalDays / overdueCount) : 0;
+    const averageDays =
+      overdueCount > 0 ? Math.round(totalDays / overdueCount) : 0;
     const averageStuckDays =
       stuckCount > 0 ? Math.round(totalStuckStageDays / stuckCount) : 0;
 
@@ -1529,7 +1553,8 @@ export const getMassschuheProductionTimeline = async (
 
     const points = monthNames.map((month, idx) => {
       const count = monthCounts[idx];
-      const avg = count > 0 ? parseFloat((monthSums[idx] / count).toFixed(1)) : 0;
+      const avg =
+        count > 0 ? parseFloat((monthSums[idx] / count).toFixed(1)) : 0;
       return { month, averageDays: avg, count };
     });
 
@@ -1537,9 +1562,7 @@ export const getMassschuheProductionTimeline = async (
     const overallAverage =
       totalDelivered > 0
         ? parseFloat(
-            (
-              monthSums.reduce((s, v) => s + v, 0) / totalDelivered
-            ).toFixed(1)
+            (monthSums.reduce((s, v) => s + v, 0) / totalDelivered).toFixed(1)
           )
         : 0;
 
@@ -1624,7 +1647,9 @@ export const getMassschuheProductionSummary = async (
       }
     }
 
-    const calcAverage = (entries: Map<string, { deliveredAt: Date; createdAt: Date }>) => {
+    const calcAverage = (
+      entries: Map<string, { deliveredAt: Date; createdAt: Date }>
+    ) => {
       let sum = 0;
       let count = 0;
       for (const { deliveredAt, createdAt } of entries.values()) {
@@ -1635,7 +1660,10 @@ export const getMassschuheProductionSummary = async (
         sum += days;
         count += 1;
       }
-      return { count, avg: count > 0 ? parseFloat((sum / count).toFixed(1)) : 0 };
+      return {
+        count,
+        avg: count > 0 ? parseFloat((sum / count).toFixed(1)) : 0,
+      };
     };
 
     const currentStats = calcAverage(buckets.current);
@@ -1660,4 +1688,3 @@ export const getMassschuheProductionSummary = async (
     });
   }
 };
-

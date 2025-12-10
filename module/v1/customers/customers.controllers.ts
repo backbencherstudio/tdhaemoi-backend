@@ -2612,7 +2612,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
       }
     }
 
-    const whereConditions: Prisma.customersWhereInput[] = [];
+    const whereConditions: any = [];
 
     if (dateRange) {
       whereConditions.push({
@@ -2657,7 +2657,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
       });
     }
 
-    const where: Prisma.customersWhereInput = whereConditions.length
+    const where:any = whereConditions.length
       ? { AND: whereConditions }
       : {};
 
