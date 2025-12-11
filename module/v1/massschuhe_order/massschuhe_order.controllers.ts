@@ -610,6 +610,10 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
     if (body.kostenvoranschlag !== undefined) {
       updateData.kostenvoranschlag = convertToBoolean(body.kostenvoranschlag);
     }
+    // 'express' field
+    if (body.express !== undefined) {
+      updateData.express = convertToBoolean(body.express);
+    }
 
     // Validate and set relationships
     if (body.customerId !== undefined) {

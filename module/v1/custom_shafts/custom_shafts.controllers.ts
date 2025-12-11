@@ -1137,3 +1137,171 @@ export const deleteCustomShaft = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+export const totalPriceResponse = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.user; // Get partner ID from authenticated user
+    
+    // Get month and year from query parameters (default to current month/year)
+    const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
+    const year = parseInt(req.query.year as string) || new Date().getFullYear();
+
+    // Validate month (1-12)
+    if (month < 1 || month > 12) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid month. Month must be between 1 and 12",
+      });
+    }
+
+    // Validate year (reasonable range)
+    if (year < 2000 || year > 2100) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid year",
+      });
+    }
+
+    // Calculate the start and end dates for the month
+    const startDate = new Date(year, month - 1, 1, 0, 0, 0, 0); // First day of month
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999); // Last day of month
+
+    // Find all custom shafts for this partner with the specified statuses and date range
+    const customShafts = await prisma.custom_shafts.findMany({
+      where: {
+        partnerId: id,
+        status: {
+          in: ["Beim_Kunden_angekommen", "Ausgeführt"],
+        },
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        id: true,
+        osen_einsetzen_price: true,
+        Passenden_schnursenkel_price: true,
+        status: true,
+        orderNumber: true,
+        createdAt: true,
+        maßschaft_kollektion: {
+          select: {
+            id: true,
+            price: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    // Helper function to format date as YYYY-MM-DD (using local time, not UTC)
+    const formatDateLocal = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    // Calculate total price (Current Balance)
+    let currentBalance = 0;
+    
+    // Calculate daily totals for the graph
+    const daysInMonth = endDate.getDate();
+    const dailyData: { date: string; value: number; count: number }[] = [];
+    
+    // Initialize all days with 0
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month - 1, day);
+      dailyData.push({
+        date: formatDateLocal(date), // Format: YYYY-MM-DD using local time
+        value: 0,
+        count: 0,
+      });
+    }
+
+    // Recalculate daily data properly (cumulative balance per day)
+    let runningTotal = 0;
+    const dailyTotals: { [key: string]: number } = {};
+    
+    // Group orders by date and calculate daily totals
+    // Total = maßschaft_kollektion.price + osen_einsetzen_price + Passenden_schnursenkel_price
+    customShafts.forEach((shaft) => {
+      const orderDate = new Date(shaft.createdAt);
+      // Use local date to avoid timezone issues
+      const dateKey = formatDateLocal(orderDate);
+      
+      // Base price from maßschaft_kollektion
+      const basePrice = shaft.maßschaft_kollektion?.price || 0;
+      const osenPrice = shaft.osen_einsetzen_price || 0;
+      const schnursenkelPrice = shaft.Passenden_schnursenkel_price || 0;
+      const orderTotal = basePrice + osenPrice + schnursenkelPrice;
+      
+      currentBalance += orderTotal;
+      
+      if (!dailyTotals[dateKey]) {
+        dailyTotals[dateKey] = 0;
+      }
+      dailyTotals[dateKey] += orderTotal;
+    });
+
+    // Build cumulative daily data
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month - 1, day);
+      const dateKey = formatDateLocal(date);
+      
+      // Add today's total to running total BEFORE assigning value
+      // This ensures the value includes today's orders
+      if (dailyTotals[dateKey]) {
+        runningTotal += dailyTotals[dateKey];
+      }
+      
+      // Count orders for this day (using local date comparison)
+      const dayOrders = customShafts.filter((shaft) => {
+        const orderDate = new Date(shaft.createdAt);
+        const orderDateKey = formatDateLocal(orderDate);
+        return orderDateKey === dateKey;
+      });
+
+      dailyData[day - 1] = {
+        date: dateKey,
+        value: parseFloat(runningTotal.toFixed(2)), // Cumulative balance including today
+        count: dayOrders.length,
+      };
+    }
+
+    // Format month name for display
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    res.status(200).json({
+      success: true,
+      message: "Total price calculated successfully",
+      data: {
+        partnerId: id,
+        month: month,
+        year: year,
+        monthName: monthNames[month - 1],
+        // Aktuelle Balance (Current Balance)
+        totalPrice: parseFloat(currentBalance.toFixed(2)),
+        totalOrders: customShafts.length,
+        // Daily data for graph (resio)
+        dailyData: dailyData,
+        // Note: Amount will be credited or deducted at the end of the month
+        note: "Amount will be credited or deducted at the end of the month",
+      },
+    });
+  } catch (error: any) {
+    console.error("Total Price Response Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while calculating total price",
+      error: error.message,
+    });
+  }
+};

@@ -11,7 +11,8 @@ import {
   getTustomShafts,
   getSingleCustomShaft,
   updateCustomShaftStatus,
-  deleteCustomShaft
+  deleteCustomShaft,
+  totalPriceResponse
 } from "./custom_shafts.controllers";
 
 const router = express.Router();
@@ -48,6 +49,13 @@ router.delete(
   "/delete/:id",
   verifyUser("PARTNER", "ADMIN"),
   deleteCustomShaft
+);
+
+// i need to calculate tottle price of all custom shafts
+router.get(
+  "/total-price-resio",
+  verifyUser("PARTNER", "ADMIN"),
+  totalPriceResponse
 );
 
 //------------------------------------------

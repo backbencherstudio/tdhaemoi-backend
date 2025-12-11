@@ -34,11 +34,11 @@ router.get("/get-questions", verifyUser("PARTNER"), getQuestions);
 
 //--------------------------------------------------------
 // // Shoe questionnaire routes
-router.get("admin/", getQuestionsFlow);
+router.get("/admin", getQuestionsFlow);
 
-router.get("admin/:categoryTitle", getQuestionsFlow);
+router.get("/admin/:categoryTitle", getQuestionsFlow);
 
-router.get("admin/:categoryTitle/:subCategoryTitle", getQuestionsFlow);
+router.get("/admin/:categoryTitle/:subCategoryTitle", getQuestionsFlow);
 
 router.post(
   "/controll-questions",

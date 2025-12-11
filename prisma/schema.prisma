@@ -1140,6 +1140,7 @@ model massschuhe_order {
   location      String?
   //-------------------------------------------------
   status        massschuhe_order_status @default(Leistenerstellung)
+  express       Boolean?                @default(false)
 
   //-------------------------------------------------
 
