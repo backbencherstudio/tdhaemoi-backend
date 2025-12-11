@@ -114,98 +114,29 @@ const formatOrderWithStatusHistory = (order: any) => {
   };
 };
 
-// model massschuhe_order {
-//   id String @id @default(uuid())
-
-//   arztliche_diagnose    String?
-//   usführliche_diagnose String?
-//   rezeptnummer          String?
-//   durchgeführt_von     String?
-//   note                  String?
-
-//   albprobe_geplant   Boolean?                @default(false)
-//   kostenvoranschlag  Boolean?                @default(false)
-//   //-------------------------------------------------
-//   //workload section
-//   delivery_date      String?
-//   telefon            String?
-//   filiale            String? //location
-//   kunde              String? //customer name
-//   email              String?
-//   button_text        String?
-//   // PREISAUSWAHL
-//   fußanalyse        Float?
-//   einlagenversorgung Float?
-//   customer_note      String?
-//   location           String?
-//   //-------------------------------------------------
-//   status             massschuhe_order_status @default(Leistenerstellung)
-
-//   //-------------------------------------------------
-
-//   //relation with users
-//   userId String?
-//   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-//   employeeId String?
-//   employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
-
-//   customerId String?
-//   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-
-//   createdAt                DateTime                   @default(now())
-//   updatedAt                DateTime                   @updatedAt
-//   massschuheOrderHistories massschuhe_order_history[]
-
-//   @@index([createdAt])
-//   @@index([updatedAt])
-// }
-
-// enum massschuhe_order_status {
-//   Leistenerstellung //started
-
-//   Bettungsherstellung
-//   Halbprobenerstellung
-//   Schafterstellung
-//   Bodenerstellung
-
-//   Geliefert //delivered
-// }
-
-// //as like as customer order history
-// model massschuhe_order_history {
-//   id String @id @default(uuid())
-
-//   statusFrom OrderStatus
-//   statusTo   OrderStatus
-//   note       String?
-
-//   //relation
-//   massschuhe_orderId String
-//   massschuhe_order   massschuhe_order @relation(fields: [massschuhe_orderId], references: [id], onDelete: Cascade)
-
-//   partnerId String?
-//   partner   User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull)
-
-//   employeeId String?
-//   employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
-
-//   customerId String?
-//   customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   @@index([createdAt])
-//   @@index([massschuhe_orderId])
-//   @@index([partnerId])
-//   @@index([employeeId])
-//   @@index([customerId])
-// }
-
-export const createMassschuheOrder = async (req: Request, res: Response) => {
+export const createMassschuheOrder = async (req, res) => {
   try {
     const userId = req.user.id;
+    const requiredFields = [
+      "employeeId",
+      "customerId",
+      "arztliche_diagnose",
+      "usführliche_diagnose",
+      "rezeptnummer",
+      "durchgeführt_von",
+      "note",
+    ];
+
+    // Check required fields
+    for (const field of requiredFields) {
+      if (!req.body[field]) {
+        return res.status(400).json({
+          success: false,
+          message: `${field} is required!`,
+        });
+      }
+    }
+
     const {
       employeeId,
       customerId,
@@ -216,7 +147,6 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
       note,
       albprobe_geplant,
       kostenvoranschlag,
-
       delivery_date,
       telefon,
       filiale,
@@ -228,179 +158,140 @@ export const createMassschuheOrder = async (req: Request, res: Response) => {
       customer_note,
       location,
     } = req.body;
+    
 
-    const missingField = [
-      "employeeId",
-      "customerId",
-      "arztliche_diagnose",
-      "usführliche_diagnose",
-      "rezeptnummer",
-      "durchgeführt_von",
-      "note",
-    ].find((field) => !req.body[field]);
-
-    if (missingField) {
-      return res.status(400).json({
-        success: false,
-        message: `${missingField} is required!`,
-      });
-    }
-
-    const customer = await prisma.customers.findUnique({
+    // Check if customer exists
+    const customerExists = await prisma.customers.findUnique({
       where: { id: customerId },
       select: { id: true },
     });
 
-    if (!customer) {
+    if (!customerExists) {
       return res.status(404).json({
         success: false,
         message: "Customer not found",
       });
     }
 
-    const employee = await prisma.employees.findUnique({
+    // Check for existing undelivered orders for the same customer and user
+    const leastOrder = await prisma.massschuhe_order.findMany({
+      where: {
+        customerId,
+        userId,
+        status: { not: "Geliefert" },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    if (leastOrder.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "There is an existing order for this customer that is not yet delivered. Please complete or deliver the previous order before creating a new one.",
+      });
+    }
+
+    // Check if employee exists
+    const employeeExists = await prisma.employees.findUnique({
       where: { id: employeeId },
       select: { id: true },
     });
 
-    if (!employee) {
+    if (!employeeExists) {
       return res.status(404).json({
         success: false,
         message: "Employee not found",
       });
     }
 
-    // Convert boolean fields - handle string "true"/"false" or actual booleans
-    const convertToBoolean = (value: any): boolean | null => {
-      if (value === null || value === undefined) {
-        return null;
-      }
-      if (typeof value === "boolean") {
-        return value;
-      }
-      if (typeof value === "string") {
-        const lower = value.toLowerCase().trim();
-        if (lower === "true" || lower === "1" || lower === "yes") {
-          return true;
-        }
-        if (
-          lower === "false" ||
-          lower === "0" ||
-          lower === "no" ||
-          lower === ""
-        ) {
-          return false;
-        }
-        // If it's a non-empty string that doesn't match boolean patterns, treat as false
-        return false;
-      }
-      // For numbers, treat 0/1 as boolean
-      if (typeof value === "number") {
-        return value !== 0;
-      }
-      return false;
+    // Simple boolean converter
+    const convertToBoolean = (value) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === "boolean") return value;
+      if (typeof value === "string") return value.toLowerCase() === "true";
+      return Boolean(value);
     };
 
-    // Use transaction with retry logic to handle race conditions
-    let retries = 3;
-    let result;
+    // Create order in transaction
+    const order = await prisma.$transaction(async (tx) => {
+      // Get order number
+      const orderNumber = await getNextOrderNumberForPartner(tx, userId);
 
-    while (retries > 0) {
-      try {
-        result = await prisma.$transaction(async (tx) => {
-          // Get next order number for this partner
-          const orderNumber = await getNextOrderNumberForPartner(tx, userId);
+      // Create order
+      const newOrder = await tx.massschuhe_order.create({
+        data: {
+          orderNumber,
+          arztliche_diagnose,
+          usführliche_diagnose,
+          rezeptnummer,
+          durchgeführt_von,
+          note,
+          albprobe_geplant: convertToBoolean(albprobe_geplant),
+          kostenvoranschlag: convertToBoolean(kostenvoranschlag),
+          userId,
+          employeeId,
+          customerId,
+          delivery_date,
+          telefon,
+          filiale,
+          kunde,
+          email,
+          button_text,
+          fußanalyse,
+          einlagenversorgung,
+          customer_note,
+          location,
+        },
+      });
 
-          const createData = {
-            orderNumber,
-            arztliche_diagnose,
-            usführliche_diagnose,
-            rezeptnummer,
-            durchgeführt_von,
-            note,
-            albprobe_geplant: convertToBoolean(albprobe_geplant),
-            kostenvoranschlag: convertToBoolean(kostenvoranschlag),
-            userId,
-            employeeId,
-            customerId,
+      // Create customer history
+      await tx.customerHistorie.create({
+        data: {
+          customerId,
+          category: "Bestellungen",
+          note: "Massschuhe order created",
+          eventId: newOrder.id,
+          system_note: "Massschuhe order created",
+        },
+      });
 
-            delivery_date,
-            telefon,
-            filiale,
-            kunde,
-            email,
-            button_text,
-            fußanalyse,
-            einlagenversorgung,
-            customer_note,
-            location,
-          };
+      // Create order history
+      await tx.massschuhe_order_history.create({
+        data: {
+          massschuhe_orderId: newOrder.id,
+          statusFrom: null,
+          statusTo: newOrder.status,
+          partnerId: userId,
+          employeeId: employeeId || null,
+          customerId: customerId || null,
+          note: "Order created",
+          startedAt: new Date(),
+        },
+      });
 
-          const massschuheOrder = await tx.massschuhe_order.create({
-            data: createData,
-          });
-
-          await tx.customerHistorie.create({
-            data: {
-              customerId,
-              category: "Bestellungen",
-              note: "Massschuhe order created",
-              eventId: massschuheOrder.id,
-              system_note: "Massschuhe order created",
-            },
-          });
-
-          // Create initial order history entry (UTC)
-          await tx.massschuhe_order_history.create({
-            data: {
-              massschuhe_orderId: massschuheOrder.id,
-              statusFrom: null,
-              statusTo: massschuheOrder.status,
-              partnerId: userId,
-              employeeId: employeeId || null,
-              customerId: customerId || null,
-              note: "Order created",
-              startedAt: new Date(), // UTC by default in JS
-            },
-          });
-
-          return massschuheOrder;
-        });
-        break; // Success, exit retry loop
-      } catch (error: any) {
-        // Check if it's a unique constraint violation on orderNumber
-        if (
-          error.code === "P2002" &&
-          error.meta?.target?.includes("orderNumber") &&
-          retries > 1
-        ) {
-          retries--;
-          // Wait a bit before retrying (exponential backoff)
-          await new Promise((resolve) =>
-            setTimeout(resolve, 100 * (4 - retries))
-          );
-          continue;
-        }
-        throw error; // Re-throw if not a retryable error or out of retries
-      }
-    }
-
-    if (!result) {
-      throw new Error("Failed to create order after retries");
-    }
-
-    const massschuheOrder = result;
+      return newOrder;
+    });
 
     return res.status(201).json({
       success: true,
       message: "Massschuhe order created successfully",
-      data: massschuheOrder,
+      data: order,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Create Massschuhe Order Error:", error);
-    res.status(500).json({
+
+    // Handle specific errors
+    if (error.code === "P2002") {
+      return res.status(409).json({
+        success: false,
+        message: "Order already exists or conflict occurred",
+      });
+    }
+
+    return res.status(500).json({
       success: false,
-      message: "Something went wrong while creating massschuhe order",
+      message: "Failed to create order",
       error: error.message,
     });
   }
@@ -496,7 +387,7 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
         bodenerstellungpdf: o.bodenerstellungpdf
           ? getImageUrl(`/uploads/${o.bodenerstellungpdf}`)
           : null,
-          geliefertpdf: o.geliefertpdf
+        geliefertpdf: o.geliefertpdf
           ? getImageUrl(`/uploads/${o.geliefertpdf}`)
           : null,
       };
@@ -667,157 +558,83 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const {
-      employeeId,
-      customerId,
-      arztliche_diagnose,
-      usführliche_diagnose,
-      rezeptnummer,
-      durchgeführt_von,
-      note,
-      albprobe_geplant,
-      kostenvoranschlag,
+    const body = req.body;
 
-      delivery_date,
-      telefon,
-      filiale,
-      kunde,
-      email,
-      button_text,
-      fußanalyse,
-      einlagenversorgung,
-      customer_note,
-      location,
-    } = req.body;
+    // Simple boolean converter
+    const convertToBoolean = (value: any): boolean | null => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === "boolean") return value;
+      if (typeof value === "string") return value.toLowerCase() === "true";
+      return Boolean(value);
+    };
 
-    // Check if order exists and belongs to the user
+    // Check ownership
     const existingOrder = await prisma.massschuhe_order.findUnique({
       where: { id },
-      select: { id: true, userId: true },
+      select: { userId: true },
     });
 
     if (!existingOrder) {
       return res.status(404).json({
         success: false,
-        message: "Massschuhe order not found",
+        message: "Order not found",
       });
     }
 
-    // Verify ownership
     if (existingOrder.userId !== userId) {
       return res.status(403).json({
         success: false,
-        message: "You do not have permission to update this order",
+        message: "No permission to update this order",
       });
     }
 
-    // Convert boolean fields - handle string "true"/"false" or actual booleans
-    const convertToBoolean = (value: any): boolean | null => {
-      if (value === null || value === undefined) {
-        return undefined; // Don't update if not provided
-      }
-      if (typeof value === "boolean") {
-        return value;
-      }
-      if (typeof value === "string") {
-        const lower = value.toLowerCase().trim();
-        if (lower === "true" || lower === "1" || lower === "yes") {
-          return true;
-        }
-        if (
-          lower === "false" ||
-          lower === "0" ||
-          lower === "no" ||
-          lower === ""
-        ) {
-          return false;
-        }
-        // If it's a non-empty string that doesn't match boolean patterns, treat as false
-        return false;
-      }
-      // For numbers, treat 0/1 as boolean
-      if (typeof value === "number") {
-        return value !== 0;
-      }
-      return false;
-    };
-
-    // Build update data - only include fields that are provided
+    // Prepare update data
     const updateData: any = {};
 
-    if (arztliche_diagnose !== undefined)
-      updateData.arztliche_diagnose = arztliche_diagnose;
-    if (usführliche_diagnose !== undefined)
-      updateData.usführliche_diagnose = usführliche_diagnose;
-    if (rezeptnummer !== undefined) updateData.rezeptnummer = rezeptnummer;
-    if (durchgeführt_von !== undefined)
-      updateData.durchgeführt_von = durchgeführt_von;
-    if (note !== undefined) updateData.note = note;
-    if (albprobe_geplant !== undefined)
-      updateData.albprobe_geplant = convertToBoolean(albprobe_geplant);
-    if (kostenvoranschlag !== undefined)
-      updateData.kostenvoranschlag = convertToBoolean(kostenvoranschlag);
+    // Direct field mapping (excluding relationships)
+    const directFields = [
+      'arztliche_diagnose', 'usführliche_diagnose', 'rezeptnummer',
+      'durchgeführt_von', 'note', 'delivery_date', 'telefon',
+      'filiale', 'kunde', 'email', 'button_text', 'fußanalyse',
+      'einlagenversorgung', 'customer_note', 'location'
+    ];
 
-    //-------------------------------------------------
-    if (delivery_date !== undefined) updateData.delivery_date = delivery_date;
-    if (telefon !== undefined) updateData.telefon = telefon;
-    if (filiale !== undefined) updateData.filiale = filiale;
-    if (kunde !== undefined) updateData.kunde = kunde;
-    if (email !== undefined) updateData.email = email;
-    if (button_text !== undefined) updateData.button_text = button_text;
-    if (fußanalyse !== undefined) updateData.fußanalyse = fußanalyse;
-    if (einlagenversorgung !== undefined)
-      updateData.einlagenversorgung = einlagenversorgung;
-    if (customer_note !== undefined) updateData.customer_note = customer_note;
-    if (location !== undefined) updateData.location = location;
-    //-------------------------------------------------
+    directFields.forEach(field => {
+      if (body[field] !== undefined) updateData[field] = body[field];
+    });
 
-    if (customerId !== undefined) {
-      if (!customerId) {
-        return res.status(400).json({
-          success: false,
-          message: "customerId cannot be empty",
-        });
-      }
-
-      const customer = await prisma.customers.findUnique({
-        where: { id: customerId },
-        select: { id: true },
-      });
-
-      if (!customer) {
-        return res.status(404).json({
-          success: false,
-          message: "Customer not found",
-        });
-      }
-
-      updateData.customerId = customerId;
+    // Boolean fields
+    if (body.albprobe_geplant !== undefined) {
+      updateData.albprobe_geplant = convertToBoolean(body.albprobe_geplant);
+    }
+    if (body.kostenvoranschlag !== undefined) {
+      updateData.kostenvoranschlag = convertToBoolean(body.kostenvoranschlag);
     }
 
-    if (employeeId !== undefined) {
-      if (!employeeId) {
-        return res.status(400).json({
-          success: false,
-          message: "employeeId cannot be empty",
-        });
+    // Validate and set relationships
+    if (body.customerId !== undefined) {
+      if (!body.customerId) {
+        return res.status(400).json({ success: false, message: "customerId cannot be empty" });
       }
-
-      const employee = await prisma.employees.findUnique({
-        where: { id: employeeId },
-        select: { id: true },
-      });
-
-      if (!employee) {
-        return res.status(404).json({
-          success: false,
-          message: "Employee not found",
-        });
+      const customerExists = await prisma.customers.findUnique({ where: { id: body.customerId } });
+      if (!customerExists) {
+        return res.status(404).json({ success: false, message: "Customer not found" });
       }
-
-      updateData.employeeId = employeeId;
+      updateData.customerId = body.customerId;
     }
 
+    if (body.employeeId !== undefined) {
+      if (!body.employeeId) {
+        return res.status(400).json({ success: false, message: "employeeId cannot be empty" });
+      }
+      const employeeExists = await prisma.employees.findUnique({ where: { id: body.employeeId } });
+      if (!employeeExists) {
+        return res.status(404).json({ success: false, message: "Employee not found" });
+      }
+      updateData.employeeId = body.employeeId;
+    }
+
+    // Update order
     const updatedOrder = await prisma.massschuhe_order.update({
       where: { id },
       data: updateData,
@@ -825,22 +642,20 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      message: "Massschuhe order updated successfully",
+      message: "Order updated successfully",
       data: updatedOrder,
     });
+
   } catch (error: any) {
-    console.error("Update Massschuhe Order Error:", error);
+    console.error("Update Error:", error);
 
     if (error.code === "P2025") {
-      return res.status(404).json({
-        success: false,
-        message: "Massschuhe order not found",
-      });
+      return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Something went wrong while updating massschuhe order",
+      message: "Failed to update order",
       error: error.message,
     });
   }
@@ -931,7 +746,7 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
             id: true,
             employeeName: true,
             email: true,
-            accountName: true
+            accountName: true,
           },
         },
       },
@@ -963,7 +778,7 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
         bodenerstellungpdf: orderAny.bodenerstellungpdf
           ? getImageUrl(`/uploads/${orderAny.bodenerstellungpdf}`)
           : null,
-          geliefertpdf: orderAny.geliefertpdf
+        geliefertpdf: orderAny.geliefertpdf
           ? getImageUrl(`/uploads/${orderAny.geliefertpdf}`)
           : null,
       },
@@ -1149,12 +964,12 @@ export const updateMassschuheOrderStatus = async (
   }
 };
 
+
 export const uploadMassschuheOrderPdf = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
     const userId = req.user.id;
     const files = req.files as any;
-
 
     if (!orderId) {
       return res.status(400).json({
@@ -1180,7 +995,8 @@ export const uploadMassschuheOrderPdf = async (req: Request, res: Response) => {
     if (!bodenerstellungFile && !geliefertFile) {
       return res.status(400).json({
         success: false,
-        message: "At least one file (bodenerstellungpdf or geliefertpdf) is required",
+        message:
+          "At least one file (bodenerstellungpdf or geliefertpdf) is required",
       });
     }
 
@@ -1191,12 +1007,19 @@ export const uploadMassschuheOrderPdf = async (req: Request, res: Response) => {
     if (bodenerstellungFileName) {
       // delete old file if exists
       if (order?.bodenerstellungpdf) {
-        const oldPath = path.join(process.cwd(), "uploads", order.bodenerstellungpdf);
+        const oldPath = path.join(
+          process.cwd(),
+          "uploads",
+          order.bodenerstellungpdf
+        );
         if (fs.existsSync(oldPath)) {
           try {
             fs.unlinkSync(oldPath);
           } catch (e) {
-            console.error(`Failed to delete old bodenerstellungpdf ${oldPath}`, e);
+            console.error(
+              `Failed to delete old bodenerstellungpdf ${oldPath}`,
+              e
+            );
           }
         }
       }
@@ -1230,7 +1053,7 @@ export const uploadMassschuheOrderPdf = async (req: Request, res: Response) => {
         bodenerstellungpdf: bodenerstellungFileName
           ? getImageUrl(`/uploads/${bodenerstellungFileName}`)
           : null,
-          geliefertpdf: geliefertFileName
+        geliefertpdf: geliefertFileName
           ? getImageUrl(`/uploads/${geliefertFileName}`)
           : null,
       },
@@ -1835,9 +1658,6 @@ export const getMassschuheProductionSummary = async (
 export const getMassschuheProfitCount = async (req: Request, res: Response) => {
   try {
     const partnerId = req.user.id;
-
-
-
   } catch (error: any) {
     console.error("Error in getMassschuheProfitCount:", error);
     return res.status(500).json({
@@ -1846,4 +1666,4 @@ export const getMassschuheProfitCount = async (req: Request, res: Response) => {
       error: error?.message || "Unknown error",
     });
   }
-}
+};
