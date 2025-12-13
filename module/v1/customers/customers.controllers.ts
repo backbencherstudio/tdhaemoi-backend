@@ -837,6 +837,7 @@ export const updateCustomer = async (req: Request, res: Response) => {
       straße,
       land,
       ort,
+      billingType,
     } = req.body;
 
     const updateData = {
@@ -875,6 +876,7 @@ export const updateCustomer = async (req: Request, res: Response) => {
       land: land ?? existing.land,
       ort: ort ?? existing.ort,
       telefon: telefon ?? existing.telefon,
+      billingType: billingType ?? existing.billingType,
 
       updatedBy: req.user.id,
     };
@@ -2095,6 +2097,7 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
         csvData.C120 ?? existingScreener.archIndex2 ?? null;
       updateData.zehentyp1 = csvData.B136 ?? existingScreener.zehentyp1 ?? null;
       updateData.zehentyp2 = csvData.C136 ?? existingScreener.zehentyp2 ?? null;
+    
     }
 
     // Only update customer record if this is the latest screener file
@@ -2796,6 +2799,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
         latestScreener,
         latestMassschuheOrder,
         Kostenträger: kostentrager,
+        billingType: customer.billingType,
       };
     });
 
