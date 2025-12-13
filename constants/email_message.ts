@@ -15,7 +15,7 @@ export const emailForgotPasswordOTP = (email: string, OTP: string): string => {
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
               <tr>
                 <td style="background-color: #2c3e50; padding: 30px 40px;">
-                  <h1 style="color: #ffffff; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 24px; font-weight: 600; margin: 0; letter-spacing: 0.3px;">TDHaemoi Security</h1>
+                  <h1 style="color: #ffffff; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 24px; font-weight: 600; margin: 0; letter-spacing: 0.3px;">FeetF1rst Security</h1>
                 </td>
               </tr>
             </table>
@@ -37,7 +37,7 @@ export const emailForgotPasswordOTP = (email: string, OTP: string): string => {
                     Dear User,
                   </p>
                   <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 15px;">
-                    We have received a request to reset the password for your TDHaemoi account. To verify your identity and proceed with this request, please use the following One-Time Password (OTP):
+                    We have received a request to reset the password for your FeetF1rst account. To verify your identity and proceed with this request, please use the following One-Time Password (OTP):
                   </p>
                 </td>
               </tr>
@@ -46,6 +46,7 @@ export const emailForgotPasswordOTP = (email: string, OTP: string): string => {
             <!-- OTP Box -->
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
               <tr>
+              
                 <td style="padding: 0 40px 30px; text-align: center;">
                   <div style="background-color: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 4px; padding: 20px; display: inline-block; min-width: 200px;">
                     <p style="margin: 0 0 10px; font-size: 14px; font-weight: 600; color: #2c3e50; text-transform: uppercase; letter-spacing: 1px;">
@@ -101,10 +102,10 @@ export const emailForgotPasswordOTP = (email: string, OTP: string): string => {
                     Regards,
                   </p>
                   <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
-                    <strong>TDHaemoi Security Team</strong>
+                    <strong>FeetF1rst Security Team</strong>
                   </p>
                   <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
-                    TDHaemoi Corporation
+                    FeetF1rst Corporation
                   </p>
                 </td>
               </tr>
@@ -119,7 +120,7 @@ export const emailForgotPasswordOTP = (email: string, OTP: string): string => {
                   </p>
                   <p style="color: #7f8c8d; font-size: 13px; line-height: 20px; margin: 0;">
                     This is a system-generated email. Please do not reply directly to this message.<br>
-                    © 2024 TDHaemoi Corporation. All rights reserved.
+                    © 2024 FeetF1rst Corporation. All rights reserved.
                   </p>
                 </td>
               </tr>
@@ -142,7 +143,7 @@ export const partnershipWelcomeEmail = (
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to TDHaemoi Partnership</title>
+        <title>Welcome to FeetF1rst Partnership</title>
       </head>
       <body style="margin: 0; padding: 0; background-color: #f9f9f9; font-family: 'Arial', 'Helvetica', sans-serif;">
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width: 650px; margin: auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden; margin-top: 40px; margin-bottom: 40px;">
@@ -152,7 +153,7 @@ export const partnershipWelcomeEmail = (
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td style="background-color: #2c3e50; padding: 30px 40px;">
-                    <h1 style="color: #ffffff; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 24px; font-weight: 600; margin: 0; letter-spacing: 0.3px;">TDHaemoi Partnership Program</h1>
+                    <h1 style="color: #ffffff; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 24px; font-weight: 600; margin: 0; letter-spacing: 0.3px;">FeetF1rst Partnership Program</h1>
                   </td>
                 </tr>
               </table>
@@ -189,7 +190,7 @@ export const partnershipWelcomeEmail = (
                       Dear Partner,
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 15px;">
-                      Thank you for joining the TDHaemoi Partnership Program. We are pleased to confirm that your partnership account has been successfully established.
+                      Thank you for joining the FeetF1rst Partnership Program. We are pleased to confirm that your partnership account has been successfully established.
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
                       Please find your account credentials below:
@@ -318,7 +319,7 @@ export const partnershipWelcomeEmail = (
                       If you have any questions or require assistance, please contact our Partnership Support Team:
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
-                      <strong>Email:</strong> <a href="mailto:partnerships@tdhaemoi.com" style="color: #2980b9; text-decoration: none;">partnerships@tdhaemoi.com</a>
+                      <strong>Email:</strong> <a href="mailto:partnerships@FeetF1rst.com" style="color: #2980b9; text-decoration: none;">partnerships@FeetF1rst.com</a>
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
                       <strong>Phone:</strong> +1 (555) 123-4567
@@ -338,10 +339,10 @@ export const partnershipWelcomeEmail = (
                       Sincerely,
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
-                      <strong>TDHaemoi Partnership Team</strong>
+                      <strong>FeetF1rst Partnership Team</strong>
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
-                      TDHaemoi Corporation
+                      FeetF1rst Corporation
                     </p>
                   </td>
                 </tr>
@@ -353,7 +354,7 @@ export const partnershipWelcomeEmail = (
                   <td style="background-color: #f5f5f5; padding: 20px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
                     <p style="color: #7f8c8d; font-size: 13px; line-height: 20px; margin: 0;">
                       This is a system-generated email. Please do not reply directly to this message.<br>
-                      © 2024 TDHaemoi Corporation. All rights reserved.
+                      © 2024 FeetF1rst Corporation. All rights reserved.
                     </p>
                   </td>
                 </tr>
@@ -697,7 +698,7 @@ export const adminLoginNotificationEmail = (
   <html lang="en">
   <head>
     <meta charset="UTF-8">
-    <title>Admin Panel Access Alert - TDHaemoi</title>
+    <title>Admin Panel Access Alert - FeetF1rst</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
   <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Arial', sans-serif;">
@@ -717,7 +718,7 @@ export const adminLoginNotificationEmail = (
             adminName || "Admin"
           }</strong>,</p>
           <p style="font-size: 15px; margin: 0 0 16px;">
-            This is to confirm that your TDHaemoi admin account was accessed. Please find the login details below for your records.
+            This is to confirm that your FeetF1rst admin account was accessed. Please find the login details below for your records.
           </p>
         </td>
       </tr>
@@ -772,8 +773,8 @@ export const adminLoginNotificationEmail = (
       <tr>
         <td style="background-color: #f5f6f8; padding: 20px 32px; text-align: center;">
           <p style="font-size: 13px; color: #7f8c8d; margin: 0;">
-            TDHaemoi Admin Notification System<br>
-            &copy; ${new Date().getFullYear()} TDHaemoi Corporation. All rights reserved.
+            FeetF1rst Admin Notification System<br>
+            &copy; ${new Date().getFullYear()} FeetF1rst Corporation. All rights reserved.
           </p>
         </td>
       </tr>
@@ -800,7 +801,7 @@ export const sendPdfToEmailTamplate = (pdf: any): string => `
             <tr>
               <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 40px 30px;">
                 <div style="text-align: center;">
-                  <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0 0 10px; letter-spacing: 0.5px;">TDHaemoi</h1>
+                  <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0 0 10px; letter-spacing: 0.5px;">FeetF1rst</h1>
                   <p style="color: #ffffff; font-size: 16px; margin: 0; opacity: 0.9;">Professional Foot Care Solutions</p>
                 </div>
               </td>
@@ -814,7 +815,7 @@ export const sendPdfToEmailTamplate = (pdf: any): string => `
                 <h2 style="color: #2c3e50; font-size: 24px; font-weight: 600; margin: 0 0 20px; text-align: center;">Your Personalized Foot Exercise Program</h2>
                 
                 <p style="color: #34495e; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                  Thank you for choosing TDHaemoi for your foot care needs! We're excited to provide you with a comprehensive, personalized exercise program designed specifically for your foot health and recovery.
+                  Thank you for choosing FeetF1rst for your foot care needs! We're excited to provide you with a comprehensive, personalized exercise program designed specifically for your foot health and recovery.
                 </p>
 
                 <!-- Feature Boxes -->
@@ -881,7 +882,7 @@ export const sendPdfToEmailTamplate = (pdf: any): string => `
                     Our team of foot care specialists is here to support you throughout your recovery journey.
                   </p>
                   <p style="color: #2c3e50; font-size: 14px; margin: 0;">
-                    📧 <strong>Email:</strong> support@tdhaemoi.com<br>
+                    📧 <strong>Email:</strong> support@FeetF1rst.com<br>
                     📞 <strong>Phone:</strong> +1 (555) 123-4567
                   </p>
                 </div>
@@ -894,10 +895,10 @@ export const sendPdfToEmailTamplate = (pdf: any): string => `
             <tr>
               <td style="background-color: #2c3e50; padding: 25px 40px; text-align: center;">
                 <p style="color: #bdc3c7; font-size: 13px; line-height: 1.5; margin: 0 0 10px;">
-                  This email was sent to you as part of your TDHaemoi foot care treatment plan.
+                  This email was sent to you as part of your FeetF1rst foot care treatment plan.
                 </p>
                 <p style="color: #95a5a6; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} TDHaemoi Corporation. All rights reserved.<br>
+                  © ${new Date().getFullYear()} FeetF1rst Corporation. All rights reserved.<br>
                   Professional foot care solutions for a healthier tomorrow.
                 </p>
               </td>
@@ -958,7 +959,7 @@ export const invoiceEmailTemplate = (
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;margin:32px auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
       <tr>
         <td style="background:#111827;padding:20px 28px;">
-          <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">TDHaemoi · Invoice</h1>
+          <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">FeetF1rst · Invoice</h1>
         </td>
       </tr>
       <tr>
@@ -971,7 +972,7 @@ export const invoiceEmailTemplate = (
       </tr>
       <tr>
         <td style="padding:16px 28px;background:#f9fafb;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;text-align:center;">
-          © ${new Date().getFullYear()} TDHaemoi. All rights reserved.
+          © ${new Date().getFullYear()} FeetF1rst. All rights reserved.
         </td>
       </tr>
     </table>
