@@ -331,6 +331,7 @@ model Versorgungen {
   // massschuheOrders massschuhe_order[]
 
   customerOrders customerOrders[]
+  
 
   @@index([id, name])
   @@index([createdAt])
@@ -641,7 +642,7 @@ model customer_versorgungen {
   material String[]
 
   // status           versorgungenStatus
-  diagnosis_status versorgungenDiagnosisStatus?
+  diagnosis_status versorgungenDiagnosisStatus[] @default([])
 
   status             versorgungenStatus
   cover_types        String?
@@ -795,7 +796,7 @@ model customerProduct {
   langenempfehlung  Json
 
   status           versorgungenStatus
-  diagnosis_status versorgungenDiagnosisStatus?
+  diagnosis_status versorgungenDiagnosisStatus[] @default([])
 
   order customerOrders?
 

@@ -250,7 +250,7 @@ export const createMassschuheOrder = async (req, res) => {
         data: {
           customerId,
           category: "Bestellungen",
-          note: "Massschuhe order created",
+          note: `massschuhe order ${newOrder.orderNumber} created`,
           eventId: newOrder.id,
           system_note: "Massschuhe order created",
         },
