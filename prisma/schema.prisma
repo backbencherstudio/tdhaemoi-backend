@@ -740,6 +740,7 @@ model customerOrders {
   customer_versorgungenId String?
 
   barcodeLabel String?
+  KrankenkasseStatus String? @default("Krankenkasse_Ungenehmigt")
 
   @@unique([partnerId, orderNumber]) // Unique per partner
   @@index([customerId])
@@ -749,6 +750,12 @@ model customerOrders {
   @@index([customerId, partnerId])
   @@index([customerId, createdAt])
 }
+
+enum KrankenkasseStatus {
+  Krankenkasse_Ungenehmigt
+  Krankenkasse_Genehmigt
+}
+
 
 enum Priority {
   Dringend

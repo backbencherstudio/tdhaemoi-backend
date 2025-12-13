@@ -912,7 +912,9 @@ export const getAllOrders = async (req: Request, res: Response) => {
     const formattedOrders = orders.map((order) => ({
       ...order,
       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
-      barcodeLabel: order.barcodeLabel ? getImageUrl(`/uploads/${order.barcodeLabel}`) : null,
+      barcodeLabel: order.barcodeLabel
+        ? getImageUrl(`/uploads/${order.barcodeLabel}`)
+        : null,
     }));
 
     const totalPages = Math.ceil(totalCount / limit);
@@ -1299,99 +1301,169 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
   }
 };
 
-export const updateOrderStatus = async (req: Request, res: Response) => {
+// export const updateOrderStatus = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params;
+//     const { orderStatus } = req.body;
+
+//     if (!orderStatus) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Order status is required",
+//       });
+//     }
+
+//     const validOrderStatuses = new Set([
+//       "Einlage_vorbereiten",
+//       "Einlage_in_Fertigung",
+//       "Einlage_verpacken",
+//       "Einlage_Abholbereit",
+//       "Einlage_versandt",
+//       "Ausgeführte_Einlagen",
+//     ]);
+
+//     if (!validOrderStatuses.has(orderStatus)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid order status",
+//         error: `Order status must be one of: ${Array.from(
+//           validOrderStatuses
+//         ).join(", ")}`,
+//         validStatuses: Array.from(validOrderStatuses),
+//       });
+//     }
+
+//     const existingOrder = await prisma.customerOrders.findUnique({
+//       where: { id },
+//     });
+
+//     if (!existingOrder) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Order not found",
+//       });
+//     }
+
+//     const updatedOrder = await prisma.customerOrders.update({
+//       where: { id },
+//       data: {
+//         orderStatus,
+//         statusUpdate: new Date(),
+//       },
+//       include: {
+//         customer: {
+//           select: {
+//             id: true,
+//             customerNumber: true,
+//             vorname: true,
+//             nachname: true,
+//             email: true,
+//             // telefonnummer: true,
+//             wohnort: true,
+//           },
+//         },
+//         // partner: {
+//         //   select: {
+//         //     id: true,
+//         //     name: true,
+//         //     email: true,
+//         //     image: true,
+//         //     role: true,
+//         //   },
+//         // },
+//         product: true,
+//       },
+//     });
+
+//     // Format order with invoice URL
+//     const formattedOrder = {
+//       ...updatedOrder,
+//       invoice: updatedOrder.invoice
+//         ? getImageUrl(`/uploads/${updatedOrder.invoice}`)
+//         : null,
+//     };
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Order status updated successfully",
+//       data: formattedOrder,
+//     });
+//   } catch (error: any) {
+//     console.error("Update Order Status Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Something went wrong",
+//       error: error.message,
+//     });
+//   }
+// };
+
+export const updateMultiplekrankenkasseStatus = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const { id } = req.params;
-    const { orderStatus } = req.body;
+    const { orderIds, krankenkasseStatus } = req.body;
 
-    if (!orderStatus) {
+    if (!orderIds) {
       return res.status(400).json({
         success: false,
-        message: "Order status is required",
+        message: "Order IDs are required",
       });
     }
 
-    const validOrderStatuses = new Set([
-      "Einlage_vorbereiten",
-      "Einlage_in_Fertigung",
-      "Einlage_verpacken",
-      "Einlage_Abholbereit",
-      "Einlage_versandt",
-      "Ausgeführte_Einlagen",
+    //     enum KrankenkasseStatus {
+    //   Krankenkasse_Ungenehmigt
+    //   Krankenkasse_Genehmigt
+    // }
+    // i need to validate krankenkasseStatus
+    const validKrankenkasseStatuses = new Set([
+      "Krankenkasse_Ungenehmigt",
+      "Krankenkasse_Genehmigt",
     ]);
 
-    if (!validOrderStatuses.has(orderStatus)) {
+    if (!validKrankenkasseStatuses.has(krankenkasseStatus)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid order status",
-        error: `Order status must be one of: ${Array.from(
-          validOrderStatuses
+        message: "Invalid krankenkasse status",
+        error: `Krankenkasse status must be one of: ${Array.from(
+          validKrankenkasseStatuses
         ).join(", ")}`,
-        validStatuses: Array.from(validOrderStatuses),
+        validStatuses: Array.from(validKrankenkasseStatuses),
       });
     }
 
-    const existingOrder = await prisma.customerOrders.findUnique({
-      where: { id },
-    });
-
-    if (!existingOrder) {
-      return res.status(404).json({
+    if (!krankenkasseStatus) {
+      return res.status(400).json({
         success: false,
-        message: "Order not found",
+        message: "Krankenkasse status is required",
       });
     }
-
-    const updatedOrder = await prisma.customerOrders.update({
-      where: { id },
+    const updateResult = await prisma.customerOrders.updateMany({
+      where: {
+        id: {
+          in: orderIds,
+        },
+      },
       data: {
-        orderStatus,
+        KrankenkasseStatus: krankenkasseStatus,
         statusUpdate: new Date(),
       },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            customerNumber: true,
-            vorname: true,
-            nachname: true,
-            email: true,
-            // telefonnummer: true,
-            wohnort: true,
-          },
-        },
-        // partner: {
-        //   select: {
-        //     id: true,
-        //     name: true,
-        //     email: true,
-        //     image: true,
-        //     role: true,
-        //   },
-        // },
-        product: true,
-      },
     });
-
-    // Format order with invoice URL
-    const formattedOrder = {
-      ...updatedOrder,
-      invoice: updatedOrder.invoice
-        ? getImageUrl(`/uploads/${updatedOrder.invoice}`)
-        : null,
-    };
 
     res.status(200).json({
       success: true,
-      message: "Order status updated successfully",
-      data: formattedOrder,
+      message: `Successfully updated ${updateResult.count} order(s) to krankenkasse status: ${krankenkasseStatus}`,
+      updatedCount: updateResult.count,
+      ids: orderIds,
     });
-  } catch (error: any) {
-    console.error("Update Order Status Error:", error);
+  } catch (error) {
+    console.error("Update Multiple Order Statuses Error:", error);
     res.status(500).json({
       success: false,
-      message: "Something went wrong",
-      error: error.message,
+      message: "Something went wrong while updating order statuses",
+      error: (error as any).message,
     });
   }
 };
@@ -3594,8 +3666,6 @@ export const uploadBarcodeLabel = async (req: Request, res: Response) => {
     }
 
     const imageFile = files.image[0];
-
-
 
     // Check if order exists and get current barcode label
     const existingOrder = await prisma.customerOrders.findUnique({

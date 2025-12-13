@@ -5,7 +5,7 @@ import {
   createOrder,
   getAllOrders,
   getOrderById,
-  updateOrderStatus,
+  
   updateMultipleOrderStatuses,
   updateOrderPriority,
   uploadInvoice,
@@ -14,6 +14,7 @@ import {
   deleteMultipleOrders,
   deleteOrder,
   getOrdersByCustomerId,
+  updateMultiplekrankenkasseStatus,
   getLast40DaysOrderStats,
   getEinlagenInProduktion,
   getLast30DaysOrderEinlagen,
@@ -41,7 +42,8 @@ router.get(
   verifyUser("ADMIN", "PARTNER"),
   getOrdersByCustomerId
 );
-router.patch("/status/:id", verifyUser("ADMIN", "PARTNER"), updateOrderStatus);
+
+router.patch("/kranken-kasse-status", verifyUser("ADMIN", "PARTNER"), updateMultiplekrankenkasseStatus);
 
 // Add this route to your router
 router.patch(
