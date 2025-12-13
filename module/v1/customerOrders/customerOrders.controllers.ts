@@ -888,6 +888,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
           priority: true,
           bezahlt: true,
           barcodeLabel: true,
+          KrankenkasseStatus: true,
           customer: {
             select: {
               id: true,

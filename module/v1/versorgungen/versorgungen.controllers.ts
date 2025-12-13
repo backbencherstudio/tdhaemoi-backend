@@ -28,9 +28,11 @@ export const getAllVersorgungen = async (req: Request, res: Response) => {
       filters.supplyStatus = { name: status as string };
     }
 
+    // Filter by diagnosis_status (now an array, use hasEvery or has to check if array contains the value)
     if (typeof diagnosis_status === "string" && diagnosis_status.length) {
-      filters.diagnosis_status =
-        diagnosis_status as Prisma.VersorgungenWhereInput["diagnosis_status"];
+      filters.diagnosis_status = {
+        has: diagnosis_status as any,
+      } as any;
     }
 
     const totalCount = await prisma.versorgungen.count({ where: filters });
@@ -439,7 +441,7 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       });
     }
 
-    // Validate diagnosis_status
+    // Validate diagnosis_status (now accepts array)
     const validDiagnosisStatuses = [
       "HAMMERZEHEN_KRALLENZEHEN",
       "MORTON_NEUROM",
@@ -457,16 +459,28 @@ export const createVersorgungen = async (req: Request, res: Response) => {
       "SENKFUSS",
       "PLATTFUSS",
     ];
-    if (
-      diagnosis_status &&
-      !validDiagnosisStatuses.includes(diagnosis_status)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid diagnosis_status. Valid values are: ${validDiagnosisStatuses.join(
-          ", "
-        )}`,
-      });
+    
+    // Normalize diagnosis_status to array (empty array means no status)
+    let normalizedDiagnosisStatus: string[] = [];
+    if (diagnosis_status !== undefined && diagnosis_status !== null) {
+      if (Array.isArray(diagnosis_status)) {
+        normalizedDiagnosisStatus = diagnosis_status.filter(Boolean);
+      } else if (typeof diagnosis_status === "string") {
+        normalizedDiagnosisStatus = [diagnosis_status];
+      }
+      
+      // Validate all values in the array
+      if (normalizedDiagnosisStatus.length > 0) {
+        const invalidStatuses = normalizedDiagnosisStatus.filter(
+          (status) => !validDiagnosisStatuses.includes(status)
+        );
+        if (invalidStatuses.length > 0) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid diagnosis_status values: ${invalidStatuses.join(", ")}. Valid values are: ${validDiagnosisStatuses.join(", ")}`,
+          });
+        }
+      }
     }
 
     const normalizedMaterial = normalizeMaterialInput(material);
@@ -531,7 +545,7 @@ export const createVersorgungen = async (req: Request, res: Response) => {
         versorgung,
         material: normalizedMaterial,
 
-        diagnosis_status: diagnosis_status || null,
+        diagnosis_status: normalizedDiagnosisStatus as any,
         partner: {
           connect: { id: partnerId },
         },
@@ -708,7 +722,7 @@ export const patchVersorgungen = async (req: Request, res: Response) => {
 
     const { material, storeId, supplyStatusId, ...rest } = req.body;
 
-    // Validate diagnosis_status if provided
+    // Validate and normalize diagnosis_status if provided (now accepts array)
     if (rest.diagnosis_status !== undefined) {
       const validDiagnosisStatuses = [
         "HAMMERZEHEN_KRALLENZEHEN",
@@ -728,17 +742,30 @@ export const patchVersorgungen = async (req: Request, res: Response) => {
         "PLATTFUSS",
       ];
 
-      if (
-        rest.diagnosis_status &&
-        !validDiagnosisStatuses.includes(rest.diagnosis_status)
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid diagnosis_status. Valid values are: ${validDiagnosisStatuses.join(
-            ", "
-          )}`,
-        });
+      let normalizedDiagnosisStatus: string[] = [];
+      if (rest.diagnosis_status !== null && rest.diagnosis_status !== undefined) {
+        if (Array.isArray(rest.diagnosis_status)) {
+          normalizedDiagnosisStatus = rest.diagnosis_status.filter(Boolean);
+        } else if (typeof rest.diagnosis_status === "string") {
+          normalizedDiagnosisStatus = [rest.diagnosis_status];
+        }
+        
+        // Validate all values in the array
+        if (normalizedDiagnosisStatus.length > 0) {
+          const invalidStatuses = normalizedDiagnosisStatus.filter(
+            (status) => !validDiagnosisStatuses.includes(status)
+          );
+          if (invalidStatuses.length > 0) {
+            return res.status(400).json({
+              success: false,
+              message: `Invalid diagnosis_status values: ${invalidStatuses.join(", ")}. Valid values are: ${validDiagnosisStatuses.join(", ")}`,
+            });
+          }
+        }
       }
+      
+      // Update the rest object with normalized array
+      rest.diagnosis_status = normalizedDiagnosisStatus as any;
     }
 
     const updateData: Prisma.VersorgungenUpdateInput = {};
@@ -1046,15 +1073,17 @@ export const getVersorgungenByDiagnosis = async (
       });
     }
 
-    // Cast diagnosis_status to the Prisma enum type
-    const prismaDiagnosisStatus =
-      diagnosis_status as Prisma.VersorgungenWhereInput["diagnosis_status"];
-
-    // Build the filter query
+    // Build the filter query - diagnosis_status is now an array
     const whereClause: Prisma.VersorgungenWhereInput = {
-      diagnosis_status: prismaDiagnosisStatus,
       partnerId: partnerId, // Use partnerId instead of createdBy
     };
+    
+    // If diagnosis_status filter is provided, check if array contains the value
+    if (diagnosis_status) {
+      whereClause.diagnosis_status = {
+        has: diagnosis_status as any,
+      } as any;
+    }
 
     // If status filter is provided, filter by supplyStatus name
     if (status) {
