@@ -888,7 +888,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
           priority: true,
           bezahlt: true,
           barcodeLabel: true,
-          KrankenkasseStatus: true,
           customer: {
             select: {
               id: true,
@@ -1404,7 +1403,6 @@ export const updateMultiplekrankenkasseStatus = async (
   res: Response
 ) => {
   try {
-    const { id } = req.params;
     const { orderIds, krankenkasseStatus } = req.body;
 
     if (!orderIds) {
@@ -1448,7 +1446,7 @@ export const updateMultiplekrankenkasseStatus = async (
         },
       },
       data: {
-        KrankenkasseStatus: krankenkasseStatus,
+        krankenkasseStatus,
         statusUpdate: new Date(),
       },
     });
