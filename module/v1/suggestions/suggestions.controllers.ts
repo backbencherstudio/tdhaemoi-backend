@@ -174,10 +174,10 @@ export const deleteAllSuggestions = async (req: Request, res: Response) => {
 
 export const createImprovement = async (req: Request, res: Response) => {
   try {
-    const { name, email, firma, phone, suggestion } = req.body;
+    const { name, email, firma, phone, suggestion, category } = req.body;
     const { id: userId } = req.user;
 
-    const missingField = ["name", "email", "firma", "phone", "suggestion"].find(
+    const missingField = ["name", "email", "firma", "phone", "suggestion", "category"].find(
       (field) => !req.body[field]
     );
 
@@ -208,6 +208,7 @@ export const createImprovement = async (req: Request, res: Response) => {
         firma,
         phone,
         suggestion,
+        category,
         user: {
           connect: {
             id: userId,

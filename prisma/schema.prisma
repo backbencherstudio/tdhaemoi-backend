@@ -174,15 +174,17 @@ model SuggestionFeetf1rst {
 
 // name, email, firma, phone, suggestion
 model ImprovementSuggestion {
-  id         String @id @default(uuid())
+  id         String  @id @default(uuid())
   name       String
   email      String
   firma      String
   phone      String
   suggestion String
+  category   String?
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
   createdAt DateTime @default(now())
 }
 
@@ -331,7 +333,6 @@ model Versorgungen {
   // massschuheOrders massschuhe_order[]
 
   customerOrders customerOrders[]
-  
 
   @@index([id, name])
   @@index([createdAt])
@@ -740,7 +741,7 @@ model customerOrders {
   customerVersorgungen    customer_versorgungen?  @relation(fields: [customer_versorgungenId], references: [id])
   customer_versorgungenId String?
 
-  barcodeLabel String?
+  barcodeLabel       String?
   KrankenkasseStatus String? @default("Krankenkasse_Ungenehmigt")
 
   @@unique([partnerId, orderNumber]) // Unique per partner
@@ -756,7 +757,6 @@ enum KrankenkasseStatus {
   Krankenkasse_Ungenehmigt
   Krankenkasse_Genehmigt
 }
-
 
 enum Priority {
   Dringend
@@ -1141,8 +1141,7 @@ model massschuhe_order {
   einlagenversorgung Float?
 
   bodenerstellungpdf String?
-  geliefertpdf String?
-
+  geliefertpdf       String?
 
   customer_note String?
   location      String?
