@@ -8,7 +8,7 @@ import path from "path";
 
 const prisma = new PrismaClient();
 
-const COMPLETED_ORDER_STATUSES: any= [
+const COMPLETED_ORDER_STATUSES: any = [
   "Ausgeführte_Einlagen",
   "Einlage_versandt",
   "Einlage_Abholbereit",
@@ -45,7 +45,10 @@ const serializeMaterialField = (material: any): string => {
 };
 
 // Get next customer number for a partner (starts from 1000)
-const getNextCustomerNumberForPartner = async (tx: any, createdBy: string): Promise<number> => {
+const getNextCustomerNumberForPartner = async (
+  tx: any,
+  createdBy: string
+): Promise<number> => {
   const maxCustomer = await tx.customers.findFirst({
     where: { createdBy },
     orderBy: { customerNumber: "desc" },
@@ -95,17 +98,45 @@ export const createCustomers = async (req: Request, res: Response) => {
     });
   };
 
-  try {
-    const missingField = ["vorname", "nachname", "email"].find(
-      (field) => !req.body[field]
-    );
-    if (missingField) {
-      return res.status(400).json({
-        success: false,
-        message: `${missingField} is required!`,
-      });
-    }
+  const requireFields = await prisma.customer_requirements.findFirst({
+    where: {
+      partnerId: req.user?.id,
+    },
+    select: {
+      vorname: true,
+      nachname: true,
+      geburtsdatum: true,
+      email: true,
+      telefon: true,
+      adresse: true,
+    },
+  });
 
+  const bodyFieldMap = {
+    vorname: req.body.vorname,
+    nachname: req.body.nachname,
+    geburtsdatum: req.body.geburtsdatum,
+    email: req.body.email,
+    telefon: req.body.telefon,
+    adresse: req.body.wohnort,
+  };
+
+  const missingFields: string[] = [];
+
+  for (const [field, isRequired] of Object.entries(requireFields)) {
+    if (isRequired && !bodyFieldMap[field as keyof typeof bodyFieldMap]) {
+      missingFields.push(field);
+    }
+  }
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: `Missing required fields: ${missingFields.join(", ")}`,
+    });
+  }
+
+  try {
     const {
       vorname,
       nachname,
@@ -148,7 +179,10 @@ export const createCustomers = async (req: Request, res: Response) => {
     let screenerFileId = null;
 
     const customerWithScreener = await prisma.$transaction(async (tx) => {
-      const customerNumber = await getNextCustomerNumberForPartner(tx, req.user.id);
+      const customerNumber = await getNextCustomerNumberForPartner(
+        tx,
+        req.user.id
+      );
 
       const newCustomer = await tx.customers.create({
         data: {
@@ -728,11 +762,13 @@ export const deleteCustomer = async (req: Request, res: Response) => {
       for (const order of customer.customerOrders) {
         // Delete customerProduct if it exists
         if (order.productId) {
-          await tx.customerProduct.delete({
-            where: { id: order.productId },
-          }).catch(() => {
-            // Ignore if already deleted
-          });
+          await tx.customerProduct
+            .delete({
+              where: { id: order.productId },
+            })
+            .catch(() => {
+              // Ignore if already deleted
+            });
         }
       }
       await tx.customerOrders.deleteMany({
@@ -958,7 +994,6 @@ export const updateCustomerSpecialFields = async (
   }
 };
 
-
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -1072,7 +1107,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
       : null;
 
     // 7. Extract full ISO date strings for dropdown (including time)
-    const availableDates = allScreenerDates.map(screener => 
+    const availableDates = allScreenerDates.map((screener) =>
       screener.createdAt.toISOString()
     );
 
@@ -1089,8 +1124,8 @@ export const getCustomerById = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: screenerDate 
-        ? `Customer fetched successfully with screener data for ${screenerDate}` 
+      message: screenerDate
+        ? `Customer fetched successfully with screener data for ${screenerDate}`
         : "Customer fetched successfully",
       data: [customerWithImages],
       availableDates: availableDates, // Full ISO strings with time
@@ -1129,21 +1164,27 @@ export const assignVersorgungToCustomer = async (
     if (!status) {
       return res.status(400).json({
         success: false,
-        message: "status is required (Alltagseinlagen, Sporteinlagen, or Businesseinlagen)",
+        message:
+          "status is required (Alltagseinlagen, Sporteinlagen, or Businesseinlagen)",
       });
     }
 
     // Find existing record first
+    const diagnosisFilter =
+      versorgung.diagnosis_status && versorgung.diagnosis_status.length > 0
+        ? { hasSome: versorgung.diagnosis_status }
+        : undefined;
+
     const existingRecord = await prisma.customer_versorgungen.findFirst({
       where: {
         customerId,
         status: status as any,
-        diagnosis_status: versorgung.diagnosis_status,
+        diagnosis_status: diagnosisFilter,
       },
     });
     // Serialize material array to string for compatibility with current Prisma client
     const materialString = serializeMaterialField(versorgung.material);
-    
+
     const createData: any = {
       name: versorgung.name,
       rohlingHersteller: versorgung.rohlingHersteller,
@@ -1154,7 +1195,7 @@ export const assignVersorgungToCustomer = async (
       diagnosis_status: versorgung.diagnosis_status,
       customerId,
     };
-    
+
     // Add optional fields if provided
     if (req.body.cover_types !== undefined) {
       createData.cover_types = req.body.cover_types;
@@ -1162,7 +1203,7 @@ export const assignVersorgungToCustomer = async (
     if (req.body.laser_print_prices !== undefined) {
       createData.laser_print_prices = req.body.laser_print_prices;
     }
-    
+
     if (existingRecord) {
       const updateData: any = {
         name: versorgung.name,
@@ -1173,7 +1214,7 @@ export const assignVersorgungToCustomer = async (
         status: status as any,
         diagnosis_status: versorgung.diagnosis_status,
       };
-      
+
       // Add optional fields if provided
       if (req.body.cover_types !== undefined) {
         updateData.cover_types = req.body.cover_types;
@@ -1181,7 +1222,7 @@ export const assignVersorgungToCustomer = async (
       if (req.body.laser_print_prices !== undefined) {
         updateData.laser_print_prices = req.body.laser_print_prices;
       }
-      
+
       await prisma.customer_versorgungen.update({
         where: { id: existingRecord.id },
         data: updateData,
@@ -1515,10 +1556,10 @@ export const searchCustomers = async (req: Request, res: Response) => {
       page = 1,
     } = req.query;
     // supports: ?geburtsdatum=2000-01-01&customerNumber=123456
-    
+
     const userId = req.user.id;
     const userRole = req.user.role;
-    
+
     const limitNumber = Math.min(
       Math.max(parseInt(limit as string) || 10, 1),
       100
@@ -1598,7 +1639,12 @@ export const searchCustomers = async (req: Request, res: Response) => {
     //   };
     // }
 
-    if (location && typeof location === "string" && location.trim() && !search) {
+    if (
+      location &&
+      typeof location === "string" &&
+      location.trim() &&
+      !search
+    ) {
       searchConditions.wohnort = {
         contains: location.trim(),
         mode: "insensitive",
@@ -1609,7 +1655,11 @@ export const searchCustomers = async (req: Request, res: Response) => {
       searchConditions.id = id.trim();
     }
 
-    if (geburtsdatum && typeof geburtsdatum === "string" && geburtsdatum.trim()) {
+    if (
+      geburtsdatum &&
+      typeof geburtsdatum === "string" &&
+      geburtsdatum.trim()
+    ) {
       searchConditions.geburtsdatum = geburtsdatum.trim();
     }
 
@@ -1628,10 +1678,7 @@ export const searchCustomers = async (req: Request, res: Response) => {
       }
     } else {
       if (Object.keys(searchConditions).length > 0) {
-        whereConditions.AND = [
-          { createdBy: userId },
-          searchConditions
-        ];
+        whereConditions.AND = [{ createdBy: userId }, searchConditions];
       } else {
         whereConditions.createdBy = userId;
       }
@@ -1764,8 +1811,6 @@ export const searchCustomers = async (req: Request, res: Response) => {
 export const addScreenerFile = async (req: Request, res: Response) => {
   const { customerId } = req.params;
   const files = req.files as any;
-
- 
 
   const cleanupFiles = () => {
     if (!files) return;
@@ -2097,7 +2142,6 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
         csvData.C120 ?? existingScreener.archIndex2 ?? null;
       updateData.zehentyp1 = csvData.B136 ?? existingScreener.zehentyp1 ?? null;
       updateData.zehentyp2 = csvData.C136 ?? existingScreener.zehentyp2 ?? null;
-    
     }
 
     // Only update customer record if this is the latest screener file
@@ -2428,17 +2472,19 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
 
     // Using raw query to avoid TypeScript circular reference issue with Prisma groupBy
     // Note: Table name matches Prisma model name (customerOrders)
-    const statusCounts = await prisma.$queryRaw<Array<{ orderStatus: string; count: bigint }>>`
+    const statusCounts = await prisma.$queryRaw<
+      Array<{ orderStatus: string; count: bigint }>
+    >`
       SELECT "orderStatus", COUNT(id) as count
       FROM "customerOrders"
       WHERE "orderStatus" IN ('Einlage_vorbereiten', 'Einlage_in_Fertigung', 'Einlage_verpacken', 'Einlage_Abholbereit')
       GROUP BY "orderStatus"
     `;
-    
+
     // Transform to match expected format
-    const formattedStatusCounts = statusCounts.map(item => ({
+    const formattedStatusCounts = statusCounts.map((item) => ({
       orderStatus: item.orderStatus,
-      _count: { id: Number(item.count) }
+      _count: { id: Number(item.count) },
     }));
 
     res.status(200).json({
@@ -2687,9 +2733,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
       });
     }
 
-    const where:any = whereConditions.length
-      ? { AND: whereConditions }
-      : {};
+    const where: any = whereConditions.length ? { AND: whereConditions } : {};
 
     const [totalCount, customers] = await prisma.$transaction([
       prisma.customers.count({ where: { ...where, createdBy: userId } }),
@@ -2837,6 +2881,113 @@ export const filterCustomer = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong while filtering customers",
+      error: error.message,
+    });
+  }
+};
+
+export const createCustomerRequirements = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const partnerId = req.user?.id;
+
+    if (!partnerId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const { vorname, nachname, geburtsdatum, email, telefon, adresse } =
+      req.body;
+
+    // Convert everything to boolean
+    const requirementsData = {
+      vorname: !!vorname,
+      nachname: !!nachname,
+      geburtsdatum: !!geburtsdatum,
+      email: !!email,
+      telefon: !!telefon,
+      adresse: !!adresse,
+    };
+
+    const existingRequirements = await prisma.customer_requirements.findFirst({
+      where: {
+        partnerId,
+      },
+    });
+
+    let customerRequirements;
+
+    if (existingRequirements) {
+      customerRequirements = await prisma.customer_requirements.update({
+        where: {
+          id: existingRequirements.id,
+        },
+        data: {
+          ...requirementsData,
+        },
+      });
+    } else {
+      customerRequirements = await prisma.customer_requirements.create({
+        data: {
+          partnerId,
+          ...requirementsData,
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Customer requirements saved successfully",
+      data: customerRequirements,
+    });
+  } catch (error: any) {
+    console.error("Create/Update Customer Requirements Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while saving customer requirements",
+      error: error.message,
+    });
+  }
+};
+
+export const getCustomerRequirements = async (req: Request, res: Response) => {
+  try {
+    const partnerId = req.user?.id;
+    if (!partnerId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const customerRequirements = await prisma.customer_requirements.findFirst({
+      where: {
+        partnerId,
+      },
+      select: {
+        vorname: true,
+        nachname: true,
+        geburtsdatum: true,
+        email: true,
+        telefon: true,
+        adresse: true,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Customer requirements fetched successfully",
+      data: customerRequirements,
+    });
+  } catch (error: any) {
+    console.error("Get Customer Requirements Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while saving customer requirements",
       error: error.message,
     });
   }

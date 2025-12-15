@@ -55,6 +55,7 @@ model User {
   customerVersorgungens    customer_versorgungen[]
   storeOrderOverviews      StoreOrderOverview[]
   partnersSettings         partners_settings?
+  customerRequirements     customer_requirements[]
 
   @@map("users")
 }
@@ -129,11 +130,13 @@ model appointment {
   employeId     String?
   duration      Float?
 
-  details    String?
-  isClient   Boolean?
-  userId     String
+  details  String?
+  isClient Boolean?
+  userId   String
+  reminder Int? @default(0)
+
   customerId String?
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   appointmentEmployees AppointmentEmployee[]
 
@@ -414,9 +417,9 @@ model customer_settings {
 model customers {
   id             String  @id @default(uuid())
   customerNumber Int // Unique per createdBy, not globally
-  vorname        String
-  nachname       String
-  email          String  @unique
+  vorname        String?
+  nachname       String?
+  email          String? @unique
   // telefonnummer  String?
   wohnort        String?
 
@@ -486,6 +489,28 @@ model customers {
   @@index([id, vorname])
   @@index([id, email])
   @@index([createdAt])
+}
+
+model customer_requirements {
+  id String @id @default(uuid())
+
+  partnerId String @unique
+  partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  vorname      Boolean @default(false)
+  nachname     Boolean @default(false)
+  geburtsdatum Boolean @default(false)
+  email        Boolean @default(false)
+  telefon      Boolean @default(false)
+  adresse      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([partnerId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([id])
 }
 
 model shoeAnswers {

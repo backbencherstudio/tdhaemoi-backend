@@ -250,17 +250,16 @@ export const createAppointment = async (req: Request, res: Response) => {
       duration,
       details,
       isClient,
+      reminder,
     } = req.body;
     const { id } = req.user;
 
-    // For v2: support assignedTo as array, or fall back to employe array, or single employee
     let employees: any[] = [];
     
-    // Check if assignedTo is an array (new format)
     if (Array.isArray(assignedTo)) {
       employees = assignedTo;
     } else if (employe && Array.isArray(employe)) {
-      // Fall back to employe array for backward compatibility
+
       employees = employe;
     }
 
@@ -470,6 +469,7 @@ export const createAppointment = async (req: Request, res: Response) => {
     const appointment = await prisma.appointment.create({
       data: {
         ...appointmentData,
+        reminder: reminder ? reminder : 0,
         ...(hasMultipleEmployees && {
           appointmentEmployees: {
             create: employees.map((emp) => ({

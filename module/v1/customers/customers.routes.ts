@@ -15,11 +15,17 @@ import {
   deleteScreenerFile,
   getScreenerFileById,
   getEinlagenInProduktion,
-  filterCustomer
+  filterCustomer,
+  createCustomerRequirements,
+  getCustomerRequirements
+
 } from "./customers.controllers";
 import upload from "../../../config/multer.config";
 
 const router = express.Router();
+
+router.post("/customer-requirements", verifyUser("ADMIN", "PARTNER"), createCustomerRequirements);
+router.get("/customer-requirements", verifyUser("ADMIN", "PARTNER"), getCustomerRequirements);
 
 router.post(
   "/",
@@ -120,6 +126,7 @@ router.get(
 );
 
 router.get("/:id", verifyUser("PARTNER", "ADMIN"), getCustomerById);
+
 
 export default router;
 
