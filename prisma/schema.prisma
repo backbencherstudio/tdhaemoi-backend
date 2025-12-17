@@ -56,6 +56,7 @@ model User {
   storeOrderOverviews      StoreOrderOverview[]
   partnersSettings         partners_settings?
   customerRequirements     customer_requirements[]
+  featureAccess            FeatureAccess?
 
   @@map("users")
 }
@@ -133,7 +134,7 @@ model appointment {
   details  String?
   isClient Boolean?
   userId   String
-  reminder Int? @default(0)
+  reminder Int?     @default(0)
 
   customerId String?
   user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1283,3 +1284,39 @@ model massschuhe_order_history {
 // https://chatgpt.com/share/688ca13d-c468-800c-8159-f0c30dccecbf8
 
 //---------------------------------------------------------------------------
+
+model FeatureAccess {
+  id String @id @default(uuid())
+
+  partnerId String @unique
+  partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  // Dashboard Section
+  dashboard           Boolean @default(true)
+  teamchat            Boolean @default(true)
+  kundensuche         Boolean @default(true)
+  neukundenerstellung Boolean @default(true)
+  einlagenauftrage    Boolean @default(true)
+  massschuhauftrage   Boolean @default(true)
+  massschafte         Boolean @default(true)
+
+  // Product Management
+  produktverwaltung      Boolean @default(true)
+  sammelbestellungen     Boolean @default(true)
+  nachrichten            Boolean @default(true)
+  terminkalender         Boolean @default(true)
+  monatsstatistik        Boolean @default(true)
+  mitarbeitercontrolling Boolean @default(true)
+  einlagencontrolling    Boolean @default(true)
+  fusubungen             Boolean @default(true)
+  musterzettel           Boolean @default(true)
+  einstellungen          Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([partnerId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@map("feature_access")
+}
