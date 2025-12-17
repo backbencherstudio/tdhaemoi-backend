@@ -14,7 +14,8 @@ const formatAppointmentResponse = (appointment: any) => {
 
   const formatted = {
     ...appointment,
-    assignedTo: employeesArray.length > 0 ? employeesArray : appointment.assignedTo,
+    assignedTo:
+      employeesArray.length > 0 ? employeesArray : appointment.assignedTo,
   };
 
   // Remove the raw appointmentEmployees field
@@ -141,7 +142,6 @@ const checkAppointmentOverlap = async (
 export const getAvailableTimeSlots = async (req: Request, res: Response) => {
   try {
     const { employeId, date } = req.query;
-    
 
     if (!employeId || !date) {
       res.status(400).json({
@@ -244,9 +244,9 @@ export const createAppointment = async (req: Request, res: Response) => {
       time,
       date,
       reason,
-      assignedTo, // Can be array of employees or string (for backward compatibility)
+      assignedTo,
       employeId,
-      employe, // Legacy: Array of employees (for backward compatibility)
+      employe,
       duration,
       details,
       isClient,
@@ -255,21 +255,19 @@ export const createAppointment = async (req: Request, res: Response) => {
     const { id } = req.user;
 
     let employees: any[] = [];
-    
+
     if (Array.isArray(assignedTo)) {
       employees = assignedTo;
     } else if (employe && Array.isArray(employe)) {
-
       employees = employe;
     }
 
-    // Remove duplicate employees based on employeId to prevent unique constraint violations
     if (employees.length > 0) {
       const seen = new Set<string>();
       employees = employees.filter((emp) => {
         if (!emp.employeId) return false;
         if (seen.has(emp.employeId)) {
-          return false; // Duplicate, filter it out
+          return false;
         }
         seen.add(emp.employeId);
         return true;
@@ -278,7 +276,6 @@ export const createAppointment = async (req: Request, res: Response) => {
 
     const hasMultipleEmployees = employees.length > 0;
 
-    // If using multiple employees, validate the array
     if (hasMultipleEmployees) {
       for (const emp of employees) {
         if (!emp.employeId || !emp.assignedTo) {
@@ -702,6 +699,7 @@ export const updateAppointment = async (req: Request, res: Response) => {
       duration,
       details,
       isClient,
+      reminder,
     } = req.body;
 
     const existingAppointment = await prisma.appointment.findUnique({
@@ -721,7 +719,7 @@ export const updateAppointment = async (req: Request, res: Response) => {
 
     // For v2: support assignedTo as array, or fall back to employe array, or single employee
     let employees: any[] = [];
-    
+
     // Check if assignedTo is an array (new format)
     if (Array.isArray(assignedTo)) {
       employees = assignedTo;
@@ -778,7 +776,9 @@ export const updateAppointment = async (req: Request, res: Response) => {
 
     const updatedEmployeId = hasMultipleEmployees
       ? employees[0]?.employeId
-      : employeId !== undefined ? employeId : existingAppointment.employeId;
+      : employeId !== undefined
+      ? employeId
+      : existingAppointment.employeId;
     const updatedDuration =
       duration !== undefined ? duration : existingAppointment.duration || 1;
 
@@ -929,6 +929,8 @@ export const updateAppointment = async (req: Request, res: Response) => {
         isClient !== undefined ? isClient : existingAppointment.isClient,
       customerId:
         customerId !== undefined ? customerId : existingAppointment.customerId,
+      reminder:
+        reminder !== undefined ? reminder : existingAppointment.reminder,
     };
 
     // Handle employees update

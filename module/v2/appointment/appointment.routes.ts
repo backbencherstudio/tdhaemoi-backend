@@ -33,4 +33,6 @@ router.put("/:id", verifyUser("PARTNER", "ADMIN"), updateAppointment);
 
 router.delete("/:id", verifyUser("PARTNER", "ADMIN"), deleteAppointment);
 
+
+
 export default router;

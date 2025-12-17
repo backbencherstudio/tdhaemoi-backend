@@ -22,7 +22,9 @@ export const dailyReport = () => {
       // Check if partners_settings model is available
       const partnersSettingsModel = (prisma as any).partners_settings;
       if (!partnersSettingsModel) {
-        console.error("partners_settings model not available in Prisma client. Please regenerate Prisma client.");
+        console.error(
+          "partners_settings model not available in Prisma client. Please regenerate Prisma client."
+        );
         return;
       }
 
@@ -41,11 +43,13 @@ export const dailyReport = () => {
         },
       });
 
-      console.log(`Found ${partnersWithOrthotech.length} partners with orthotech: true`);
+      console.log(
+        `Found ${partnersWithOrthotech.length} partners with orthotech: true`
+      );
 
       // Get all stores for these partners
       const partnerIds = partnersWithOrthotech.map((ps: any) => ps.partnerId);
-      
+
       if (partnerIds.length === 0) {
         console.log("No partners with orthotech: true found");
         return;
@@ -67,13 +71,20 @@ export const dailyReport = () => {
         },
       });
 
-      console.log(`Found ${allStores.length} stores for partners with orthotech: true`);
+      console.log(
+        `Found ${allStores.length} stores for partners with orthotech: true`
+      );
 
       // Process each store
       for (const store of allStores) {
-        const groessenMengen = store.groessenMengen as unknown as GroessenMengen;
-        
-        if (!groessenMengen || typeof groessenMengen !== "object" || Array.isArray(groessenMengen)) {
+        const groessenMengen =
+          store.groessenMengen as unknown as GroessenMengen;
+
+        if (
+          !groessenMengen ||
+          typeof groessenMengen !== "object" ||
+          Array.isArray(groessenMengen)
+        ) {
           console.log(`Store ${store.id} has invalid groessenMengen`);
           continue;
         }
@@ -84,14 +95,19 @@ export const dailyReport = () => {
         // Iterate through each size in groessenMengen
         for (const [sizeStr, sizeData] of Object.entries(groessenMengen)) {
           const size = parseInt(sizeStr);
-          
+
           if (isNaN(size)) {
             console.log(`Invalid size key: ${sizeStr} for store ${store.id}`);
             continue;
           }
 
           // Check if auto_order_limit is greater than zero
-          if (sizeData && typeof sizeData === "object" && "auto_order_limit" in sizeData && sizeData.auto_order_limit > 0) {
+          if (
+            sizeData &&
+            typeof sizeData === "object" &&
+            "auto_order_limit" in sizeData &&
+            sizeData.auto_order_limit > 0
+          ) {
             try {
               // Create StoreOrderOverview entry
               await (prisma as any).storeOrderOverview.create({
@@ -115,7 +131,11 @@ export const dailyReport = () => {
               hasChanges = true;
 
               console.log(
-                `Created StoreOrderOverview for store ${store.id}, size ${size}, auto_order_limit: ${sizeData.auto_order_limit} -> ${sizeData.auto_order_limit - 1}`
+                `Created StoreOrderOverview for store ${
+                  store.id
+                }, size ${size}, auto_order_limit: ${
+                  sizeData.auto_order_limit
+                } -> ${sizeData.auto_order_limit - 1}`
               );
             } catch (error) {
               console.error(
@@ -149,141 +169,72 @@ export const dailyReport = () => {
   });
 };
 
-//---------------------------
+export const appointmentReminderCron = () => {
+  function getAppointmentDateTime(date: Date, time: string): Date {
+    const [hours, minutes] = time.split(":").map(Number);
 
-// model StoreOrderOverview {
-//   id String @id @default(uuid())
+    const appointmentDate = new Date(date);
+    appointmentDate.setHours(hours, minutes, 0, 0);
 
-//   storeId String
-//   store   Stores @relation(fields: [storeId], references: [id], onDelete: Cascade)
+    return appointmentDate;
+  }
 
-//   partnerId String
-//   partner   User?  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  cron.schedule("* * * * *", async () => {
+    console.log("++++++++++++++++");
+    try {
+      const now = new Date();
 
-//   length              Int
-//   quantity            Int
-//   auto_order_limit    Int
-//   auto_order_quantity Int
+      // Fetch appointments with reminder not sent
+      const appointments = await prisma.appointment.findMany({
+        where: {
+          reminderSent: false,
+          reminder: { gt: 0 },
+          date: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
 
-//   status StoreOrderOverviewStatus?
+      for (const appointment of appointments) {
+        const appointmentDateTime = getAppointmentDateTime(
+          appointment.date,
+          appointment.time
+        );
 
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-// }
+        const reminderTime = new Date(
+          appointmentDateTime.getTime() - appointment.reminder! * 60 * 1000
+        );
 
-// -----------------------
+        // If now >= reminderTime → send reminder
+        if (now >= reminderTime) {
+          await (prisma as any).notification.create({
+            data: {
+              type: "Appointment_Reminder",
+              partnerId: appointment.userId,
+              message: `Reminder: You have an appointment scheduled on ${appointment.date.toDateString()} at ${
+                appointment.time
+              }`,
+              eventId: appointment.id,
+              route: `/dashboard/calendar`,
+            },
+          });
 
-// Auto order limit → Order quantity
-
-// {
-//   "produktname": "New Balance",
-//   "hersteller": "New Balance",
-//   "artikelnummer": "#10834",
-//   "lagerort": "test1",
-//   "mindestbestand": 2,
-//   "groessenMengen": {
-//       "35": {
-//           "length": 225,
-//           "quantity": 5,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "36": {
-//           "length": 230,
-//           "quantity": 2,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "37": {
-//           "length": 235,
-//           "quantity": 1,
-//           "mindestmenge": 6,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "38": {
-//           "length": 240,
-//           "quantity": 5,
-//           "mindestmenge": 9,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "39": {
-//           "length": 245,
-//           "quantity": 5,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "40": {
-//           "length": 250,
-//           "quantity": 7,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "41": {
-//           "length": 255,
-//           "quantity": 8,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "42": {
-//           "length": 260,
-//           "quantity": 7,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "43": {
-//           "length": 265,
-//           "quantity": 9,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "44": {
-//           "length": 270,
-//           "quantity": 4,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "45": {
-//           "length": 275,
-//           "quantity": 3,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "46": {
-//           "length": 280,
-//           "quantity": 2,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "47": {
-//           "length": 285,
-//           "quantity": 2,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       },
-//       "48": {
-//           "length": 290,
-//           "quantity": 3,
-//           "mindestmenge": 3,
-//           "auto_order_limit": 4,
-//           "auto_order_quantity": 10
-//       }
-//   },
-//   "purchase_price": 110,
-//   "selling_price": 220,
-//   "orthotech": false,
-//   "opannrit": false,
-//   "Status": "Niedriger Bestand"
-// }
+          // Mark reminder as sent
+          await prisma.appointment.update({
+            where: { id: appointment.id },
+            data: { reminderSent: true },
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Appointment reminder cron error:", error);
+    }
+  });
+};

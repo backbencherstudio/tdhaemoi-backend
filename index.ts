@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import app from "./app";
-import { dailyReport } from "./cron/weekly_report";
+import { appointmentReminderCron, dailyReport } from "./cron/weekly_report";
 
 const PORT = process.env.PORT || 3001;
 const prisma = new PrismaClient();
@@ -11,6 +11,7 @@ app.listen(PORT, async () => {
     await prisma.$connect();
     console.log("Database connected...");
     dailyReport();
+    appointmentReminderCron();
   } catch (err) {
     console.error("Database connection error:", err);
   }

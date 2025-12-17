@@ -57,6 +57,7 @@ model User {
   partnersSettings         partners_settings?
   customerRequirements     customer_requirements[]
   featureAccess            FeatureAccess?
+  notifications            notification[]
 
   @@map("users")
 }
@@ -131,10 +132,11 @@ model appointment {
   employeId     String?
   duration      Float?
 
-  details  String?
-  isClient Boolean?
-  userId   String
-  reminder Int?     @default(0)
+  details      String?
+  isClient     Boolean?
+  userId       String
+  reminder     Int?     @default(0)
+  reminderSent Boolean  @default(false)
 
   customerId String?
   user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1319,4 +1321,24 @@ model FeatureAccess {
   @@index([createdAt])
   @@index([updatedAt])
   @@map("feature_access")
+}
+
+model notification {
+  id String @id @default(uuid())
+
+  type notificationType?
+
+  partnerId String
+  user      User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  message String
+  eventId String?
+  isRead  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum notificationType {
+  Appointment_Reminder
 }
