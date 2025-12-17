@@ -233,6 +233,7 @@ export const appointmentReminderCron = () => {
           });
         }
       }
+      
     } catch (error) {
       console.error("Appointment reminder cron error:", error);
     }
