@@ -1,6 +1,10 @@
 import express, { Request, Response, NextFunction } from "express";
+
 import cors from "cors";
 import morgan from "morgan";
+
+import { Server } from "socket.io"; // Corrected import for Socket.IO
+import http from "http";
 
 import v1 from "./module/v1/index";
 import v2 from "./module/v2/index";
@@ -8,48 +12,59 @@ import path from "path";
 
 const app = express();
 
+const server = http.createServer(app);
+
+const allowedOrigins = [
+  "https://ideas-volumes-continually-danny.trycloudflare.com",
+  "http://192.168.30.102:3000",
+  "http://192.168.30.102:*",
+  "http://localhost:3000",
+  "http://localhost:3003",
+  "http://localhost:3001",
+  "http://localhost:*",
+  "http://192.168.30.102:3000",
+  "http://192.168.30.102:3001",
+  "http://192.168.30.102:3003",
+  "http://192.168.40.47:3004",
+  "http://192.168.30.102:*",
+  "http://localhost:3002",
+  "http://192.168.40.10:4000",
+  "http://localhost:3001",
+  "http://192.168.4.30:3000",
+  "http://192.168.4.30:3001",
+  "http://192.168.4.30:3003",
+  "http://192.168.4.30:3002",
+  "http://192.168.4.30:3004",
+  "https://landing-page-iota-eight-94.vercel.app",
+  "file:///D:/z-bbs/tdhaemoi-backend/public/index.html",
+  "https://landing-page-iota-eight-94.vercel.app",
+  "http://localhost:3002",
+  "https://tdhaemoi-partner-dashbaord.vercel.app",
+  "https://feetf1rst.tech",
+  "https://partner.feetf1rst.tech",
+  "https://tdhaemoi-partner-dashbaord.vercel.app",
+  "https://flux-genius-std-treatments.trycloudflare.com",
+  "https://tdhaemoi-landing-page.vercel.app",
+  "https://tdhaemoi-landing-page-x8dy.vercel.app",
+  "https://tdhaemoi-landing-page.vercel.app",
+  "http://localhost:3003",
+  "https://feetf1rst.vercel.app",
+  "https://feetf1rst-landing-page.vercel.app",
+];
 app.use(
   cors({
-    origin: [
-      "https://ideas-volumes-continually-danny.trycloudflare.com",
-      "http://192.168.30.102:3000",
-      "http://192.168.30.102:*",
-      "http://localhost:3000",
-      "http://localhost:3003",
-      "http://localhost:3001",
-      "http://localhost:*",
-      "http://192.168.30.102:3000",
-      "http://192.168.30.102:3001",
-      "http://192.168.30.102:3003",
-      "http://192.168.40.47:3004",
-      "http://192.168.30.102:*",
-      "http://localhost:3002",
-      "http://192.168.40.10:4000",
-      "http://localhost:3001",
-      "http://192.168.4.30:3000",
-      "http://192.168.4.30:3001",
-      "http://192.168.4.30:3003",
-      "http://192.168.4.30:3002",
-      "http://192.168.4.30:3004",
-      "https://landing-page-iota-eight-94.vercel.app",
-      "file:///D:/z-bbs/tdhaemoi-backend/public/index.html",
-      "https://landing-page-iota-eight-94.vercel.app",
-      "http://localhost:3002",
-      "https://tdhaemoi-partner-dashbaord.vercel.app",
-      "https://feetf1rst.tech",
-      "https://partner.feetf1rst.tech",
-      "https://tdhaemoi-partner-dashbaord.vercel.app",
-      "https://flux-genius-std-treatments.trycloudflare.com",
-      "https://tdhaemoi-landing-page.vercel.app",
-      "https://tdhaemoi-landing-page-x8dy.vercel.app",
-      "https://tdhaemoi-landing-page.vercel.app",
-      "http://localhost:3003",
-      "https://feetf1rst.vercel.app",
-      "https://feetf1rst-landing-page.vercel.app"
-    ],
-     credentials: true 
+    origin: allowedOrigins,
+    credentials: true,
   })
 );
+
+export const io = new Server(server, {
+  pingTimeout: 60000,
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+  },
+});
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -58,6 +73,18 @@ app.use(morgan("dev"));
 // app.use("/assets", express.static(path.join(__dirname, "../assets"))); //production
 app.use("/assets", express.static(path.join(__dirname, "./assets")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+//-----------------socket.io setup-----------------
+
+io.on("connection", (socket) => {
+  console.log("User connected", socket.id);
+  socket.on("join", (userId: string) => {
+    socket.join(userId);
+    console.log(`User with ID: ${userId} joined room: ${userId}`);
+  });
+});
+
+//-------------------------------------
 
 app.use("/", v1);
 app.use("/v2", v2);
