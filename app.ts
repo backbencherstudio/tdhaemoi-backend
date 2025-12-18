@@ -2,8 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 
 import cors from "cors";
 import morgan from "morgan";
-
-import { Server } from "socket.io"; // Corrected import for Socket.IO
+  // Corrected import for Socket.IO
  
 
 import v1 from "./module/v1/index";
@@ -50,6 +49,7 @@ const app = express();
   "https://feetf1rst.vercel.app",
   "https://feetf1rst-landing-page.vercel.app",
 ];
+
 app.use(
   cors({
     origin: allowedOrigins,
@@ -57,35 +57,27 @@ app.use(
   })
 );
  
-app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
-// app.use("/assets", express.static(path.join(__dirname, "../assets"))); //production
+// Static files
 app.use("/assets", express.static(path.join(__dirname, "./assets")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use(express.static(path.join(__dirname, "public")));
 
-//-----------------socket.io setup-----------------
-
-//-------------------------------------
-
+// API routes
 app.use("/", v1);
 app.use("/v2", v2);
 
-app.use((req: Request, res: Response, next: NextFunction) => {
-  res.status(404).json({
-    message: `404 route not found`,
-  });
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ message: "404 route not found" });
 });
 
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  res.status(500).json({
-    message: `500 Something broken!`,
-    error: err.message,
-  });
+// Error handler
+app.use((err: Error, req, res, next) => {
+  res.status(500).json({ message: "500 Something broken!", error: err.message });
 });
-
-// Make sure this line is before your routes
-app.use(express.static(path.join(__dirname, "public")));
 
 export default app;

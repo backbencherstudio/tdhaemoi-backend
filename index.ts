@@ -1,11 +1,9 @@
 import { PrismaClient } from "@prisma/client";
-import express from "express";
 import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { appointmentReminderCron, dailyReport } from "./cron/weekly_report";
-import { allowedOrigins } from "./app";
+import app, { allowedOrigins } from "./app";
 
-const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 1971;
 
