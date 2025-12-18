@@ -7,21 +7,18 @@ import app, { allowedOrigins } from "./app";
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 1971;
 
-// Create HTTP server and attach Socket.IO before attaching Express app
-const server = createServer();
+// Create HTTP server from Express
+const server = createServer(app);
 
 // Attach Socket.IO
 export const io = new SocketIOServer(server, {
-  path: "/socket.io/",
+  path: "/socket.io",
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
-
-// Attach Express app handler after Socket.IO so Socket routes are intercepted first
-server.on("request", app);
 
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);

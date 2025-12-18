@@ -76,7 +76,10 @@ app.use((req, res) => {
 });
 
 // Error handler
-app.use((err: Error, req, res, next) => {
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  if (res.headersSent) {
+    return next(err);
+  }
   res.status(500).json({ message: "500 Something broken!", error: err.message });
 });
 
