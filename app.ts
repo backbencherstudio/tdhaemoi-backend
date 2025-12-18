@@ -4,17 +4,16 @@ import cors from "cors";
 import morgan from "morgan";
 
 import { Server } from "socket.io"; // Corrected import for Socket.IO
-import http from "http";
+ 
 
 import v1 from "./module/v1/index";
 import v2 from "./module/v2/index";
 import path from "path";
 
 const app = express();
+ 
 
-const server = http.createServer(app);
-
-const allowedOrigins = [
+ export const allowedOrigins = [
   "https://ideas-volumes-continually-danny.trycloudflare.com",
   "http://192.168.30.102:3000",
   "http://192.168.30.102:*",
@@ -57,15 +56,7 @@ app.use(
     credentials: true,
   })
 );
-
-export const io = new Server(server, {
-  pingTimeout: 60000,
-  cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
-  },
-});
-
+ 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(morgan("dev"));
@@ -75,14 +66,6 @@ app.use("/assets", express.static(path.join(__dirname, "./assets")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 //-----------------socket.io setup-----------------
-
-io.on("connection", (socket) => {
-  console.log("User connected", socket.id);
-  socket.on("join", (userId: string) => {
-    socket.join(userId);
-    console.log(`User with ID: ${userId} joined room: ${userId}`);
-  });
-});
 
 //-------------------------------------
 
