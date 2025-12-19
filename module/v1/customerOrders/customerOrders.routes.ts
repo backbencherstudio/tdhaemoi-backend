@@ -23,7 +23,8 @@ import {
   getSupplyInfo,
   getPicture2324ByOrderId,
   getBarcodeLabel,
-  uploadBarcodeLabel
+  uploadBarcodeLabel,
+  getNewOrderHistory
 } from "./customerOrders.controllers";
 import upload from "../../../config/multer.config";
  
