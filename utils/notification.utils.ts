@@ -22,9 +22,10 @@ export const notificationSend = async (
         route,
       },
     });
+  
 
     io.to(partnerId).emit("notification", notification);
-    
+    console.log("Notification sent to partner:", partnerId);
   } catch (error) {
     console.error("Error creating notification:", error);
   }
