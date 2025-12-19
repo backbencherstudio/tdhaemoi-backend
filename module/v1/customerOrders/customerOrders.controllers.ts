@@ -173,19 +173,42 @@ export const createOrder = async (req: Request, res: Response) => {
       mitarbeiter,
       fertigstellungBis,
       versorgung: werkstattVersorgung,
-      bezahlt: werkstattBezahlt,
+      bezahlt,
       fussanalysePreis,
       einlagenversorgungPreis,
       werkstattEmployeeId,
     } = req.body;
     const partnerId = req.user.id;
 
-    console.log(customerId, versorgungId, partnerId);
+    console.log(bezahlt);
+
+    // console.log(customerId, versorgungId, partnerId);
 
     if (!customerId || !versorgungId) {
       return res.status(400).json({
         success: false,
         message: "Customer ID and Versorgung ID are required",
+      });
+    }
+
+    if (!bezahlt) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment status (bezahlt) is required",
+      });
+    }
+    const validPaymentStatuses = new Set([
+      "Privat_Bezahlt",
+      "Privat_offen",
+      "Krankenkasse_Ungenehmigt",
+      "Krankenkasse_Genehmigt",
+    ]);
+
+    if (!validPaymentStatuses.has(bezahlt)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment status",
+        validStatuses: Array.from(validPaymentStatuses),
       });
     }
 
@@ -305,6 +328,7 @@ export const createOrder = async (req: Request, res: Response) => {
           fussanalysePreis: fussanalysePreis ?? undefined,
           einlagenversorgungPreis: einlagenversorgungPreis ?? undefined,
           werkstattEmployeeId: werkstattEmployeeId ?? null,
+          bezahlt: bezahlt ?? null,
         } as any,
         select: {
           id: true,
@@ -1404,7 +1428,6 @@ export const updateMultiplePaymentStatus = async (
 ) => {
   try {
     const { orderIds, bezahlt } = req.body;
-
 
     if (!orderIds) {
       return res.status(400).json({
