@@ -3041,78 +3041,77 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       orderBy: { createdAt: "asc" },
     });
 
-    // ✅ STEP 1: Calculate required durations
+    // ✅ STEP 1: Calculate the 2 required durations for "Step Duration Overview"
     
-    // 1A. Find first status start time
-    let firstStatusStart = order.createdAt;
+    // 1A. Find when the FIRST step started
+    // This should be when order entered Warten_auf_Versorgungsstart for the first time
+    let firstStepStartTime = order.createdAt;
     
-    // Look for the first time status was Warten_auf_Versorgungsstart
-    const firstStatusRecord = allHistory.find(record => 
-      !record.isPrementChange && 
-      record.statusTo === "Warten_auf_Versorgungsstart"
+    // Look through history to find first status entry
+    const firstStatusEntry = allHistory.find(record => 
+      !record.isPrementChange
     );
     
-    if (firstStatusRecord) {
-      firstStatusStart = firstStatusRecord.createdAt;
-    } else {
-      // Check if order was created with this status
-      const orderCreatedWithStatus = allHistory.find(record => 
-        !record.isPrementChange && 
-        record.statusFrom === "Warten_auf_Versorgungsstart" &&
-        record.statusTo === "Warten_auf_Versorgungsstart"
-      );
-      if (orderCreatedWithStatus) {
-        firstStatusStart = orderCreatedWithStatus.createdAt;
-      }
+    if (firstStatusEntry) {
+      firstStepStartTime = firstStatusEntry.createdAt;
     }
 
-    // 1B. Calculate In_Fertigung + Verpacken_Qualitätssicherung total time
-    let fertigungQSTotalMs = 0;
+    // 1B. Calculate total time in In_Fertigung + Verpacken_Qualitätssicherung
+    let totalProductionQSTime = 0;
     
-    // Track time spent in each status
-    const statusPeriods: Array<{
-      status: string;
-      startTime: Date;
-      endTime: Date | null;
-    }> = [];
+    // We need to track when order entered and exited these statuses
+    const statusChanges = allHistory.filter(record => 
+      !record.isPrementChange && 
+      record.statusFrom !== record.statusTo
+    ).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     
-    // Filter only status changes (not payment changes)
-    const statusChanges = allHistory.filter(record => !record.isPrementChange);
-    
-    if (statusChanges.length > 0) {
-      // Process status changes to create periods
+    // If no status changes, check initial status
+    if (statusChanges.length === 0 && allHistory.length > 0) {
+      const firstRecord = allHistory[0];
+      if (firstRecord.statusTo === "In_Fertigung" || firstRecord.statusTo === "Verpacken_Qualitätssicherung") {
+        const startTime = firstRecord.createdAt;
+        const endTime = new Date(); // Still in this status
+        totalProductionQSTime = endTime.getTime() - startTime.getTime();
+      }
+    } else {
+      // Track timeline of statuses
+      const timeline: Array<{
+        status: string;
+        startTime: Date;
+        endTime: Date | null;
+      }> = [];
+      
+      // Build timeline from status changes
       for (let i = 0; i < statusChanges.length; i++) {
         const current = statusChanges[i];
         const next = statusChanges[i + 1];
         
-        if (current.statusFrom !== current.statusTo) {
-          // This is a real status change
-          statusPeriods.push({
-            status: current.statusTo,
-            startTime: current.createdAt,
-            endTime: next ? next.createdAt : null
-          });
-        }
+        timeline.push({
+          status: current.statusTo,
+          startTime: current.createdAt,
+          endTime: next ? next.createdAt : null
+        });
       }
-    } else {
-      // No status changes, order is still in initial status
-      statusPeriods.push({
-        status: order.orderStatus,
-        startTime: order.createdAt,
-        endTime: null
-      });
-    }
-    
-    // Calculate total time in Fertigung and QS
-    for (const period of statusPeriods) {
-      if (period.status === "In_Fertigung" || period.status === "Verpacken_Qualitätssicherung") {
-        const endTime = period.endTime || new Date();
-        const duration = endTime.getTime() - period.startTime.getTime();
-        fertigungQSTotalMs += duration;
+      
+      // Add current status if not in timeline
+      if (timeline.length === 0 || timeline[timeline.length - 1].endTime !== null) {
+        timeline.push({
+          status: order.orderStatus,
+          startTime: order.createdAt,
+          endTime: null
+        });
+      }
+      
+      // Calculate total time in production and QS
+      for (const period of timeline) {
+        if (period.status === "In_Fertigung" || period.status === "Verpacken_Qualitätssicherung") {
+          const endTime = period.endTime || new Date();
+          totalProductionQSTime += endTime.getTime() - period.startTime.getTime();
+        }
       }
     }
 
-    // ✅ STEP 2: Build changeLog
+    // ✅ STEP 2: Build Change Log (ALL events in chronological order)
     const changeLog: Array<{
       id: string;
       date: Date;
@@ -3128,13 +3127,13 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       };
     }> = [];
 
-    // Add order creation
+    // Add order creation FIRST (oldest event)
     changeLog.push({
       id: "initial",
       date: order.createdAt,
       user: order.partner?.name || "System",
       action: "Order created",
-      note: `Order #${order.orderNumber} created with status: ${formatStatusName(order.orderStatus)}`,
+      note: `Order #${order.orderNumber} created`,
       type: "order_creation",
       details: {
         partnerId: order.partner?.id || null,
@@ -3142,24 +3141,10 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       },
     });
 
-    // Add barcode scan if exists
-    if (order.barcodeCreatedAt) {
-      changeLog.push({
-        id: "barcode_upload",
-        date: order.barcodeCreatedAt,
-        user: "System",
-        action: "Barcode/Label uploaded",
-        note: "Barcode/Label was uploaded",
-        type: "scan_event",
-        details: {
-          partnerId: null,
-          employeeId: null,
-        },
-      });
-    }
-
-    // Process all history entries
-    for (const record of allHistory) {
+    // Process all history entries in chronological order
+    const sortedHistory = [...allHistory].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    
+    for (const record of sortedHistory) {
       const userName = record.employee?.employeeName || 
                        record.partner?.name || 
                        "System";
@@ -3170,8 +3155,8 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
           id: record.id,
           date: record.createdAt,
           user: userName,
-          action: `Payment status changed: ${formatPaymentStatus(record.paymentFrom)} → ${formatPaymentStatus(record.paymentTo)}`,
-          note: record.note || `Payment status changed from ${record.paymentFrom} to ${record.paymentTo}`,
+          action: "Payment status changed",
+          note: `${formatPaymentStatus(record.paymentFrom)} → ${formatPaymentStatus(record.paymentTo)}`,
           type: "payment_change",
           details: {
             partnerId: record.partnerId || null,
@@ -3180,21 +3165,53 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
             paymentTo: record.paymentTo,
           },
         });
-      } else if (record.statusFrom !== record.statusTo) {
+      } else {
         // ✅ Status change entry
-        changeLog.push({
-          id: record.id,
-          date: record.createdAt,
-          user: userName,
-          action: `Status changed: ${formatStatusName(record.statusFrom)} → ${formatStatusName(record.statusTo)}`,
-          note: record.note || `${userName} changed status from ${record.statusFrom} to ${record.statusTo}`,
-          type: "status_change",
-          details: {
-            partnerId: record.partnerId || null,
-            employeeId: record.employeeId || null,
-          },
-        });
+        if (record.statusFrom !== record.statusTo) {
+          changeLog.push({
+            id: record.id,
+            date: record.createdAt,
+            user: userName,
+            action: "Status changed",
+            note: `${formatStatusName(record.statusFrom)} → ${formatStatusName(record.statusTo)}`,
+            type: "status_change",
+            details: {
+              partnerId: record.partnerId || null,
+              employeeId: record.employeeId || null,
+            },
+          });
+        } else {
+          // Initial status entry (when order was created with a status)
+          changeLog.push({
+            id: record.id,
+            date: record.createdAt,
+            user: userName,
+            action: "Status set",
+            note: `${formatStatusName(record.statusTo)}`,
+            type: "status_change",
+            details: {
+              partnerId: record.partnerId || null,
+              employeeId: record.employeeId || null,
+            },
+          });
+        }
       }
+    }
+
+    // Add barcode scan if exists
+    if (order.barcodeCreatedAt) {
+      changeLog.push({
+        id: "barcode_scan",
+        date: order.barcodeCreatedAt,
+        user: "System",
+        action: "Barcode scanned",
+        note: "Barcode/Label was scanned",
+        type: "scan_event",
+        details: {
+          partnerId: null,
+          employeeId: null,
+        },
+      });
     }
 
     // Add customer history entries
@@ -3223,8 +3240,8 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
         id: record.id,
         date: record.createdAt || record.date || new Date(),
         user: userName,
-        action: record.note || "Entry updated",
-        note: record.system_note || record.note || "",
+        action: "Note added",
+        note: record.note || "",
         type: "other",
         details: {
           partnerId: null,
@@ -3233,38 +3250,38 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       });
     }
 
-    // Sort by date descending
+    // Sort by date ascending (oldest to newest for UI)
     changeLog.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
-    // ✅ STEP 3: Build response according to requirements
+    // ✅ STEP 3: Build response matching UI requirements
     res.status(200).json({
       success: true,
       data: {
         orderNumber: order.orderNumber,
         
-        // 🔴 REQUIREMENT 1: Step Duration Overview (only these 2)
+        // SECTION 1: Step Duration Overview (ONLY these 2 items)
         stepDurationOverview: {
-          startDate: {
-            label: "Start Date",
-            value: formatDate(firstStatusStart),
-            timestamp: firstStatusStart,
-            description: "Time when first status (Warten_auf_Versorgungsstart) was reached"
+          // Item 1: When first step started
+          firstStepStart: {
+            date: formatDate(firstStepStartTime),
+            timestamp: firstStepStartTime,
+            label: "First step started" // This would be "Warten auf Versorgungsstart" in UI
           },
-          productionQSDuration: {
-            label: "Production + QS Duration",
-            value: formatDuration(fertigungQSTotalMs),
-            seconds: Math.floor(fertigungQSTotalMs / 1000),
-            description: "Total time in In_Fertigung and Verpacken_Qualitätssicherung"
+          // Item 2: Total time in Production + QS
+          productionQSTotalTime: {
+            duration: formatDuration(totalProductionQSTime),
+            seconds: Math.floor(totalProductionQSTime / 1000),
+            label: "Production + QS total time"
           }
         },
         
-        // 🔴 REQUIREMENT 2 & 3: Complete change log with all events
+        // SECTION 2: Change Log (ALL events in chronological order)
         changeLog: changeLog.map((entry) => ({
           id: entry.id,
-          date: formatDate(entry.date),
-          timestamp: entry.date,
+          date: formatDate(entry.date), // Display date
+          timestamp: entry.date, // Raw timestamp for sorting
           user: entry.user,
           action: entry.action,
           description: entry.note,
@@ -3272,18 +3289,16 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
           details: entry.details,
         })),
         
-        // Summary info
+        // Summary
         summary: {
           currentStatus: formatStatusName(order.orderStatus),
           currentPaymentStatus: formatPaymentStatus(order.bezahlt),
-          totalEntries: changeLog.length,
-          barcodeUploaded: !!order.barcodeCreatedAt,
-          barcodeUploadedAt: order.barcodeCreatedAt ? formatDate(order.barcodeCreatedAt) : null,
+          totalEvents: changeLog.length,
+          hasBarcodeScan: !!order.barcodeCreatedAt,
         },
         
-        // Old format - empty arrays as per requirement
+        // Old format - empty
         stepDurations: [],
-        requiredDurations: null,
       },
     });
   } catch (error: any) {
