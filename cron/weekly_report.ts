@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { PrismaClient } from "@prisma/client";
+import { notificationSend } from "../utils/notification.utils";
 
 const prisma = new PrismaClient();
 
@@ -214,18 +215,24 @@ export const appointmentReminderCron = () => {
 
         // If now >= reminderTime → send reminder
         if (now >= reminderTime) {
-          await (prisma as any).notification.create({
-            data: {
-              type: "Appointment_Reminder",
-              partnerId: appointment.userId,
-              message: `Reminder: You have an appointment scheduled on ${appointment.date.toDateString()} at ${
-                appointment.time
-              }`,
-              eventId: appointment.id,
-              route: `/dashboard/calendar`,
-            },
-          });
+          // type: "Appointment_Reminder",
+          // partnerId: appointment.userId,
+          // message: `Reminder: You have an appointment scheduled on ${appointment.date.toDateString()} at ${
+          //   appointment.time
+          // }`,
+          // eventId: appointment.id,
+          // route: `/dashboard/calendar`,
 
+          await notificationSend(
+            appointment.userId,
+            "Appointment_Reminder",
+            `Reminder: You have an appointment scheduled on ${appointment.date.toDateString()} at ${
+              appointment.time
+            }`,
+            appointment.id,
+            false,
+            `/dashboard/calendar`
+          );
           // Mark reminder as sent
           await prisma.appointment.update({
             where: { id: appointment.id },
@@ -233,7 +240,6 @@ export const appointmentReminderCron = () => {
           });
         }
       }
-      
     } catch (error) {
       console.error("Appointment reminder cron error:", error);
     }

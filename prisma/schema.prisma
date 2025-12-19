@@ -1345,6 +1345,7 @@ model notification {
 
   message String
   eventId String?
+  route   String?
   isRead  Boolean @default(false)
 
   route String?
@@ -1355,4 +1356,5 @@ model notification {
 
 enum notificationType {
   Appointment_Reminder
+  test
 }

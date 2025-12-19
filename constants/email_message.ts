@@ -152,7 +152,7 @@ export const partnershipWelcomeEmail = (
               <!-- Document Header -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
-                  <td style="background-color: #2c3e50; padding: 30px 40px;">
+                  <td style="background-color: #003818ff; padding: 30px 40px;">
                     <h1 style="color: #ffffff; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 24px; font-weight: 600; margin: 0; letter-spacing: 0.3px;">FeetF1rst Partnership Program</h1>
                   </td>
                 </tr>
@@ -162,7 +162,7 @@ export const partnershipWelcomeEmail = (
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td style="padding: 40px 40px 20px;">
-                    <h2 style="color: #2c3e50; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 20px; font-weight: 600; margin: 0; border-bottom: 1px solid #e0e0e0; padding-bottom: 15px;">PARTNERSHIP ACCOUNT CONFIRMATION</h2>
+                    <h2 style="color: #2c3e50; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 20px; font-weight: 600; margin: 0; border-bottom: 1px solid #e0e0e0; padding-bottom: 15px;">Partnerzugang Accountbestätigung</h2>
                   </td>
                 </tr>
               </table>
@@ -241,8 +241,8 @@ export const partnershipWelcomeEmail = (
                       <tr>
                         <td style="padding: 10px 15px;">
                           <p style="color: #7d6608; font-size: 14px; line-height: 21px; margin: 0; font-weight: 500;">
-                            <strong>IMPORTANT:</strong> For security purposes, we strongly recommend changing your password after your first login.
-                          </p>
+                            <strong>Hinweis:</strong> Zu Ihrer Sicherheit sollten Sie Ihr Passwort nach der ersten Anmeldung ändern.
+                            </p>
                         </td>
                       </tr>
                     </table>
