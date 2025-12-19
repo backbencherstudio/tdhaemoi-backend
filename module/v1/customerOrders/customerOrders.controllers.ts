@@ -1398,12 +1398,13 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
 //   }
 // };
 
-export const updateMultiplekrankenkasseStatus = async (
+export const updateMultiplePaymentStatus = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const { orderIds, krankenkasseStatus } = req.body;
+    const { orderIds, bezahlt } = req.body;
+
 
     if (!orderIds) {
       return res.status(400).json({
@@ -1412,33 +1413,37 @@ export const updateMultiplekrankenkasseStatus = async (
       });
     }
 
-    //     enum KrankenkasseStatus {
-    //   Krankenkasse_Ungenehmigt
-    //   Krankenkasse_Genehmigt
-    // }
-    // i need to validate krankenkasseStatus
-    const validKrankenkasseStatuses = new Set([
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Order IDs must be a non-empty array",
+      });
+    }
+    if (!bezahlt) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment status is required",
+      });
+    }
+
+    const validPaymentStatuses = new Set([
+      "Privat_Bezahlt",
+      "Privat_offen",
       "Krankenkasse_Ungenehmigt",
       "Krankenkasse_Genehmigt",
     ]);
 
-    if (!validKrankenkasseStatuses.has(krankenkasseStatus)) {
+    if (!validPaymentStatuses.has(bezahlt)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid krankenkasse status",
-        error: `Krankenkasse status must be one of: ${Array.from(
-          validKrankenkasseStatuses
+        message: "Invalid payment status",
+        error: `Payment status must be one of: ${Array.from(
+          validPaymentStatuses
         ).join(", ")}`,
-        validStatuses: Array.from(validKrankenkasseStatuses),
+        validStatuses: Array.from(validPaymentStatuses),
       });
     }
 
-    if (!krankenkasseStatus) {
-      return res.status(400).json({
-        success: false,
-        message: "Krankenkasse status is required",
-      });
-    }
     const updateResult = await prisma.customerOrders.updateMany({
       where: {
         id: {
@@ -1446,16 +1451,17 @@ export const updateMultiplekrankenkasseStatus = async (
         },
       },
       data: {
-        krankenkasseStatus,
+        bezahlt,
         statusUpdate: new Date(),
       },
     });
 
     res.status(200).json({
       success: true,
-      message: `Successfully updated ${updateResult.count} order(s) to krankenkasse status: ${krankenkasseStatus}`,
+      message: `Successfully updated ${updateResult.count} order(s) to payment status: ${bezahlt}`,
       updatedCount: updateResult.count,
       ids: orderIds,
+      bezahlt,
     });
   } catch (error) {
     console.error("Update Multiple Order Statuses Error:", error);
@@ -3743,4 +3749,3 @@ export const uploadBarcodeLabel = async (req: Request, res: Response) => {
     });
   }
 };
-

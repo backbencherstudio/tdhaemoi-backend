@@ -744,7 +744,11 @@ model customerOrders {
   versorgung_note        String? //Hast du sonstige Anmerkungen oder Notizen zur Versorgung... ?
   schuhmodell_wählen    String? //জুতার মডেল নির্বাচন করুন ম্যানুয়ালি লিখুন (ব্র্যান্ড + মডেল + সাইজ)
   kostenvoranschlag      Boolean? @default(false)
-  bezahlt                String? // Bezahlt - string naw
+
+  bezahlt paymnentStatus?
+
+  // Privet          String? // Bezahlt - string naw
+  // bezahltInsurance       String? // Bezahlt - string naw
 
   storeId String?
   store   Stores? @relation(fields: [storeId], references: [id], onDelete: SetNull)
@@ -769,8 +773,8 @@ model customerOrders {
   customerVersorgungen    customer_versorgungen?  @relation(fields: [customer_versorgungenId], references: [id])
   customer_versorgungenId String?
 
-  barcodeLabel       String?
-  KrankenkasseStatus String? @default("Krankenkasse_Ungenehmigt")
+  barcodeLabel String?
+  // KrankenkasseStatus String? @default("Krankenkasse_Ungenehmigt")
 
   @@unique([partnerId, orderNumber]) // Unique per partner
   @@index([customerId])
@@ -781,10 +785,18 @@ model customerOrders {
   @@index([customerId, createdAt])
 }
 
-enum KrankenkasseStatus {
+enum paymnentStatus {
+  Privat_Bezahlt //cash paymnant success
+  Privat_offen
+
   Krankenkasse_Ungenehmigt
   Krankenkasse_Genehmigt
 }
+
+// enum KrankenkasseStatus {
+//   Krankenkasse_Ungenehmigt
+//   Krankenkasse_Genehmigt
+// }
 
 enum Priority {
   Dringend
@@ -1334,6 +1346,8 @@ model notification {
   message String
   eventId String?
   isRead  Boolean @default(false)
+
+  route String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
