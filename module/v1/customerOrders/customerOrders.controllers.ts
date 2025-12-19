@@ -313,7 +313,8 @@ export const createOrder = async (req: Request, res: Response) => {
           schuhmodell_wählen,
           kostenvoranschlag,
           storeId: versorgung?.storeId ?? null,
-          bezahlt: werkstattBezahlt ?? null,
+          // bezahlt: werkstattBezahlt ?? null,
+          bezahlt: bezahlt ?? null, 
           kundenName: kundenName ?? null,
           auftragsDatum: auftragsDatum ? new Date(auftragsDatum) : null,
           wohnort: wohnort ?? null,
@@ -328,7 +329,7 @@ export const createOrder = async (req: Request, res: Response) => {
           fussanalysePreis: fussanalysePreis ?? undefined,
           einlagenversorgungPreis: einlagenversorgungPreis ?? undefined,
           werkstattEmployeeId: werkstattEmployeeId ?? null,
-          bezahlt: bezahlt ?? null,
+         
         } as any,
         select: {
           id: true,
