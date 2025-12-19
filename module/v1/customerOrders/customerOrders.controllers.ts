@@ -2515,7 +2515,7 @@ export const getLast30DaysOrderEinlagen = async (
 
 //-----------------------------------------------------------------
 // Helper function to format duration
-const formatDuration = (milliseconds: number): string => {
+const barcodeCreatedAt = (milliseconds: number): string => {
   const seconds = Math.floor(milliseconds / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
@@ -2743,7 +2743,7 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
       ...statusTransitions.map((transition) => ({
         status: transition.status,
         statusDisplay: formatStatusName(transition.status),
-        duration: formatDuration(
+        duration: barcodeCreatedAt(
           transition.endTime
             ? transition.endTime.getTime() - transition.startTime.getTime()
             : new Date().getTime() - transition.startTime.getTime()
@@ -2919,82 +2919,59 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
 
 export const getNewOrderHistory = async (req: Request, res: Response) => {
   // Helper functions
-  // const formatDateGerman = (date: Date): string => {
-  //   return date.toLocaleDateString("de-DE", {
-  //     day: "2-digit",
-  //     month: "2-digit",
-  //     year: "numeric",
-  //     hour: "2-digit",
-  //     minute: "2-digit",
-  //   });
-  // };
+  const formatStatusName = (status: string): string => {
+    return status.replace(/_/g, " ");
+  };
 
-  
-// Helper functions
-const formatStatusName = (status: string): string => {
-  return status.replace(/_/g, " ");
-};
+  const formatPaymentStatus = (status: string | null): string => {
+    if (!status) return "Not set";
+    return status.replace(/_/g, " ");
+  };
 
-const formatPaymentStatus = (status: string | null): string => {
-  if (!status) return "Nicht festgelegt";
-  return status.replace(/_/g, " ");
-};
+  const formatDuration = (milliseconds: number): string => {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-const formatDuration = (milliseconds: number): string => {
-  const seconds = Math.floor(milliseconds / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (days > 0) {
-    const remainingHours = hours % 24;
-    const remainingMinutes = minutes % 60;
-    if (remainingHours > 0 && remainingMinutes > 0) {
-      return `${days}T ${remainingHours}h ${remainingMinutes}m`;
-    } else if (remainingHours > 0) {
-      return `${days}T ${remainingHours}h`;
-    } else if (remainingMinutes > 0) {
-      return `${days}T ${remainingMinutes}m`;
+    if (days > 0) {
+      const remainingHours = hours % 24;
+      const remainingMinutes = minutes % 60;
+      if (remainingHours > 0 && remainingMinutes > 0) {
+        return `${days}d ${remainingHours}h ${remainingMinutes}m`;
+      } else if (remainingHours > 0) {
+        return `${days}d ${remainingHours}h`;
+      } else if (remainingMinutes > 0) {
+        return `${days}d ${remainingMinutes}m`;
+      }
+      return `${days}d`;
     }
-    return `${days}T`;
-  }
 
-  if (hours > 0) {
-    const remainingMinutes = minutes % 60;
-    if (remainingMinutes > 0) {
-      return `${hours}h ${remainingMinutes}m`;
+    if (hours > 0) {
+      const remainingMinutes = minutes % 60;
+      if (remainingMinutes > 0) {
+        return `${hours}h ${remainingMinutes}m`;
+      }
+      return `${hours}h`;
     }
-    return `${hours}h`;
-  }
 
-  if (minutes > 0) {
-    return `${minutes}m`;
-  }
+    if (minutes > 0) {
+      return `${minutes}m`;
+    }
 
-  return `${seconds}s`;
-};
+    return `${seconds}s`;
+  };
 
-const formatDateGerman = (date: Date): string => {
-  return date.toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
+  const formatDate = (date: Date): string => {
+    return date.toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
-const extractUserNameFromNote = (note: string | null): string => {
-  if (!note) return "System";
-  const match = note.match(
-    /^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)*)\s+(änderte|changed|erstellte|created)/i
-  );
-  return match ? match[1] : "System";
-};
-
-
-
-  
   try {
     const { orderId } = req.params;
 
@@ -3014,8 +2991,8 @@ const extractUserNameFromNote = (note: string | null): string => {
         orderStatus: true,
         createdAt: true,
         statusUpdate: true,
-        barcodeCreatedAt: true, // ✅ নতুন field
-        bezahlt: true, // ✅ Payment status
+        barcodeCreatedAt: true,
+        bezahlt: true,
         partner: {
           select: {
             id: true,
@@ -3068,163 +3045,74 @@ const extractUserNameFromNote = (note: string | null): string => {
     
     // 1A. Find first status start time
     let firstStatusStart = order.createdAt;
-    const firstStatusChange = allHistory.find(record => 
-      !record.isPrementChange && record.statusFrom !== record.statusTo
+    
+    // Look for the first time status was Warten_auf_Versorgungsstart
+    const firstStatusRecord = allHistory.find(record => 
+      !record.isPrementChange && 
+      record.statusTo === "Warten_auf_Versorgungsstart"
     );
-    if (firstStatusChange) {
-      firstStatusStart = firstStatusChange.createdAt;
+    
+    if (firstStatusRecord) {
+      firstStatusStart = firstStatusRecord.createdAt;
+    } else {
+      // Check if order was created with this status
+      const orderCreatedWithStatus = allHistory.find(record => 
+        !record.isPrementChange && 
+        record.statusFrom === "Warten_auf_Versorgungsstart" &&
+        record.statusTo === "Warten_auf_Versorgungsstart"
+      );
+      if (orderCreatedWithStatus) {
+        firstStatusStart = orderCreatedWithStatus.createdAt;
+      }
     }
 
     // 1B. Calculate In_Fertigung + Verpacken_Qualitätssicherung total time
     let fertigungQSTotalMs = 0;
-    let fertigungStart: Date | null = null;
-    let qsStart: Date | null = null;
     
-    // Helper to add duration
-    const addDuration = (start: Date | null, end: Date) => {
-      if (start) {
-        fertigungQSTotalMs += (end.getTime() - start.getTime());
-      }
-    };
-
-    // Process history chronologically
-    for (const record of allHistory) {
-      if (record.isPrementChange) continue; // Skip payment changes
-      
-      // If entering In_Fertigung
-      if (record.statusTo === "In_Fertigung") {
-        addDuration(qsStart, record.createdAt); // End QS if was running
-        qsStart = null;
-        fertigungStart = record.createdAt;
-      }
-      // If leaving In_Fertigung
-      else if (record.statusFrom === "In_Fertigung") {
-        addDuration(fertigungStart, record.createdAt);
-        fertigungStart = null;
-      }
-      
-      // If entering Verpacken_Qualitätssicherung
-      if (record.statusTo === "Verpacken_Qualitätssicherung") {
-        addDuration(fertigungStart, record.createdAt); // End Fertigung if was running
-        fertigungStart = null;
-        qsStart = record.createdAt;
-      }
-      // If leaving Verpacken_Qualitätssicherung
-      else if (record.statusFrom === "Verpacken_Qualitätssicherung") {
-        addDuration(qsStart, record.createdAt);
-        qsStart = null;
-      }
-    }
-
-    // Add any ongoing durations (if still in those statuses)
-    const now = new Date();
-    addDuration(fertigungStart, now);
-    addDuration(qsStart, now);
-
-    // ✅ STEP 2: Build structured stepDurations (OLD format)
-    const stepDurations: Array<{
-      status: string;
-      statusDisplay: string;
-      duration: string;
-      assignee: string;
-      assigneeId: string | null;
-      assigneeType: "employee" | "partner" | "system";
-    }> = [];
-
-    // Track status transitions (OLD logic)
-    const statusTransitions: Array<{
+    // Track time spent in each status
+    const statusPeriods: Array<{
       status: string;
       startTime: Date;
       endTime: Date | null;
-      assignee: string;
-      assigneeId: string | null;
-      assigneeType: "employee" | "partner" | "system";
     }> = [];
-
+    
     // Filter only status changes (not payment changes)
-    const statusHistory = allHistory.filter(record => !record.isPrementChange);
-
-    if (statusHistory.length > 0) {
-      const actualStatusChanges = statusHistory.filter(
-        (record) => record.statusFrom !== record.statusTo
-      );
-
-      // Determine initial status
-      const firstRecord = statusHistory[0];
-      const initialStatus = firstRecord.statusFrom === firstRecord.statusTo
-        ? firstRecord.statusTo
-        : firstRecord.statusFrom;
-
-      // Track initial status
-      let statusStartTime = order.createdAt;
-      let statusAssignee = order.partner?.name || "System";
-      let statusAssigneeId = order.partner?.id || null;
-      let statusAssigneeType: "employee" | "partner" | "system" = order.partner?.id ? "partner" : "system";
-
-      // Process each status change
-      for (let i = 0; i < actualStatusChanges.length; i++) {
-        const record = actualStatusChanges[i];
-
-        // Record duration for the ending status
-        const statusEndTime = record.createdAt;
-        statusTransitions.push({
-          status: record.statusFrom,
-          startTime: statusStartTime,
-          endTime: statusEndTime,
-          assignee: statusAssignee,
-          assigneeId: statusAssigneeId,
-          assigneeType: statusAssigneeType,
-        });
-
-        // Start tracking new status
-        statusStartTime = record.createdAt;
-        statusAssignee = record.employee?.employeeName || record.partner?.name || "System";
-        statusAssigneeId = record.employee?.id || record.partner?.id || null;
-        statusAssigneeType = record.employee?.id ? "employee" : record.partner?.id ? "partner" : "system";
+    const statusChanges = allHistory.filter(record => !record.isPrementChange);
+    
+    if (statusChanges.length > 0) {
+      // Process status changes to create periods
+      for (let i = 0; i < statusChanges.length; i++) {
+        const current = statusChanges[i];
+        const next = statusChanges[i + 1];
+        
+        if (current.statusFrom !== current.statusTo) {
+          // This is a real status change
+          statusPeriods.push({
+            status: current.statusTo,
+            startTime: current.createdAt,
+            endTime: next ? next.createdAt : null
+          });
+        }
       }
-
-      // Add current status
-      const currentStatus = actualStatusChanges.length > 0
-        ? actualStatusChanges[actualStatusChanges.length - 1].statusTo
-        : initialStatus;
-
-      statusTransitions.push({
-        status: currentStatus,
-        startTime: statusStartTime,
-        endTime: null,
-        assignee: statusAssignee,
-        assigneeId: statusAssigneeId,
-        assigneeType: statusAssigneeType,
-      });
     } else {
-      // No history, order still in initial status
-      statusTransitions.push({
+      // No status changes, order is still in initial status
+      statusPeriods.push({
         status: order.orderStatus,
         startTime: order.createdAt,
-        endTime: null,
-        assignee: order.partner?.name || "System",
-        assigneeId: order.partner?.id || null,
-        assigneeType: order.partner?.id ? "partner" : "system",
+        endTime: null
       });
     }
+    
+    // Calculate total time in Fertigung and QS
+    for (const period of statusPeriods) {
+      if (period.status === "In_Fertigung" || period.status === "Verpacken_Qualitätssicherung") {
+        const endTime = period.endTime || new Date();
+        const duration = endTime.getTime() - period.startTime.getTime();
+        fertigungQSTotalMs += duration;
+      }
+    }
 
-    // Convert to stepDurations format
-    stepDurations.push(
-      ...statusTransitions.map((transition) => ({
-        status: transition.status,
-        statusDisplay: formatStatusName(transition.status),
-        duration: formatDuration(
-          transition.endTime
-            ? transition.endTime.getTime() - transition.startTime.getTime()
-            : now.getTime() - transition.startTime.getTime()
-        ),
-        assignee: transition.assignee,
-        assigneeId: transition.assigneeId,
-        assigneeType: transition.assigneeType,
-      }))
-    );
-
-    // ✅ STEP 3: Build changeLog (OLD format + new requirements)
+    // ✅ STEP 2: Build changeLog
     const changeLog: Array<{
       id: string;
       date: Date;
@@ -3245,7 +3133,7 @@ const extractUserNameFromNote = (note: string | null): string => {
       id: "initial",
       date: order.createdAt,
       user: order.partner?.name || "System",
-      action: "Auftrag erstellt",
+      action: "Order created",
       note: `Order #${order.orderNumber} created with status: ${formatStatusName(order.orderStatus)}`,
       type: "order_creation",
       details: {
@@ -3257,11 +3145,11 @@ const extractUserNameFromNote = (note: string | null): string => {
     // Add barcode scan if exists
     if (order.barcodeCreatedAt) {
       changeLog.push({
-        id: "barcode_scan",
+        id: "barcode_upload",
         date: order.barcodeCreatedAt,
         user: "System",
-        action: "Barcode gescannt",
-        note: "Barcode/Label wurde gescannt",
+        action: "Barcode/Label uploaded",
+        note: "Barcode/Label was uploaded",
         type: "scan_event",
         details: {
           partnerId: null,
@@ -3282,7 +3170,7 @@ const extractUserNameFromNote = (note: string | null): string => {
           id: record.id,
           date: record.createdAt,
           user: userName,
-          action: `Zahlungsstatus geändert: ${formatPaymentStatus(record.paymentFrom)} → ${formatPaymentStatus(record.paymentTo)}`,
+          action: `Payment status changed: ${formatPaymentStatus(record.paymentFrom)} → ${formatPaymentStatus(record.paymentTo)}`,
           note: record.note || `Payment status changed from ${record.paymentFrom} to ${record.paymentTo}`,
           type: "payment_change",
           details: {
@@ -3298,7 +3186,7 @@ const extractUserNameFromNote = (note: string | null): string => {
           id: record.id,
           date: record.createdAt,
           user: userName,
-          action: `Status geändert: ${formatStatusName(record.statusFrom)} → ${formatStatusName(record.statusTo)}`,
+          action: `Status changed: ${formatStatusName(record.statusFrom)} → ${formatStatusName(record.statusTo)}`,
           note: record.note || `${userName} changed status from ${record.statusFrom} to ${record.statusTo}`,
           type: "status_change",
           details: {
@@ -3322,13 +3210,20 @@ const extractUserNameFromNote = (note: string | null): string => {
 
       if (isDuplicate) continue;
 
-      const userName = extractUserNameFromNote(record.note);
+      // Simple user extraction from note
+      let userName = "System";
+      if (record.note) {
+        const match = record.note.match(
+          /^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)*)\s+(änderte|changed|erstellte|created)/i
+        );
+        userName = match ? match[1] : "System";
+      }
       
       changeLog.push({
         id: record.id,
         date: record.createdAt || record.date || new Date(),
         user: userName,
-        action: record.note || "Eintrag aktualisiert",
+        action: record.note || "Entry updated",
         note: record.system_note || record.note || "",
         type: "other",
         details: {
@@ -3343,47 +3238,52 @@ const extractUserNameFromNote = (note: string | null): string => {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
-    // ✅ STEP 4: Build response (OLD format + new fields)
+    // ✅ STEP 3: Build response according to requirements
     res.status(200).json({
       success: true,
       data: {
         orderNumber: order.orderNumber,
         
-        // OLD format stepDurations
-        stepDurations: stepDurations,
-        
-        // NEW required durations
-        requiredDurations: {
+        // 🔴 REQUIREMENT 1: Step Duration Overview (only these 2)
+        stepDurationOverview: {
           startDate: {
-            label: "Startdatum",
-            value: formatDateGerman(firstStatusStart),
-            timestamp: firstStatusStart
+            label: "Start Date",
+            value: formatDate(firstStatusStart),
+            timestamp: firstStatusStart,
+            description: "Time when first status (Warten_auf_Versorgungsstart) was reached"
           },
-          fertigungQSDuration: {
-            label: "Fertigung + QS Dauer",
+          productionQSDuration: {
+            label: "Production + QS Duration",
             value: formatDuration(fertigungQSTotalMs),
-            seconds: Math.floor(fertigungQSTotalMs / 1000)
+            seconds: Math.floor(fertigungQSTotalMs / 1000),
+            description: "Total time in In_Fertigung and Verpacken_Qualitätssicherung"
           }
         },
         
-        // OLD format changeLog
+        // 🔴 REQUIREMENT 2 & 3: Complete change log with all events
         changeLog: changeLog.map((entry) => ({
           id: entry.id,
-          date: entry.date,
+          date: formatDate(entry.date),
+          timestamp: entry.date,
           user: entry.user,
           action: entry.action,
-          note: entry.note,
+          description: entry.note,
           type: entry.type,
           details: entry.details,
         })),
         
-        // Summary
+        // Summary info
         summary: {
+          currentStatus: formatStatusName(order.orderStatus),
+          currentPaymentStatus: formatPaymentStatus(order.bezahlt),
           totalEntries: changeLog.length,
-          currentStatus: order.orderStatus,
-          currentPaymentStatus: order.bezahlt,
-          hasBarcodeScan: !!order.barcodeCreatedAt,
+          barcodeUploaded: !!order.barcodeCreatedAt,
+          barcodeUploadedAt: order.barcodeCreatedAt ? formatDate(order.barcodeCreatedAt) : null,
         },
+        
+        // Old format - empty arrays as per requirement
+        stepDurations: [],
+        requiredDurations: null,
       },
     });
   } catch (error: any) {
