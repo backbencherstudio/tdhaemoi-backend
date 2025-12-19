@@ -1348,8 +1348,6 @@ model notification {
   route   String?
   isRead  Boolean @default(false)
 
-  route String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
