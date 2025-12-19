@@ -2919,15 +2919,81 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
 
 export const getNewOrderHistory = async (req: Request, res: Response) => {
   // Helper functions
-  const formatDateGerman = (date: Date): string => {
-    return date.toLocaleDateString("de-DE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  // const formatDateGerman = (date: Date): string => {
+  //   return date.toLocaleDateString("de-DE", {
+  //     day: "2-digit",
+  //     month: "2-digit",
+  //     year: "numeric",
+  //     hour: "2-digit",
+  //     minute: "2-digit",
+  //   });
+  // };
+
+  
+// Helper functions
+const formatStatusName = (status: string): string => {
+  return status.replace(/_/g, " ");
+};
+
+const formatPaymentStatus = (status: string | null): string => {
+  if (!status) return "Nicht festgelegt";
+  return status.replace(/_/g, " ");
+};
+
+const formatDuration = (milliseconds: number): string => {
+  const seconds = Math.floor(milliseconds / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) {
+    const remainingHours = hours % 24;
+    const remainingMinutes = minutes % 60;
+    if (remainingHours > 0 && remainingMinutes > 0) {
+      return `${days}T ${remainingHours}h ${remainingMinutes}m`;
+    } else if (remainingHours > 0) {
+      return `${days}T ${remainingHours}h`;
+    } else if (remainingMinutes > 0) {
+      return `${days}T ${remainingMinutes}m`;
+    }
+    return `${days}T`;
+  }
+
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes > 0) {
+      return `${hours}h ${remainingMinutes}m`;
+    }
+    return `${hours}h`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+
+  return `${seconds}s`;
+};
+
+const formatDateGerman = (date: Date): string => {
+  return date.toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const extractUserNameFromNote = (note: string | null): string => {
+  if (!note) return "System";
+  const match = note.match(
+    /^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)*)\s+(änderte|changed|erstellte|created)/i
+  );
+  return match ? match[1] : "System";
+};
+
+
+
   
   try {
     const { orderId } = req.params;
@@ -2948,7 +3014,8 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
         orderStatus: true,
         createdAt: true,
         statusUpdate: true,
-        barcodeScannedAt: true, // ✅ নতুন field
+        barcodeCreatedAt: true, // ✅ নতুন field
+        bezahlt: true, // ✅ Payment status
         partner: {
           select: {
             id: true,
@@ -2966,89 +3033,211 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       });
     }
 
-    // ✅ STEP 1: Calculate Step Durations
-
-    // Get all order history (status changes)
+    // Get ALL order history (status + payment changes)
     const allHistory = await prisma.customerOrdersHistory.findMany({
       where: { orderId },
       orderBy: { createdAt: "asc" },
+      include: {
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        employee: {
+          select: {
+            id: true,
+            employeeName: true,
+            email: true,
+          },
+        },
+      },
     });
 
-    // 1A. First status start time (প্রথম স্টেপ কখন শুরু হয়েছিল)
-    const firstStatusRecord = allHistory.find(
-      (record) =>
-        !record.isPrementChange && record.statusFrom !== record.statusTo
-    );
+    // Get customer history entries
+    const customerHistory = await prisma.customerHistorie.findMany({
+      where: {
+        eventId: orderId,
+        category: "Bestellungen",
+      },
+      orderBy: { createdAt: "asc" },
+    });
 
-    const startDate = firstStatusRecord
-      ? firstStatusRecord.createdAt
-      : order.createdAt;
+    // ✅ STEP 1: Calculate required durations
+    
+    // 1A. Find first status start time
+    let firstStatusStart = order.createdAt;
+    const firstStatusChange = allHistory.find(record => 
+      !record.isPrementChange && record.statusFrom !== record.statusTo
+    );
+    if (firstStatusChange) {
+      firstStatusStart = firstStatusChange.createdAt;
+    }
 
     // 1B. Calculate In_Fertigung + Verpacken_Qualitätssicherung total time
-    let fertigungQSSeconds = 0;
+    let fertigungQSTotalMs = 0;
+    let fertigungStart: Date | null = null;
+    let qsStart: Date | null = null;
+    
+    // Helper to add duration
+    const addDuration = (start: Date | null, end: Date) => {
+      if (start) {
+        fertigungQSTotalMs += (end.getTime() - start.getTime());
+      }
+    };
 
-    // Track when In_Fertigung started
-    let fertigungStartTime: Date | null = null;
-    let qsStartTime: Date | null = null;
-
+    // Process history chronologically
     for (const record of allHistory) {
       if (record.isPrementChange) continue; // Skip payment changes
-
-      // Check if status changed to In_Fertigung
+      
+      // If entering In_Fertigung
       if (record.statusTo === "In_Fertigung") {
-        fertigungStartTime = record.createdAt;
+        addDuration(qsStart, record.createdAt); // End QS if was running
+        qsStart = null;
+        fertigungStart = record.createdAt;
       }
-      // Check if status changed FROM In_Fertigung
+      // If leaving In_Fertigung
       else if (record.statusFrom === "In_Fertigung") {
-        if (fertigungStartTime) {
-          const duration =
-            record.createdAt.getTime() - fertigungStartTime.getTime();
-          fertigungQSSeconds += Math.floor(duration / 1000);
-          fertigungStartTime = null;
-        }
+        addDuration(fertigungStart, record.createdAt);
+        fertigungStart = null;
       }
-
-      // Check if status changed to Verpacken_Qualitätssicherung
+      
+      // If entering Verpacken_Qualitätssicherung
       if (record.statusTo === "Verpacken_Qualitätssicherung") {
-        qsStartTime = record.createdAt;
+        addDuration(fertigungStart, record.createdAt); // End Fertigung if was running
+        fertigungStart = null;
+        qsStart = record.createdAt;
       }
-      // Check if status changed FROM Verpacken_Qualitätssicherung
+      // If leaving Verpacken_Qualitätssicherung
       else if (record.statusFrom === "Verpacken_Qualitätssicherung") {
-        if (qsStartTime) {
-          const duration = record.createdAt.getTime() - qsStartTime.getTime();
-          fertigungQSSeconds += Math.floor(duration / 1000);
-          qsStartTime = null;
-        }
+        addDuration(qsStart, record.createdAt);
+        qsStart = null;
       }
     }
 
-    // Format durations
-    const formatGermanTime = (seconds: number): string => {
-      const days = Math.floor(seconds / (24 * 3600));
-      const hours = Math.floor((seconds % (24 * 3600)) / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
+    // Add any ongoing durations (if still in those statuses)
+    const now = new Date();
+    addDuration(fertigungStart, now);
+    addDuration(qsStart, now);
 
-      const parts = [];
-      if (days > 0) parts.push(`${days} Tag${days > 1 ? "e" : ""}`);
-      if (hours > 0) parts.push(`${hours} Std`);
-      if (minutes > 0) parts.push(`${minutes} Min`);
+    // ✅ STEP 2: Build structured stepDurations (OLD format)
+    const stepDurations: Array<{
+      status: string;
+      statusDisplay: string;
+      duration: string;
+      assignee: string;
+      assigneeId: string | null;
+      assigneeType: "employee" | "partner" | "system";
+    }> = [];
 
-      return parts.join(" ") || "0 Min";
-    };
+    // Track status transitions (OLD logic)
+    const statusTransitions: Array<{
+      status: string;
+      startTime: Date;
+      endTime: Date | null;
+      assignee: string;
+      assigneeId: string | null;
+      assigneeType: "employee" | "partner" | "system";
+    }> = [];
 
-    // ✅ STEP 2: Build Change Log
+    // Filter only status changes (not payment changes)
+    const statusHistory = allHistory.filter(record => !record.isPrementChange);
+
+    if (statusHistory.length > 0) {
+      const actualStatusChanges = statusHistory.filter(
+        (record) => record.statusFrom !== record.statusTo
+      );
+
+      // Determine initial status
+      const firstRecord = statusHistory[0];
+      const initialStatus = firstRecord.statusFrom === firstRecord.statusTo
+        ? firstRecord.statusTo
+        : firstRecord.statusFrom;
+
+      // Track initial status
+      let statusStartTime = order.createdAt;
+      let statusAssignee = order.partner?.name || "System";
+      let statusAssigneeId = order.partner?.id || null;
+      let statusAssigneeType: "employee" | "partner" | "system" = order.partner?.id ? "partner" : "system";
+
+      // Process each status change
+      for (let i = 0; i < actualStatusChanges.length; i++) {
+        const record = actualStatusChanges[i];
+
+        // Record duration for the ending status
+        const statusEndTime = record.createdAt;
+        statusTransitions.push({
+          status: record.statusFrom,
+          startTime: statusStartTime,
+          endTime: statusEndTime,
+          assignee: statusAssignee,
+          assigneeId: statusAssigneeId,
+          assigneeType: statusAssigneeType,
+        });
+
+        // Start tracking new status
+        statusStartTime = record.createdAt;
+        statusAssignee = record.employee?.employeeName || record.partner?.name || "System";
+        statusAssigneeId = record.employee?.id || record.partner?.id || null;
+        statusAssigneeType = record.employee?.id ? "employee" : record.partner?.id ? "partner" : "system";
+      }
+
+      // Add current status
+      const currentStatus = actualStatusChanges.length > 0
+        ? actualStatusChanges[actualStatusChanges.length - 1].statusTo
+        : initialStatus;
+
+      statusTransitions.push({
+        status: currentStatus,
+        startTime: statusStartTime,
+        endTime: null,
+        assignee: statusAssignee,
+        assigneeId: statusAssigneeId,
+        assigneeType: statusAssigneeType,
+      });
+    } else {
+      // No history, order still in initial status
+      statusTransitions.push({
+        status: order.orderStatus,
+        startTime: order.createdAt,
+        endTime: null,
+        assignee: order.partner?.name || "System",
+        assigneeId: order.partner?.id || null,
+        assigneeType: order.partner?.id ? "partner" : "system",
+      });
+    }
+
+    // Convert to stepDurations format
+    stepDurations.push(
+      ...statusTransitions.map((transition) => ({
+        status: transition.status,
+        statusDisplay: formatStatusName(transition.status),
+        duration: formatDuration(
+          transition.endTime
+            ? transition.endTime.getTime() - transition.startTime.getTime()
+            : now.getTime() - transition.startTime.getTime()
+        ),
+        assignee: transition.assignee,
+        assigneeId: transition.assigneeId,
+        assigneeType: transition.assigneeType,
+      }))
+    );
+
+    // ✅ STEP 3: Build changeLog (OLD format + new requirements)
     const changeLog: Array<{
       id: string;
       date: Date;
       user: string;
       action: string;
       note: string;
-      type:
-        | "status_change"
-        | "payment_change"
-        | "scan_event"
-        | "order_creation"
-        | "other";
+      type: "status_change" | "payment_change" | "scan_event" | "order_creation" | "other";
+      details: {
+        partnerId: string | null;
+        employeeId: string | null;
+        paymentFrom?: string | null;
+        paymentTo?: string | null;
+      };
     }> = [];
 
     // Add order creation
@@ -3057,98 +3246,143 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       date: order.createdAt,
       user: order.partner?.name || "System",
       action: "Auftrag erstellt",
-      note: `Order #${order.orderNumber} created`,
+      note: `Order #${order.orderNumber} created with status: ${formatStatusName(order.orderStatus)}`,
       type: "order_creation",
+      details: {
+        partnerId: order.partner?.id || null,
+        employeeId: null,
+      },
     });
 
-    // Add barcode scan event if exists
-    if (order.barcodeScannedAt) {
+    // Add barcode scan if exists
+    if (order.barcodeCreatedAt) {
       changeLog.push({
         id: "barcode_scan",
-        date: order.barcodeScannedAt,
+        date: order.barcodeCreatedAt,
         user: "System",
         action: "Barcode gescannt",
         note: "Barcode/Label wurde gescannt",
         type: "scan_event",
+        details: {
+          partnerId: null,
+          employeeId: null,
+        },
       });
     }
 
-    // Add history entries
-    const allHistoryWithUsers = await prisma.customerOrdersHistory.findMany({
-      where: { orderId },
-      orderBy: { createdAt: "asc" },
-      include: {
-        partner: { select: { name: true } },
-        employee: { select: { employeeName: true } },
-      },
-    });
-
-    for (const record of allHistoryWithUsers) {
-      const userName =
-        record.employee?.employeeName || record.partner?.name || "System";
+    // Process all history entries
+    for (const record of allHistory) {
+      const userName = record.employee?.employeeName || 
+                       record.partner?.name || 
+                       "System";
 
       if (record.isPrementChange) {
-        // Payment change
+        // ✅ Payment change entry
         changeLog.push({
           id: record.id,
           date: record.createdAt,
           user: userName,
-          action: `Zahlungsstatus geändert: ${record.paymentFrom || "N/A"} → ${
-            record.paymentTo || "N/A"
-          }`,
-          note: record.note || "Payment status changed",
+          action: `Zahlungsstatus geändert: ${formatPaymentStatus(record.paymentFrom)} → ${formatPaymentStatus(record.paymentTo)}`,
+          note: record.note || `Payment status changed from ${record.paymentFrom} to ${record.paymentTo}`,
           type: "payment_change",
+          details: {
+            partnerId: record.partnerId || null,
+            employeeId: record.employeeId || null,
+            paymentFrom: record.paymentFrom,
+            paymentTo: record.paymentTo,
+          },
         });
       } else if (record.statusFrom !== record.statusTo) {
-        // Status change
+        // ✅ Status change entry
         changeLog.push({
           id: record.id,
           date: record.createdAt,
           user: userName,
-          action: `Status geändert: ${record.statusFrom} → ${record.statusTo}`,
-          note: record.note || "Status changed",
+          action: `Status geändert: ${formatStatusName(record.statusFrom)} → ${formatStatusName(record.statusTo)}`,
+          note: record.note || `${userName} changed status from ${record.statusFrom} to ${record.statusTo}`,
           type: "status_change",
+          details: {
+            partnerId: record.partnerId || null,
+            employeeId: record.employeeId || null,
+          },
         });
       }
     }
 
-    // Sort by date descending
-    changeLog.sort((a, b) => b.date.getTime() - a.date.getTime());
+    // Add customer history entries
+    for (const record of customerHistory) {
+      // Skip duplicates
+      const isDuplicate = changeLog.some(
+        (entry) =>
+          Math.abs(
+            new Date(entry.date).getTime() -
+            new Date(record.createdAt || record.date || new Date()).getTime()
+          ) < 1000
+      );
 
-    // ✅ STEP 3: Response
+      if (isDuplicate) continue;
+
+      const userName = extractUserNameFromNote(record.note);
+      
+      changeLog.push({
+        id: record.id,
+        date: record.createdAt || record.date || new Date(),
+        user: userName,
+        action: record.note || "Eintrag aktualisiert",
+        note: record.system_note || record.note || "",
+        type: "other",
+        details: {
+          partnerId: null,
+          employeeId: null,
+        },
+      });
+    }
+
+    // Sort by date descending
+    changeLog.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    // ✅ STEP 4: Build response (OLD format + new fields)
     res.status(200).json({
       success: true,
       data: {
-        // Step Duration Overview
-        stepDurations: {
+        orderNumber: order.orderNumber,
+        
+        // OLD format stepDurations
+        stepDurations: stepDurations,
+        
+        // NEW required durations
+        requiredDurations: {
           startDate: {
             label: "Startdatum",
-            value: formatDateGerman(startDate),
-            timestamp: startDate,
+            value: formatDateGerman(firstStatusStart),
+            timestamp: firstStatusStart
           },
           fertigungQSDuration: {
             label: "Fertigung + QS Dauer",
-            value: formatGermanTime(fertigungQSSeconds),
-            seconds: fertigungQSSeconds,
-          },
+            value: formatDuration(fertigungQSTotalMs),
+            seconds: Math.floor(fertigungQSTotalMs / 1000)
+          }
         },
-
-        // Change Log (Änderungsprotokoll)
+        
+        // OLD format changeLog
         changeLog: changeLog.map((entry) => ({
           id: entry.id,
-          date: formatDateGerman(entry.date),
-          timestamp: entry.date,
+          date: entry.date,
           user: entry.user,
           action: entry.action,
           note: entry.note,
           type: entry.type,
+          details: entry.details,
         })),
-
+        
         // Summary
         summary: {
-          orderNumber: order.orderNumber,
-          totalHistoryEntries: changeLog.length,
+          totalEntries: changeLog.length,
           currentStatus: order.orderStatus,
+          currentPaymentStatus: order.bezahlt,
+          hasBarcodeScan: !!order.barcodeCreatedAt,
         },
       },
     });
