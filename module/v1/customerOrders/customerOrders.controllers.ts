@@ -314,7 +314,7 @@ export const createOrder = async (req: Request, res: Response) => {
           kostenvoranschlag,
           storeId: versorgung?.storeId ?? null,
           // bezahlt: werkstattBezahlt ?? null,
-          bezahlt: bezahlt ?? null, 
+          bezahlt: bezahlt ?? null,
           kundenName: kundenName ?? null,
           auftragsDatum: auftragsDatum ? new Date(auftragsDatum) : null,
           wohnort: wohnort ?? null,
@@ -329,7 +329,6 @@ export const createOrder = async (req: Request, res: Response) => {
           fussanalysePreis: fussanalysePreis ?? undefined,
           einlagenversorgungPreis: einlagenversorgungPreis ?? undefined,
           werkstattEmployeeId: werkstattEmployeeId ?? null,
-         
         } as any,
         select: {
           id: true,
@@ -532,7 +531,6 @@ const createOrderTransaction = async (
     matchedSizeKey,
   } = params;
 
-  // Create customer product
   const customerProduct = await tx.customerProduct.create({
     data: {
       name: versorgung.name,
@@ -540,8 +538,8 @@ const createOrderTransaction = async (
       artikelHersteller: versorgung.artikelHersteller,
       versorgung: versorgung.versorgung,
       material: serializeMaterial(versorgung.material),
-      langenempfehlung: {}, // langenempfehlung not available in Versorgungen model
-      status: "Alltagseinlagen", // Default status since it's not in Versorgungen model
+      langenempfehlung: {},
+      status: "Alltagseinlagen",
       diagnosis_status: versorgung.diagnosis_status,
     },
   });
@@ -554,8 +552,8 @@ const createOrderTransaction = async (
       partnerId,
       orderNumber,
       versorgungId: versorgung.id,
-      fußanalyse: null, // Price now comes from supplyStatus
-      einlagenversorgung: null, // Price now comes from supplyStatus
+      fußanalyse: null,
+      einlagenversorgung: null,
       totalPrice,
       productId: customerProduct.id,
       statusUpdate: new Date(),
@@ -668,7 +666,6 @@ export const getAllOrders_v1 = async (req: Request, res: Response) => {
       where.partnerId = req.query.partnerId as string;
     }
 
-    // 🔹 OrderStatus filter
     if (req.query.orderStatus) {
       const statuses = (req.query.orderStatus as string)
         .split(",")
@@ -719,7 +716,6 @@ export const getAllOrders_v1 = async (req: Request, res: Response) => {
       prisma.customerOrders.count({ where }),
     ]);
 
-    // Format invoices
     const formattedOrders = orders.map((order) => ({
       ...order,
       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
@@ -765,14 +761,12 @@ export const getAllOrders = async (req: Request, res: Response) => {
     const partnerId = req.user?.id;
     const userRole = req.user?.role;
 
-    // New search parameters
     const customerNumber = req.query.customerNumber as string;
     const orderNumber = req.query.orderNumber as string;
     const customerName = req.query.customerName as string;
 
     const where: any = {};
 
-    // Date filter
     if (days && !isNaN(days)) {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
@@ -781,19 +775,16 @@ export const getAllOrders = async (req: Request, res: Response) => {
       };
     }
 
-    // Customer filter
     if (req.query.customerId) {
       where.customerId = req.query.customerId as string;
     }
 
-    // Partner scoping
     if (userRole === "PARTNER") {
       where.partnerId = partnerId;
     } else if (req.query.partnerId) {
       where.partnerId = req.query.partnerId as string;
     }
 
-    // OrderStatus filter
     if (req.query.orderStatus) {
       const statuses = (req.query.orderStatus as string)
         .split(",")
@@ -807,11 +798,9 @@ export const getAllOrders = async (req: Request, res: Response) => {
       }
     }
 
-    // 🔍 Search functionality - use AND logic when multiple search params are provided
     const searchConditions: any[] = [];
 
     if (customerNumber || orderNumber || customerName) {
-      // Search by customer number (exact match)
       if (
         customerNumber &&
         customerNumber.trim() &&
@@ -824,7 +813,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
         });
       }
 
-      // Search by order number (exact match since it's an Int field)
       if (orderNumber && orderNumber.trim()) {
         const orderNum = parseInt(orderNumber);
         if (!isNaN(orderNum)) {
@@ -834,12 +822,10 @@ export const getAllOrders = async (req: Request, res: Response) => {
         }
       }
 
-      // Search by customer name (partial match in vorname or nachname)
       if (customerName && customerName.trim()) {
         const nameTerms = customerName.trim().split(/\s+/).filter(Boolean);
 
         if (nameTerms.length === 1) {
-          // Single term - search in both vorname and nachname
           searchConditions.push({
             customer: {
               OR: [
@@ -859,7 +845,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
             },
           });
         } else {
-          // Multiple terms - assume first is vorname, rest is nachname
           searchConditions.push({
             customer: {
               AND: [
@@ -881,13 +866,10 @@ export const getAllOrders = async (req: Request, res: Response) => {
         }
       }
 
-      // If we have search conditions, add them with AND logic (all must match)
       if (searchConditions.length > 0) {
         if (searchConditions.length === 1) {
-          // Single condition - merge directly into where
           Object.assign(where, searchConditions[0]);
         } else {
-          // Multiple conditions - use AND
           where.AND = searchConditions;
         }
       }
@@ -901,7 +883,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
-          orderNumber: true, // Include orderNumber in selection
+          orderNumber: true,
           fußanalyse: true,
           einlagenversorgung: true,
           totalPrice: true,
@@ -920,7 +902,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
               nachname: true,
               email: true,
               wohnort: true,
-              customerNumber: true, // Include customerNumber in selection
+              customerNumber: true,
             },
           },
           product: true,
@@ -933,7 +915,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
       prisma.customerOrders.count({ where }),
     ]);
 
-    // Format invoices
     const formattedOrders = orders.map((order) => ({
       ...order,
       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
@@ -946,7 +927,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
-    // Build response message based on filters
     let message = "All orders fetched successfully";
     const filters = [];
 
@@ -1002,7 +982,6 @@ export const getOrderById = async (req: Request, res: Response) => {
 
     const order = (await prisma.customerOrders.findUnique({
       where: { id },
-      // all customerOrders data i need select all not some specific fields
       include: {
         Versorgungen: true,
         store: {
@@ -1078,8 +1057,6 @@ export const getOrderById = async (req: Request, res: Response) => {
       },
     })) as any;
 
-    // i need to get versorgung using versorgungId
-
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -1100,7 +1077,6 @@ export const getOrderById = async (req: Request, res: Response) => {
       const fusslange1 = Number(order.customer.fusslange1) + 5;
       const fusslange2 = Number(order.customer.fusslange2) + 5;
 
-      // Return the larger value
       return Math.max(fusslange1, fusslange2);
     };
 
@@ -1293,10 +1269,6 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
     const formattedOrders = orders.map((order) => ({
       ...order,
       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
-      // partner: order.partner ? {
-      //   ...order.partner,
-      //   image: order.partner.image ? getImageUrl(`/uploads/${order.partner.image}`) : null
-      // } : null
     }));
 
     const totalPages = Math.ceil(totalCount / limit);
@@ -1325,103 +1297,6 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
     });
   }
 };
-
-// export const updateOrderStatus = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params;
-//     const { orderStatus } = req.body;
-
-//     if (!orderStatus) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Order status is required",
-//       });
-//     }
-
-//     const validOrderStatuses = new Set([
-//       "Einlage_vorbereiten",
-//       "Einlage_in_Fertigung",
-//       "Einlage_verpacken",
-//       "Einlage_Abholbereit",
-//       "Einlage_versandt",
-//       "Ausgeführte_Einlagen",
-//     ]);
-
-//     if (!validOrderStatuses.has(orderStatus)) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Invalid order status",
-//         error: `Order status must be one of: ${Array.from(
-//           validOrderStatuses
-//         ).join(", ")}`,
-//         validStatuses: Array.from(validOrderStatuses),
-//       });
-//     }
-
-//     const existingOrder = await prisma.customerOrders.findUnique({
-//       where: { id },
-//     });
-
-//     if (!existingOrder) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Order not found",
-//       });
-//     }
-
-//     const updatedOrder = await prisma.customerOrders.update({
-//       where: { id },
-//       data: {
-//         orderStatus,
-//         statusUpdate: new Date(),
-//       },
-//       include: {
-//         customer: {
-//           select: {
-//             id: true,
-//             customerNumber: true,
-//             vorname: true,
-//             nachname: true,
-//             email: true,
-//             // telefonnummer: true,
-//             wohnort: true,
-//           },
-//         },
-//         // partner: {
-//         //   select: {
-//         //     id: true,
-//         //     name: true,
-//         //     email: true,
-//         //     image: true,
-//         //     role: true,
-//         //   },
-//         // },
-//         product: true,
-//       },
-//     });
-
-//     // Format order with invoice URL
-//     const formattedOrder = {
-//       ...updatedOrder,
-//       invoice: updatedOrder.invoice
-//         ? getImageUrl(`/uploads/${updatedOrder.invoice}`)
-//         : null,
-//     };
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Order status updated successfully",
-//       data: formattedOrder,
-//     });
-//   } catch (error: any) {
-//     console.error("Update Order Status Error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
 
 export const updateMultiplePaymentStatus = async (
   req: Request,
@@ -1468,6 +1343,21 @@ export const updateMultiplePaymentStatus = async (
       });
     }
 
+    // First get all orders with their current status
+    const orders = await prisma.customerOrders.findMany({
+      where: {
+        id: {
+          in: orderIds,
+        },
+      },
+      select: {
+        id: true,
+        bezahlt: true,
+        orderStatus: true,
+      },
+    });
+
+    // Update all orders
     const updateResult = await prisma.customerOrders.updateMany({
       where: {
         id: {
@@ -1479,6 +1369,25 @@ export const updateMultiplePaymentStatus = async (
         statusUpdate: new Date(),
       },
     });
+
+    // Create history for each order that changed
+    for (const order of orders) {
+      if (order.bezahlt !== bezahlt) {
+        await prisma.customerOrdersHistory.create({
+          data: {
+            orderId: order.id,
+            statusFrom: order.orderStatus,
+            statusTo: order.orderStatus,
+            paymentFrom: order.bezahlt,
+            paymentTo: bezahlt,
+            isPrementChange: true,
+            partnerId: req.user?.id || null,
+            employeeId: null, // add if you have employeeId in request
+            note: `Payment status changed from "${order.bezahlt}" to "${bezahlt}"`,
+          },
+        });
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -1566,7 +1475,6 @@ export const updateMultipleOrderStatuses = async (
       });
     }
 
-    // Update multiple orders in a transaction
     const result = await prisma.$transaction(async (tx) => {
       // Update all orders
       const updateResult = await tx.customerOrders.updateMany({
@@ -1581,7 +1489,6 @@ export const updateMultipleOrderStatuses = async (
         },
       });
 
-      // Get the updated orders with their details
       const updatedOrders = await tx.customerOrders.findMany({
         where: {
           id: {
@@ -1600,7 +1507,6 @@ export const updateMultipleOrderStatuses = async (
             },
           },
           product: true,
-          // custommer histoary
           partner: {
             select: {
               id: true,
@@ -1609,8 +1515,6 @@ export const updateMultipleOrderStatuses = async (
         },
       });
 
-      //get order history if change status order "Ausgeführt" i need to chnage thiscustomerHistorie
-      // Update customer history ONLY for each order you updated
       for (const id of orderIds) {
         await tx.customerHistorie.updateMany({
           where: {
@@ -1623,7 +1527,6 @@ export const updateMultipleOrderStatuses = async (
         });
       }
 
-      //i need to get prevus customerOrdersHistory then i need to calculate how much time stary in prevus status
       for (const order of updatedOrders) {
         const previousHistoryRecord = await tx.customerOrdersHistory.findFirst({
           where: {
@@ -1677,240 +1580,11 @@ export const updateMultipleOrderStatuses = async (
   }
 };
 
-// export const updateMultipleOrderStatuses = async (
-//   req: Request,
-//   res: Response
-// ) => {
-//   try {
-//     const { orderIds, orderStatus, note, employeeId } = req.body;
-//     const partnerId = req.user?.id; // Assuming user ID is available in req.user
-
-//     // Validate required fields
-//     if (!orderIds || !orderStatus) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Order IDs and order status are required",
-//       });
-//     }
-
-//     // Validate orderIds is an array
-//     if (!Array.isArray(orderIds) || orderIds.length === 0) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Order IDs must be a non-empty array",
-//       });
-//     }
-
-//     // Validate order status
-//     const validOrderStatuses = new Set([
-//       "Warten_auf_Versorgungsstart",
-//       "In_Fertigung",
-//       "Verpacken_Qualitätssicherung",
-//       "Abholbereit_Versandt",
-//       "Ausgeführt",
-//     ]);
-
-//     if (!validOrderStatuses.has(orderStatus)) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Invalid order status",
-//         error: `Order status must be one of: ${Array.from(
-//           validOrderStatuses
-//         ).join(", ")}`,
-//         validStatuses: Array.from(validOrderStatuses),
-//       });
-//     }
-
-//     // Check if all orders exist and get their current status
-//     const existingOrders = await prisma.customerOrders.findMany({
-//       where: {
-//         id: {
-//           in: orderIds,
-//         },
-//       },
-//       select: {
-//         id: true,
-//         orderStatus: true,
-//         orderNumber: true,
-//       },
-//     });
-
-//     const existingOrderIds = existingOrders.map((order) => order.id);
-//     const nonExistingOrderIds = orderIds.filter(
-//       (id) => !existingOrderIds.includes(id)
-//     );
-
-//     if (nonExistingOrderIds.length > 0) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Some orders not found",
-//         nonExistingOrderIds,
-//         existingOrderIds,
-//       });
-//     }
-
-//     // Update multiple orders in a transaction
-//     const result = await prisma.$transaction(async (tx) => {
-//       const historyRecords = [];
-//       const currentTimestamp = new Date();
-
-//       // Update all orders and create history records
-//       for (const order of existingOrders) {
-//         // Only create history if status is changing
-//         if (order.orderStatus !== orderStatus) {
-//           // Update the order
-//           await tx.customerOrders.update({
-//             where: {
-//               id: order.id,
-//             },
-//             data: {
-//               orderStatus,
-//               statusUpdate: currentTimestamp,
-//             },
-//           });
-
-//           // Create history record for this order
-//           const historyRecord = await tx.customerOrdersHistory.create({
-//             data: {
-//               orderId: order.id,
-//               statusFrom: order.orderStatus,
-//               statusTo: orderStatus,
-//               partnerId: partnerId,
-//               employeeId: employeeId || null,
-//               note:
-//                 note ||
-//                 `Status changed from ${order.orderStatus} to ${orderStatus}`,
-//               createdAt: currentTimestamp,
-//               updatedAt: currentTimestamp,
-//             },
-//           });
-
-//           historyRecords.push(historyRecord);
-//         } else {
-//           // Status not changing, just update timestamp if needed
-//           await tx.customerOrders.update({
-//             where: {
-//               id: order.id,
-//             },
-//             data: {
-//               statusUpdate: currentTimestamp,
-//             },
-//           });
-//         }
-//       }
-
-//       // Get the updated orders with their details
-//       const updatedOrders = await tx.customerOrders.findMany({
-//         where: {
-//           id: {
-//             in: orderIds,
-//           },
-//         },
-//         include: {
-//           customer: {
-//             select: {
-//               id: true,
-//               customerNumber: true,
-//               vorname: true,
-//               nachname: true,
-//               email: true,
-//               wohnort: true,
-//             },
-//           },
-//           product: true,
-//           // Include history for the response if needed
-//           customerOrdersHistories: {
-//             take: 5,
-//             orderBy: {
-//               createdAt: "desc",
-//             },
-//             include: {
-//               partner: {
-//                 select: {
-//                   id: true,
-//                   name: true,
-//                   email: true,
-//                 },
-//               },
-//               employee: {
-//                 select: {
-//                   id: true,
-//                   accountName: true,
-//                   email: true,
-//                 },
-//               },
-//             },
-//           },
-//         },
-//       });
-
-//       // Update customer history ONLY for each order you updated
-//       for (const id of orderIds) {
-//         const order = existingOrders.find((o) => o.id === id);
-//         if (order) {
-//           await tx.customerHistorie.updateMany({
-//             where: {
-//               eventId: id, // exact order ID
-//             },
-//             data: {
-//               note: `Auftrag ${order.orderNumber} Status: ${orderStatus}`,
-//               updatedAt: currentTimestamp,
-//             },
-//           });
-//         }
-//       }
-
-//       return {
-//         updateCount: historyRecords.length, // Only count orders that actually changed status
-//         historyRecords,
-//         updatedOrders,
-//       };
-//     });
-
-//     // Format orders with invoice URLs
-//     const formattedOrders = result.updatedOrders.map((order) => ({
-//       ...order,
-//       invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
-//     }));
-
-//     // Format response similar to UI
-//     const formattedHistory = result.historyRecords.map((record) => ({
-//       id: record.id,
-//       date: record.createdAt,
-//       user: partnerId, // You might want to get user name from database
-//       action: `${record.statusFrom} → ${record.statusTo}`,
-//       note: record.note,
-//     }));
-
-//     res.status(200).json({
-//       success: true,
-//       message: `Successfully updated ${result.updateCount} order(s) to status: ${orderStatus}`,
-//       data: {
-//         orders: formattedOrders,
-//         history: formattedHistory,
-//       },
-//       updatedCount: result.updateCount,
-//       historyCount: result.historyRecords.length,
-//     });
-//   } catch (error: any) {
-//     console.error("Update Multiple Order Statuses Error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong while updating order statuses",
-//       error: error.message,
-//     });
-//   }
-// };
-
 export const updateOrderPriority = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { priority } = req.body;
 
-    //    enum Priority {
-    //   Dringend
-    //   Normal
-    // }
     const validPriorities = new Set(["Dringend", "Normal"]);
 
     if (!priority || !validPriorities.has(priority)) {
@@ -2081,7 +1755,6 @@ export const uploadInvoice = async (req: Request, res: Response) => {
         : null,
     };
 
-    // Optionally email invoice to the customer
     const shouldSend =
       typeof sendToClient === "string"
         ? ["true", "1", "yes"].includes(sendToClient.toLowerCase())
@@ -2377,65 +2050,6 @@ export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
   }
 };
 
-// export const deleteOrder = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params;
-//     console.log(id)
-
-//     const order = await prisma.customerOrders.findUnique({
-//       where: { id },
-//       include: {
-//         product: true,
-//       },
-//     });
-
-//     console.log(order)
-
-//     if (!order) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Order not found",
-//       });
-//     }
-
-//     if (order.invoice) {
-//       const invoicePath = path.join(process.cwd(), "uploads", order.invoice);
-//       if (fs.existsSync(invoicePath)) {
-//         try {
-//           fs.unlinkSync(invoicePath);
-//           console.log(`Deleted invoice file: ${invoicePath}`);
-//         } catch (err) {
-//           console.error(`Failed to delete invoice file: ${invoicePath}`, err);
-//         }
-//       }
-//     }
-
-//     // await prisma.$transaction(async (tx) => {
-//     //   await tx.customerHistorie.deleteMany({
-//     //     where: {
-//     //       eventId: id,
-//     //       category: "Bestellungen",
-//     //     },
-//     //   });
-//     //   await tx.customerOrders.delete({
-//     //     where: { id },
-//     //   });
-//     // });
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Order deleted successfully",
-//     });
-//   } catch (error: any) {
-//     console.error("Delete Order Error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
-
 export const deleteMultipleOrders = async (req: Request, res: Response) => {
   try {
     const { orderIds } = req.body;
@@ -2483,9 +2097,7 @@ export const deleteMultipleOrders = async (req: Request, res: Response) => {
       });
     }
 
-    // Delete multiple orders in a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // First, delete associated customer history records
       await tx.customerHistorie.deleteMany({
         where: {
           eventId: {
@@ -2495,7 +2107,6 @@ export const deleteMultipleOrders = async (req: Request, res: Response) => {
         },
       });
 
-      // Delete store history records associated with these orders
       await tx.storesHistory.deleteMany({
         where: {
           orderId: {
@@ -2504,7 +2115,6 @@ export const deleteMultipleOrders = async (req: Request, res: Response) => {
         },
       });
 
-      // Then delete the orders
       const deleteResult = await tx.customerOrders.deleteMany({
         where: {
           id: {
@@ -2518,7 +2128,6 @@ export const deleteMultipleOrders = async (req: Request, res: Response) => {
       };
     });
 
-    // Delete invoice files from filesystem
     const fileDeletionPromises = existingOrders.map(async (order) => {
       if (order.invoice) {
         const invoicePath = path.join(process.cwd(), "uploads", order.invoice);
@@ -2528,7 +2137,6 @@ export const deleteMultipleOrders = async (req: Request, res: Response) => {
             console.log(`Deleted invoice file: ${invoicePath}`);
           } catch (err) {
             console.error(`Failed to delete invoice file: ${invoicePath}`, err);
-            // Don't fail the whole request if file deletion fails
           }
         }
       }
@@ -2599,119 +2207,6 @@ export const deleteOrder = async (req: Request, res: Response) => {
   }
 };
 
-// export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
-//   try {
-//     // today
-//     const today = new Date();
-
-//     // start: 70 days ago
-//     const seventyDaysAgo = new Date();
-//     seventyDaysAgo.setDate(today.getDate() - 70);
-
-//     // end: 40 days ago
-//     const fortyDaysAgo = new Date();
-//     fortyDaysAgo.setDate(today.getDate() - 40);
-
-//     const { status, includeAll } = req.query;
-//     let statusFilter: any = {};
-
-//     if (status && typeof status === "string") {
-//       statusFilter.orderStatus = status;
-//     } else if (includeAll === "false") {
-//       statusFilter.orderStatus = {
-//         in: ["Ausgeführte_Einlagen", "Einlage_versandt", "Einlage_Abholbereit"],
-//       };
-//     }
-
-//     // 🧾 Fetch orders from 70–40 days ago
-//     const allOrders = await prisma.customerOrders.findMany({
-//       where: {
-//         createdAt: {
-//           gte: seventyDaysAgo,
-//           lt: fortyDaysAgo,
-//         },
-//         ...statusFilter,
-//       },
-//       select: {
-//         totalPrice: true,
-//         createdAt: true,
-//       },
-//     });
-
-//     // 📅 Generate date range (previous 30 days window)
-//     const dateRange = Array.from({ length: 30 }, (_, i) => {
-//       const date = new Date();
-//       date.setDate(date.getDate() - (70 - i)); // 70 → 41 days ago
-//       return date.toISOString().split("T")[0];
-//     });
-
-//     const revenueMap = new Map();
-
-//     allOrders.forEach((order) => {
-//       const dateKey = order.createdAt.toISOString().split("T")[0];
-//       const existing = revenueMap.get(dateKey) || { revenue: 0, count: 0 };
-//       revenueMap.set(dateKey, {
-//         revenue: existing.revenue + (order.totalPrice || 0),
-//         count: existing.count + 1,
-//       });
-//     });
-
-//     const chartData = dateRange.map((dateKey) => {
-//       const dayData = revenueMap.get(dateKey) || { revenue: 0, count: 0 };
-//       return {
-//         date: formatChartDate(dateKey),
-//         value: Math.round(dayData.revenue),
-//       };
-//     });
-
-//     // 📊 Compute totals and averages
-//     let totalRevenue = 0;
-//     let maxRevenue = 0;
-//     let minRevenue = Infinity;
-//     let totalOrders = 0;
-
-//     for (const dayData of revenueMap.values()) {
-//       const revenue = dayData.revenue;
-//       totalRevenue += revenue;
-//       totalOrders += dayData.count;
-//       if (revenue > maxRevenue) maxRevenue = revenue;
-//       if (revenue < minRevenue) minRevenue = revenue;
-//     }
-
-//     if (minRevenue === Infinity) minRevenue = 0;
-
-//     const averageDailyRevenue = Math.round(totalRevenue / 30);
-//     const maxRevenueDay =
-//       chartData.find((day) => Math.round(maxRevenue) === day.value) ||
-//       chartData[0];
-//     const minRevenueDay =
-//       chartData.find((day) => Math.round(minRevenue) === day.value) ||
-//       chartData[0];
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Previous 30 days order statistics fetched successfully",
-//       data: {
-//         chartData,
-//         statistics: {
-//           totalRevenue: Math.round(totalRevenue),
-//           averageDailyRevenue,
-//           maxRevenueDay,
-//           minRevenueDay,
-//           totalOrders,
-//         },
-//       },
-//     });
-//   } catch (error: any) {
-//     console.error("Get Previous 30 Days Stats Error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Something went wrong",
-//       error: error.message,
-//     });
-//   }
-// };
-
 export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
   try {
     let { year, month, status, includeAll } = req.query;
@@ -2781,7 +2276,7 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
           createdAt: true,
         },
       }),
-      // Count orders in production (within date range)
+
       prisma.customerOrders.count({
         where: {
           createdAt: {
@@ -2798,7 +2293,7 @@ export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
           },
         },
       }),
-      // Get count of completed orders (within date range) - this is quantity, not price
+
       prisma.customerOrders.count({
         where: {
           createdAt: {
@@ -2906,13 +2401,6 @@ const formatChartDate = (dateString: string): string => {
   return `${month} ${day}`;
 };
 
-// Sarted
-// Einlage_vorbereiten
-// Einlage_in_Fertigung
-// Einlage_verpacken
-// Einlage_Abholbereit
-// Einlage_versandt
-// Ausgeführte_Einlagen
 export const getEinlagenInProduktion = async (req: Request, res: Response) => {
   try {
     const partnerId = req.user?.id;
@@ -3106,7 +2594,7 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
 
     // Get order status history
     const orderHistory = await prisma.customerOrdersHistory.findMany({
-      where: { orderId },
+      where: { orderId, isPrementChange: false },
       orderBy: { createdAt: "asc" },
       include: {
         partner: {
@@ -3429,6 +2917,251 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
   }
 };
 
+export const getNewOrderHistory = async (req: Request, res: Response) => {
+  // Helper functions
+  const formatDateGerman = (date: Date): string => {
+    return date.toLocaleDateString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+  
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required",
+      });
+    }
+
+    // Get order with all necessary relations
+    const order = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        orderNumber: true,
+        orderStatus: true,
+        createdAt: true,
+        statusUpdate: true,
+        barcodeScannedAt: true, // ✅ নতুন field
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // ✅ STEP 1: Calculate Step Durations
+
+    // Get all order history (status changes)
+    const allHistory = await prisma.customerOrdersHistory.findMany({
+      where: { orderId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // 1A. First status start time (প্রথম স্টেপ কখন শুরু হয়েছিল)
+    const firstStatusRecord = allHistory.find(
+      (record) =>
+        !record.isPrementChange && record.statusFrom !== record.statusTo
+    );
+
+    const startDate = firstStatusRecord
+      ? firstStatusRecord.createdAt
+      : order.createdAt;
+
+    // 1B. Calculate In_Fertigung + Verpacken_Qualitätssicherung total time
+    let fertigungQSSeconds = 0;
+
+    // Track when In_Fertigung started
+    let fertigungStartTime: Date | null = null;
+    let qsStartTime: Date | null = null;
+
+    for (const record of allHistory) {
+      if (record.isPrementChange) continue; // Skip payment changes
+
+      // Check if status changed to In_Fertigung
+      if (record.statusTo === "In_Fertigung") {
+        fertigungStartTime = record.createdAt;
+      }
+      // Check if status changed FROM In_Fertigung
+      else if (record.statusFrom === "In_Fertigung") {
+        if (fertigungStartTime) {
+          const duration =
+            record.createdAt.getTime() - fertigungStartTime.getTime();
+          fertigungQSSeconds += Math.floor(duration / 1000);
+          fertigungStartTime = null;
+        }
+      }
+
+      // Check if status changed to Verpacken_Qualitätssicherung
+      if (record.statusTo === "Verpacken_Qualitätssicherung") {
+        qsStartTime = record.createdAt;
+      }
+      // Check if status changed FROM Verpacken_Qualitätssicherung
+      else if (record.statusFrom === "Verpacken_Qualitätssicherung") {
+        if (qsStartTime) {
+          const duration = record.createdAt.getTime() - qsStartTime.getTime();
+          fertigungQSSeconds += Math.floor(duration / 1000);
+          qsStartTime = null;
+        }
+      }
+    }
+
+    // Format durations
+    const formatGermanTime = (seconds: number): string => {
+      const days = Math.floor(seconds / (24 * 3600));
+      const hours = Math.floor((seconds % (24 * 3600)) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+
+      const parts = [];
+      if (days > 0) parts.push(`${days} Tag${days > 1 ? "e" : ""}`);
+      if (hours > 0) parts.push(`${hours} Std`);
+      if (minutes > 0) parts.push(`${minutes} Min`);
+
+      return parts.join(" ") || "0 Min";
+    };
+
+    // ✅ STEP 2: Build Change Log
+    const changeLog: Array<{
+      id: string;
+      date: Date;
+      user: string;
+      action: string;
+      note: string;
+      type:
+        | "status_change"
+        | "payment_change"
+        | "scan_event"
+        | "order_creation"
+        | "other";
+    }> = [];
+
+    // Add order creation
+    changeLog.push({
+      id: "initial",
+      date: order.createdAt,
+      user: order.partner?.name || "System",
+      action: "Auftrag erstellt",
+      note: `Order #${order.orderNumber} created`,
+      type: "order_creation",
+    });
+
+    // Add barcode scan event if exists
+    if (order.barcodeScannedAt) {
+      changeLog.push({
+        id: "barcode_scan",
+        date: order.barcodeScannedAt,
+        user: "System",
+        action: "Barcode gescannt",
+        note: "Barcode/Label wurde gescannt",
+        type: "scan_event",
+      });
+    }
+
+    // Add history entries
+    const allHistoryWithUsers = await prisma.customerOrdersHistory.findMany({
+      where: { orderId },
+      orderBy: { createdAt: "asc" },
+      include: {
+        partner: { select: { name: true } },
+        employee: { select: { employeeName: true } },
+      },
+    });
+
+    for (const record of allHistoryWithUsers) {
+      const userName =
+        record.employee?.employeeName || record.partner?.name || "System";
+
+      if (record.isPrementChange) {
+        // Payment change
+        changeLog.push({
+          id: record.id,
+          date: record.createdAt,
+          user: userName,
+          action: `Zahlungsstatus geändert: ${record.paymentFrom || "N/A"} → ${
+            record.paymentTo || "N/A"
+          }`,
+          note: record.note || "Payment status changed",
+          type: "payment_change",
+        });
+      } else if (record.statusFrom !== record.statusTo) {
+        // Status change
+        changeLog.push({
+          id: record.id,
+          date: record.createdAt,
+          user: userName,
+          action: `Status geändert: ${record.statusFrom} → ${record.statusTo}`,
+          note: record.note || "Status changed",
+          type: "status_change",
+        });
+      }
+    }
+
+    // Sort by date descending
+    changeLog.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    // ✅ STEP 3: Response
+    res.status(200).json({
+      success: true,
+      data: {
+        // Step Duration Overview
+        stepDurations: {
+          startDate: {
+            label: "Startdatum",
+            value: formatDateGerman(startDate),
+            timestamp: startDate,
+          },
+          fertigungQSDuration: {
+            label: "Fertigung + QS Dauer",
+            value: formatGermanTime(fertigungQSSeconds),
+            seconds: fertigungQSSeconds,
+          },
+        },
+
+        // Change Log (Änderungsprotokoll)
+        changeLog: changeLog.map((entry) => ({
+          id: entry.id,
+          date: formatDateGerman(entry.date),
+          timestamp: entry.date,
+          user: entry.user,
+          action: entry.action,
+          note: entry.note,
+          type: entry.type,
+        })),
+
+        // Summary
+        summary: {
+          orderNumber: order.orderNumber,
+          totalHistoryEntries: changeLog.length,
+          currentStatus: order.orderStatus,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("Get Order History Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching order history",
+      error: error.message,
+    });
+  }
+};
+
 export const getSupplyInfo = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
@@ -3735,11 +3468,13 @@ export const uploadBarcodeLabel = async (req: Request, res: Response) => {
       where: { id: orderId },
       data: {
         barcodeLabel: imageFile.filename,
+        barcodeCreatedAt: new Date(),
       },
       select: {
         id: true,
         orderNumber: true,
         barcodeLabel: true,
+        barcodeCreatedAt: true,
         customer: {
           select: {
             vorname: true,

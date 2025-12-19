@@ -96,7 +96,9 @@ router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteOrder);
 router.get("/lest30days/einlagen", verifyUser("ADMIN", "PARTNER"), getLast30DaysOrderEinlagen);
 
 //3 panda
+
 router.get("/history/orders/:orderId", verifyUser("ADMIN", "PARTNER"), getOrdersHistory);
+router.get("/order-history/:orderId", verifyUser("ADMIN", "PARTNER"), getNewOrderHistory);
 router.get("/supply-info/:orderId", verifyUser("ADMIN", "PARTNER"), getSupplyInfo);
 router.get("/picture-23-24/:orderId", verifyUser("ADMIN", "PARTNER"), getPicture2324ByOrderId);
 

@@ -774,6 +774,7 @@ model customerOrders {
   customer_versorgungenId String?
 
   barcodeLabel String?
+  barcodeCreatedAt DateTime?
   // KrankenkasseStatus String? @default("Krankenkasse_Ungenehmigt")
 
   @@unique([partnerId, orderNumber]) // Unique per partner
@@ -811,6 +812,11 @@ model customerOrdersHistory {
 
   statusFrom OrderStatus
   statusTo   OrderStatus
+
+  // Add this field to track payment status changes
+  paymentFrom     paymnentStatus?
+  paymentTo       paymnentStatus?
+  isPrementChange Boolean         @default(false)
 
   //relation with user
   partnerId String?
