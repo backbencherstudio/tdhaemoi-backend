@@ -3410,7 +3410,7 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
 
-    // First, check if the order exists
+    // First, check if the order exists with customer and versorgung data
     const order = await prisma.customerOrders.findUnique({
       where: { id: orderId },
       select: {
@@ -3418,6 +3418,26 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
         orderNumber: true,
         versorgungId: true,
         productId: true,
+        storeId: true,
+        customer: {
+          select: {
+            id: true,
+            fusslange1: true,
+            fusslange2: true,
+          },
+        },
+        Versorgungen: {
+          select: {
+            id: true,
+            diagnosis_status: true,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            groessenMengen: true,
+          },
+        },
       },
     });
 
@@ -3426,6 +3446,25 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
         success: false,
         message: "Order not found",
       });
+    }
+
+    // Calculate targetLength (same as in createOrder)
+    let targetLength: number | null = null;
+    let matchedSize: string | null = null;
+    
+    if (order.customer?.fusslange1 != null && order.customer?.fusslange2 != null) {
+      targetLength = Math.max(
+        Number(order.customer.fusslange1),
+        Number(order.customer.fusslange2)
+      ) + 5;
+      
+      // If store exists, find the matched size
+      if (order.store?.groessenMengen && typeof order.store.groessenMengen === "object") {
+        matchedSize = determineSizeFromGroessenMengen(
+          order.store.groessenMengen as any,
+          targetLength
+        );
+      }
     }
 
     // Fetch product if exists
@@ -3447,12 +3486,22 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
       });
     }
 
+    // Get diagnosis_status from versorgung (preferred) or product
+    // const diagnosis_status = order.Versorgungen?.diagnosis_status || productData?.diagnosis_status || [];
+
     return res.status(200).json({
       success: true,
       data: {
         orderNumber: order.orderNumber,
         productId: order.productId,
         product: productData,
+        // diagnosis_status: diagnosis_status,
+        footLength: {
+          fusslange1: order.customer?.fusslange1,
+          fusslange2: order.customer?.fusslange2,
+          targetLength: targetLength,
+          matchedSize: matchedSize,
+        },
       },
     });
   } catch (error: any) {
