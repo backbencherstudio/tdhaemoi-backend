@@ -7,6 +7,7 @@ import morgan from "morgan";
 
 import v1 from "./module/v1/index";
 import v2 from "./module/v2/index";
+
 import path from "path";
 
 const app = express();
@@ -64,7 +65,7 @@ app.use(morgan("dev"));
 // Static files
 app.use("/assets", express.static(path.join(__dirname, "./assets")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use(express.static(path.join(__dirname, "public")));
+// app.use(express.static(path.join(__dirname, "public")));
 
 // API routes
 app.use("/", v1);

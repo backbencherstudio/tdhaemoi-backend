@@ -2928,6 +2928,7 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
     return status.replace(/_/g, " ");
   };
 
+  // Format duration like "1T 7h 42m" or "20m" or "2s" (German format from UI)
   const formatDuration = (milliseconds: number): string => {
     const seconds = Math.floor(milliseconds / 1000);
     const minutes = Math.floor(seconds / 60);
@@ -2938,13 +2939,13 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       const remainingHours = hours % 24;
       const remainingMinutes = minutes % 60;
       if (remainingHours > 0 && remainingMinutes > 0) {
-        return `${days}d ${remainingHours}h ${remainingMinutes}m`;
+        return `${days}T ${remainingHours}h ${remainingMinutes}m`;
       } else if (remainingHours > 0) {
-        return `${days}d ${remainingHours}h`;
+        return `${days}T ${remainingHours}h`;
       } else if (remainingMinutes > 0) {
-        return `${days}d ${remainingMinutes}m`;
+        return `${days}T ${remainingMinutes}m`;
       }
-      return `${days}d`;
+      return `${days}T`;
     }
 
     if (hours > 0) {
@@ -2962,14 +2963,18 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
     return `${seconds}s`;
   };
 
+  // Format date in German format: "04. Dezember 2025, 14:23"
   const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('en-US', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const months = [
+      "Januar", "Februar", "März", "April", "Mai", "Juni",
+      "Juli", "August", "September", "Oktober", "November", "Dezember"
+    ];
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    return `${day}. ${month} ${year}, ${hours}:${minutes}`;
   };
 
   try {
@@ -2991,8 +2996,10 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
         orderStatus: true,
         createdAt: true,
         statusUpdate: true,
+        barcodeLabel: true,
         barcodeCreatedAt: true,
         bezahlt: true,
+        werkstattEmployeeId: true,
         partner: {
           select: {
             id: true,
@@ -3032,83 +3039,148 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       },
     });
 
-    // Get customer history entries
-    const customerHistory = await prisma.customerHistorie.findMany({
-      where: {
-        eventId: orderId,
-        category: "Bestellungen",
-      },
-      orderBy: { createdAt: "asc" },
-    });
-
     // ✅ STEP 1: Calculate the 2 required durations for "Step Duration Overview"
     
-    // 1A. Find when the FIRST step started
-    // This should be when order entered Warten_auf_Versorgungsstart for the first time
-    let firstStepStartTime = order.createdAt;
+    // Filter only status changes (not payment changes)
+    const statusChanges = allHistory
+      .filter(record => !record.isPrementChange)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     
-    // Look through history to find first status entry
-    const firstStatusEntry = allHistory.find(record => 
-      !record.isPrementChange
-    );
-    
-    if (firstStatusEntry) {
-      firstStepStartTime = firstStatusEntry.createdAt;
-    }
+    // Build a timeline of status periods
+    const timeline: Array<{
+      status: string;
+      startTime: Date;
+      endTime: Date | null;
+    }> = [];
 
-    // 1B. Calculate total time in In_Fertigung + Verpacken_Qualitätssicherung
-    let totalProductionQSTime = 0;
-    
-    // We need to track when order entered and exited these statuses
-    const statusChanges = allHistory.filter(record => 
-      !record.isPrementChange && 
-      record.statusFrom !== record.statusTo
-    ).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-    
-    // If no status changes, check initial status
-    if (statusChanges.length === 0 && allHistory.length > 0) {
-      const firstRecord = allHistory[0];
-      if (firstRecord.statusTo === "In_Fertigung" || firstRecord.statusTo === "Verpacken_Qualitätssicherung") {
-        const startTime = firstRecord.createdAt;
-        const endTime = new Date(); // Still in this status
-        totalProductionQSTime = endTime.getTime() - startTime.getTime();
-      }
+    if (statusChanges.length === 0) {
+      // No status changes - order is still in initial status
+      timeline.push({
+        status: order.orderStatus,
+        startTime: order.createdAt,
+        endTime: null,
+      });
     } else {
-      // Track timeline of statuses
-      const timeline: Array<{
-        status: string;
-        startTime: Date;
-        endTime: Date | null;
-      }> = [];
-      
       // Build timeline from status changes
+      // Start with order creation time and initial status
+      let currentStatus = "Warten_auf_Versorgungsstart"; // Default initial status
+      let currentStartTime = order.createdAt;
+
       for (let i = 0; i < statusChanges.length; i++) {
-        const current = statusChanges[i];
-        const next = statusChanges[i + 1];
+        const record = statusChanges[i];
         
-        timeline.push({
-          status: current.statusTo,
-          startTime: current.createdAt,
-          endTime: next ? next.createdAt : null
-        });
-      }
-      
-      // Add current status if not in timeline
-      if (timeline.length === 0 || timeline[timeline.length - 1].endTime !== null) {
-        timeline.push({
-          status: order.orderStatus,
-          startTime: order.createdAt,
-          endTime: null
-        });
-      }
-      
-      // Calculate total time in production and QS
-      for (const period of timeline) {
-        if (period.status === "In_Fertigung" || period.status === "Verpacken_Qualitätssicherung") {
-          const endTime = period.endTime || new Date();
-          totalProductionQSTime += endTime.getTime() - period.startTime.getTime();
+        if (record.statusFrom !== record.statusTo) {
+          // Record the period for the previous status
+          timeline.push({
+            status: currentStatus,
+            startTime: currentStartTime,
+            endTime: record.createdAt,
+          });
+          
+          // Start tracking the new status
+          currentStatus = record.statusTo;
+          currentStartTime = record.createdAt;
+        } else {
+          // Initial status entry (statusFrom === statusTo)
+          // This happens when order is created with a status
+          currentStatus = record.statusTo;
+          currentStartTime = record.createdAt;
         }
       }
+      
+      // Add the current/last status period
+      timeline.push({
+        status: currentStatus,
+        startTime: currentStartTime,
+        endTime: null, // Still in this status
+      });
+    }
+    
+    // 1A. Calculate duration in "Warten_auf_Versorgungsstart" (first step)
+    let firstStepDuration = 0;
+    let firstStepStartTime = order.createdAt;
+    let firstStepEndTime: Date | null = null;
+    let firstStepAssignee = order.partner?.name || "System";
+    let firstStepAssigneeId = order.partner?.id || null;
+    let firstStepAssigneeType: "employee" | "partner" | "system" = order.partner?.id ? "partner" : "system";
+    
+    // Find the first status history entry (order creation entry)
+    const firstStatusHistory = statusChanges.find(record => 
+      record.statusFrom === "Warten_auf_Versorgungsstart" && 
+      record.statusTo === "Warten_auf_Versorgungsstart"
+    );
+    
+    if (firstStatusHistory) {
+      firstStepAssignee = firstStatusHistory.employee?.employeeName || 
+                          firstStatusHistory.partner?.name || 
+                          order.partner?.name || 
+                          "System";
+      firstStepAssigneeId = firstStatusHistory.employee?.id || 
+                           firstStatusHistory.partner?.id || 
+                           order.partner?.id || 
+                           null;
+      firstStepAssigneeType = firstStatusHistory.employee?.id 
+        ? "employee" 
+        : firstStatusHistory.partner?.id 
+        ? "partner" 
+        : "system";
+    }
+    
+    const firstStepPeriod = timeline.find(period => period.status === "Warten_auf_Versorgungsstart");
+    if (firstStepPeriod) {
+      firstStepStartTime = firstStepPeriod.startTime;
+      firstStepEndTime = firstStepPeriod.endTime;
+      firstStepDuration = (firstStepEndTime || new Date()).getTime() - firstStepStartTime.getTime();
+    }
+    
+    // 1B. Calculate total time in In_Fertigung + Verpacken_Qualitätssicherung (combined)
+    let totalProductionQSTime = 0;
+    let productionQSStartTime: Date | null = null;
+    let productionQSEndTime: Date | null = null;
+    let productionQSAssignee: string | null = null;
+    let productionQSAssigneeId: string | null = null;
+    let productionQSAssigneeType: "employee" | "partner" | "system" | null = null;
+    
+    // Find when order first entered In_Fertigung or Verpacken_Qualitätssicherung
+    const firstProductionQSEntry = statusChanges.find(record => 
+      record.statusTo === "In_Fertigung" || record.statusTo === "Verpacken_Qualitätssicherung"
+    );
+    
+    if (firstProductionQSEntry) {
+      productionQSStartTime = firstProductionQSEntry.createdAt;
+      productionQSAssignee = firstProductionQSEntry.employee?.employeeName || 
+                            firstProductionQSEntry.partner?.name || 
+                            null;
+      productionQSAssigneeId = firstProductionQSEntry.employee?.id || 
+                              firstProductionQSEntry.partner?.id || 
+                              null;
+      productionQSAssigneeType = firstProductionQSEntry.employee?.id 
+        ? "employee" 
+        : firstProductionQSEntry.partner?.id 
+        ? "partner" 
+        : "system";
+    }
+    
+    // Calculate total duration and find end time
+    for (const period of timeline) {
+      if (period.status === "In_Fertigung" || period.status === "Verpacken_Qualitätssicherung") {
+        const endTime = period.endTime || new Date();
+        totalProductionQSTime += endTime.getTime() - period.startTime.getTime();
+        
+        // Set end time to the latest end time (when order left both statuses)
+        if (!productionQSEndTime || (period.endTime && period.endTime > productionQSEndTime)) {
+          productionQSEndTime = period.endTime;
+        }
+      }
+    }
+    
+    // If still in production/QS, endTime is null (currently still in this status)
+    const isStillInProductionQS = timeline.some(period => 
+      (period.status === "In_Fertigung" || period.status === "Verpacken_Qualitätssicherung") && 
+      period.endTime === null
+    );
+    if (isStillInProductionQS) {
+      productionQSEndTime = null;
     }
 
     // ✅ STEP 2: Build Change Log (ALL events in chronological order)
@@ -3132,12 +3204,12 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       id: "initial",
       date: order.createdAt,
       user: order.partner?.name || "System",
-      action: "Order created",
-      note: `Order #${order.orderNumber} created`,
+      action: "Auftrag erstellt",
+      note: `Profile Auftrag erstellt`,
       type: "order_creation",
       details: {
         partnerId: order.partner?.id || null,
-        employeeId: null,
+        employeeId: order.werkstattEmployeeId || null,
       },
     });
 
@@ -3155,7 +3227,7 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
           id: record.id,
           date: record.createdAt,
           user: userName,
-          action: "Payment status changed",
+          action: "Zahlungsstatus geändert",
           note: `${formatPaymentStatus(record.paymentFrom)} → ${formatPaymentStatus(record.paymentTo)}`,
           type: "payment_change",
           details: {
@@ -3166,13 +3238,13 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
           },
         });
       } else {
-        // ✅ Status change entry
+        // ✅ Status change entry - only add if status actually changed
         if (record.statusFrom !== record.statusTo) {
           changeLog.push({
             id: record.id,
             date: record.createdAt,
             user: userName,
-            action: "Status changed",
+            action: `${userName} Status geändert: ${formatStatusName(record.statusFrom)} → ${formatStatusName(record.statusTo)}`,
             note: `${formatStatusName(record.statusFrom)} → ${formatStatusName(record.statusTo)}`,
             type: "status_change",
             details: {
@@ -3180,32 +3252,33 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
               employeeId: record.employeeId || null,
             },
           });
-        } else {
-          // Initial status entry (when order was created with a status)
-          changeLog.push({
-            id: record.id,
-            date: record.createdAt,
-            user: userName,
-            action: "Status set",
-            note: `${formatStatusName(record.statusTo)}`,
-            type: "status_change",
-            details: {
-              partnerId: record.partnerId || null,
-              employeeId: record.employeeId || null,
-            },
-          });
         }
+        // Skip entries where statusFrom === statusTo (initial status records)
       }
     }
 
     // Add barcode scan if exists
-    if (order.barcodeCreatedAt) {
+    const hasBarcodeLabel = order.barcodeLabel != null && order.barcodeLabel !== "";
+    const hasBarcodeCreatedAt = order.barcodeCreatedAt != null;
+    
+    if (hasBarcodeLabel || hasBarcodeCreatedAt) {
+      // Ensure barcodeCreatedAt is a Date object
+      let barcodeDate: Date;
+      if (hasBarcodeCreatedAt) {
+        barcodeDate = order.barcodeCreatedAt instanceof Date 
+          ? order.barcodeCreatedAt 
+          : new Date(order.barcodeCreatedAt);
+      } else {
+        // Fallback: if barcodeLabel exists but barcodeCreatedAt doesn't
+        barcodeDate = new Date();
+      }
+      
       changeLog.push({
         id: "barcode_scan",
-        date: order.barcodeCreatedAt,
+        date: barcodeDate,
         user: "System",
-        action: "Barcode scanned",
-        note: "Barcode/Label was scanned",
+        action: "Barcode gescannt",
+        note: "Barcode/Label wurde gescannt",
         type: "scan_event",
         details: {
           partnerId: null,
@@ -3214,45 +3287,9 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       });
     }
 
-    // Add customer history entries
-    for (const record of customerHistory) {
-      // Skip duplicates
-      const isDuplicate = changeLog.some(
-        (entry) =>
-          Math.abs(
-            new Date(entry.date).getTime() -
-            new Date(record.createdAt || record.date || new Date()).getTime()
-          ) < 1000
-      );
-
-      if (isDuplicate) continue;
-
-      // Simple user extraction from note
-      let userName = "System";
-      if (record.note) {
-        const match = record.note.match(
-          /^([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)*)\s+(änderte|changed|erstellte|created)/i
-        );
-        userName = match ? match[1] : "System";
-      }
-      
-      changeLog.push({
-        id: record.id,
-        date: record.createdAt || record.date || new Date(),
-        user: userName,
-        action: "Note added",
-        note: record.note || "",
-        type: "other",
-        details: {
-          partnerId: null,
-          employeeId: null,
-        },
-      });
-    }
-
-    // Sort by date ascending (oldest to newest for UI)
+    // Sort by date descending (newest first for UI, matching the image)
     changeLog.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
     // ✅ STEP 3: Build response matching UI requirements
@@ -3262,26 +3299,36 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
         orderNumber: order.orderNumber,
         
         // SECTION 1: Step Duration Overview (ONLY these 2 items)
-        stepDurationOverview: {
-          // Item 1: When first step started
-          firstStepStart: {
-            date: formatDate(firstStepStartTime),
-            timestamp: firstStepStartTime,
-            label: "First step started" // This would be "Warten auf Versorgungsstart" in UI
+        stepDurationOverview: [
+          {
+            status: "Warten_auf_Versorgungsstart",
+            statusDisplay: "Warten auf Versorgungsstart",
+            duration: formatDuration(firstStepDuration),
+            durationMs: firstStepDuration,
+            startDate: firstStepStartTime,
+            endDate: firstStepEndTime,
+            assignee: firstStepAssignee,
+            assigneeId: firstStepAssigneeId,
+            assigneeType: firstStepAssigneeType,
           },
-          // Item 2: Total time in Production + QS
-          productionQSTotalTime: {
+          {
+            status: "In_Fertigung_Verpacken_QS",
+            statusDisplay: "In Fertigung + Verpacken Qualitätssicherung",
             duration: formatDuration(totalProductionQSTime),
-            seconds: Math.floor(totalProductionQSTime / 1000),
-            label: "Production + QS total time"
-          }
-        },
+            durationMs: totalProductionQSTime,
+            startDate: productionQSStartTime,
+            endDate: productionQSEndTime,
+            assignee: productionQSAssignee,
+            assigneeId: productionQSAssigneeId,
+            assigneeType: productionQSAssigneeType,
+          },
+        ],
         
-        // SECTION 2: Change Log (ALL events in chronological order)
+        // SECTION 2: Change Log (ALL events in chronological order - newest first)
         changeLog: changeLog.map((entry) => ({
           id: entry.id,
-          date: formatDate(entry.date), // Display date
-          timestamp: entry.date, // Raw timestamp for sorting
+          date: formatDate(entry.date),
+          timestamp: entry.date.toISOString(),
           user: entry.user,
           action: entry.action,
           description: entry.note,
@@ -3289,16 +3336,64 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
           details: entry.details,
         })),
         
+        // SECTION 3: Payment Status History
+        paymentStatusHistory: allHistory
+          .filter(record => record.isPrementChange)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .map((record) => ({
+            id: record.id,
+            date: formatDate(record.createdAt),
+            timestamp: record.createdAt.toISOString(),
+            user: record.employee?.employeeName || record.partner?.name || "System",
+            paymentFrom: record.paymentFrom,
+            paymentTo: record.paymentTo,
+            paymentFromDisplay: formatPaymentStatus(record.paymentFrom),
+            paymentToDisplay: formatPaymentStatus(record.paymentTo),
+            details: {
+              partnerId: record.partnerId || null,
+              employeeId: record.employeeId || null,
+            },
+          })),
+        
+        // SECTION 4: Barcode Information
+        barcodeInfo: (() => {
+          if (hasBarcodeLabel || hasBarcodeCreatedAt) {
+            // Use barcodeCreatedAt if available, otherwise use current time as fallback
+            let barcodeDate: Date;
+            if (hasBarcodeCreatedAt) {
+              barcodeDate = order.barcodeCreatedAt instanceof Date 
+                ? order.barcodeCreatedAt 
+                : new Date(order.barcodeCreatedAt);
+            } else {
+              // Fallback: if barcodeLabel exists but barcodeCreatedAt doesn't, use current time
+              // This shouldn't happen with current code, but handles edge cases
+              barcodeDate = new Date();
+            }
+            
+            return {
+              createdAt: formatDate(barcodeDate),
+              timestamp: barcodeDate.toISOString(),
+              // barcodeLabel: hasBarcodeLabel ? getImageUrl(`/uploads/${order.barcodeLabel}`) : null,
+              hasBarcode: true,
+            };
+          } else {
+            return {
+              createdAt: null,
+              timestamp: null,
+              barcodeLabel: null,
+              hasBarcode: false,
+            };
+          }
+        })(),
+        
         // Summary
         summary: {
           currentStatus: formatStatusName(order.orderStatus),
           currentPaymentStatus: formatPaymentStatus(order.bezahlt),
           totalEvents: changeLog.length,
-          hasBarcodeScan: !!order.barcodeCreatedAt,
+          totalPaymentChanges: allHistory.filter(record => record.isPrementChange).length,
+          hasBarcodeScan: hasBarcodeLabel || hasBarcodeCreatedAt,
         },
-        
-        // Old format - empty
-        stepDurations: [],
       },
     });
   } catch (error: any) {
@@ -3454,7 +3549,7 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
   }
 };
 
-export const getBarcodeLabel = async (req: Request, res: Response) => {
+export const  getBarcodeLabel = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
 
@@ -3474,6 +3569,8 @@ export const getBarcodeLabel = async (req: Request, res: Response) => {
         geschaeftsstandort: true,
         createdAt: true,
         updatedAt: true,
+        barcodeLabel: true,
+        barcodeCreatedAt: true,
         customer: {
           select: {
             vorname: true,
@@ -3538,6 +3635,10 @@ export const getBarcodeLabel = async (req: Request, res: Response) => {
         orderStatus: order.orderStatus,
         completedAt: completedAt, // Time when status changed to "Ausgeführt"
         partnerAddress: order.geschaeftsstandort,
+        barcodeLabel: order.barcodeLabel
+          ? getImageUrl(`/uploads/${order.barcodeLabel}`)
+          : null,
+        barcodeCreatedAt: order.barcodeCreatedAt,
       },
     });
   } catch (error: any) {
@@ -3645,6 +3746,7 @@ export const uploadBarcodeLabel = async (req: Request, res: Response) => {
           : null,
         customer: `${updatedOrder.customer.vorname} ${updatedOrder.customer.nachname}`,
         customerNumber: updatedOrder.customer.customerNumber,
+        barcodeCreatedAt: updatedOrder.barcodeCreatedAt,
       },
     });
   } catch (error: any) {
