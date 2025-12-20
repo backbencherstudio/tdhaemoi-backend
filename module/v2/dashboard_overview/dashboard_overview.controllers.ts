@@ -1066,3 +1066,124 @@ export const insoleQuantityPerStatus = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const shoeQuantityPerStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.user;
+    const { year, month } = req.query;
+
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
+
+    // Determine date range based on query parameters
+    if (year && month) {
+      // Both year and month: specific month
+      const yearNum = parseInt(year as string);
+      const monthNum = parseInt(month as string);
+
+      if (isNaN(yearNum) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid year or month provided",
+        });
+      }
+
+      startDate = new Date(yearNum, monthNum - 1, 1, 0, 0, 0, 0);
+      endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+    } else if (year && !month) {
+      // Only year: full year
+      const yearNum = parseInt(year as string);
+
+      if (isNaN(yearNum)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid year provided",
+        });
+      }
+
+      startDate = new Date(yearNum, 0, 1, 0, 0, 0, 0); // January 1
+      endDate = new Date(yearNum, 11, 31, 23, 59, 59, 999); // December 31
+    } else if (!year && month) {
+      // Only month: current year + that month
+      const monthNum = parseInt(month as string);
+      const now = new Date();
+      const currentYear = now.getFullYear();
+
+      if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid month provided",
+        });
+      }
+
+      startDate = new Date(currentYear, monthNum - 1, 1, 0, 0, 0, 0);
+      endDate = new Date(currentYear, monthNum, 0, 23, 59, 59, 999);
+    }
+    // If neither year nor month: lifetime data (startDate and endDate remain null)
+
+    // All possible statuses for massschuhe_order in order
+    const allStatuses = [
+      "Leistenerstellung",
+      "Bettungsherstellung",
+      "Halbprobenerstellung",
+      "Schafterstellung",
+      "Bodenerstellung",
+      "Geliefert",
+    ];
+
+    // Count orders by status for massschuhe_order
+    // Build query conditionally based on date filters
+    let statusCounts: Array<{ status: string; count: number }>;
+
+    if (startDate && endDate) {
+      // Date range specified
+      statusCounts = await prisma.$queryRaw<
+        Array<{ status: string; count: number }>
+      >`
+        SELECT 
+          status::text,
+          COUNT(*)::int as count
+        FROM "massschuhe_order"
+        WHERE "userId" = ${id}::text
+          AND "createdAt" >= ${startDate}::timestamp
+          AND "createdAt" <= ${endDate}::timestamp
+        GROUP BY status
+      `;
+    } else {
+      // Lifetime data (no date filter)
+      statusCounts = await prisma.$queryRaw<
+        Array<{ status: string; count: number }>
+      >`
+        SELECT 
+          status::text,
+          COUNT(*)::int as count
+        FROM "massschuhe_order"
+        WHERE "userId" = ${id}::text
+        GROUP BY status
+      `;
+    }
+
+    // Create a map of status to count
+    const statusCountMap = new Map<string, number>();
+    statusCounts.forEach((item) => {
+      statusCountMap.set(item.status, Number(item.count || 0));
+    });
+
+    // Format response - include all statuses, showing 0 for missing ones
+    const data = allStatuses.map((status) => ({
+      status,
+      count: statusCountMap.get(status) || 0,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};

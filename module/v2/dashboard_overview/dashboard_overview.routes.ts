@@ -11,7 +11,8 @@ import {
   revenueOfFinishedShoes,
   quantityOfInproductionShoes,
   quantityOfInproductionInsoles,
-  insoleQuantityPerStatus
+  insoleQuantityPerStatus,
+  shoeQuantityPerStatus
 } from "./dashboard_overview.controllers";
 
 const router = express.Router();
@@ -83,6 +84,12 @@ router.get(
   "/insole-quantity-par-status",
   verifyUser("PARTNER", "ADMIN"),
   insoleQuantityPerStatus
+);
+
+router.get(
+  "/shoe-quantity-per-status",
+  verifyUser("PARTNER", "ADMIN"),
+  shoeQuantityPerStatus
 );
 
 export default router;
