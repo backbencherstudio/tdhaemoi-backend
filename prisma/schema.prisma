@@ -763,8 +763,10 @@ model customerOrders {
   mitarbeiter             String?
   fertigstellungBis       DateTime?
   versorgung              String?
+
   fussanalysePreis        Float?
   einlagenversorgungPreis Float?
+
   werkstattEmployeeId     String?
 
   priority                Priority?               @default(Normal)
@@ -1224,7 +1226,7 @@ enum massschuhe_order_status {
   Schafterstellung
   Bodenerstellung
 
-  Geliefert //delivered
+  Geliefert
 }
 
 // model massschuhe_status_treack {
