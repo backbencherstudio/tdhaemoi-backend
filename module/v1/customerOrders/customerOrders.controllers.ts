@@ -10,6 +10,7 @@ import {
   sendPdfToEmail,
   sendInvoiceEmail,
 } from "../../../utils/emailService.utils";
+import { notificationSend } from "../../../utils/notification.utils";
 
 const prisma = new PrismaClient();
 
@@ -242,7 +243,7 @@ export const createOrder = async (req: Request, res: Response) => {
       }),
     ]);
 
-    console.log("============================", versorgung?.storeId);
+    // console.log("============================", versorgung?.storeId);
     if (!customer || !versorgung) {
       return res
         .status(404)
@@ -257,7 +258,6 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    // Get price from supplyStatus instead of customer
     const totalPrice = versorgung.supplyStatus.price;
 
     if (customer.fusslange1 == null || customer.fusslange2 == null) {
@@ -285,8 +285,8 @@ export const createOrder = async (req: Request, res: Response) => {
           artikelHersteller: versorgung.artikelHersteller,
           versorgung: versorgung.versorgung,
           material: serializeMaterial(versorgung.material),
-          langenempfehlung: {}, // langenempfehlung not available in Versorgungen model
-          status: "Alltagseinlagen", // Default status since it's not in Versorgungen model
+          langenempfehlung: {},
+          status: "Alltagseinlagen",
           diagnosis_status: versorgung.diagnosis_status,
         },
       });
@@ -410,14 +410,174 @@ export const createOrder = async (req: Request, res: Response) => {
         } as any,
       });
 
-      return { ...newOrder, matchedSizeKey } as any;
+      return { ...newOrder, orderNumber, matchedSizeKey } as any;
     });
+
+    //====================== Appointment Creation ==============================
+    let appointmentId: string | null = null;
+
+    if (fertigstellungBis) {
+      try {
+        const appointmentDate = new Date(fertigstellungBis);
+
+        // Validate date
+        if (isNaN(appointmentDate.getTime())) {
+          console.warn(`Invalid fertigstellungBis date: ${fertigstellungBis}`);
+        } else {
+          // Fetch customer and employee data in parallel
+          const [customerData, employeeData] = await Promise.all([
+            prisma.customers.findUnique({
+              where: { id: customerId },
+              select: {
+                id: true,
+                vorname: true,
+                nachname: true,
+              },
+            }),
+            werkstattEmployeeId
+              ? prisma.employees.findUnique({
+                  where: { id: werkstattEmployeeId },
+                  select: {
+                    id: true,
+                    employeeName: true,
+                  },
+                })
+              : Promise.resolve(null),
+          ]);
+
+          // Validate customer exists
+          if (!customerData) {
+            console.warn(
+              `Customer with ID ${customerId} not found for appointment creation`
+            );
+          } else {
+            // Format time from date (HH:MM format)
+            const hours = appointmentDate
+              .getHours()
+              .toString()
+              .padStart(2, "0");
+            const minutes = appointmentDate
+              .getMinutes()
+              .toString()
+              .padStart(2, "0");
+            const timeString = `${hours}:${minutes}`;
+
+            // Format date for display
+            const formattedDate = appointmentDate.toLocaleDateString("de-DE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            });
+
+            // Get customer name with fallback priority
+            const customerName =
+              (customerData.vorname && customerData.nachname
+                ? `${customerData.vorname} ${customerData.nachname}`.trim()
+                : customerData.vorname || customerData.nachname) ||
+              kundenName ||
+              "Customer";
+
+            // Determine employee assignment
+            let employeId: string | undefined = undefined;
+            let assignedTo: string = "";
+
+            if (employeeData) {
+              employeId = employeeData.id;
+              assignedTo = employeeData.employeeName;
+            } else if (mitarbeiter) {
+              assignedTo = mitarbeiter;
+            }
+
+            // Prepare appointment data
+            const appointmentData: any = {
+              customer_name: customerName,
+              customerId: customerId,
+              time: timeString,
+              date: appointmentDate,
+              reason: `Anprobe-Abholung`,
+              assignedTo: assignedTo,
+              duration: 0.5,
+              details: `Automatisch erstellt für Bestellung ${
+                order.orderNumber || order.id
+              }`,
+              isClient: true,
+              reminder: 30,
+              userId: partnerId,
+            };
+
+            // Set employeId for backward compatibility if employee exists
+            if (employeId) {
+              appointmentData.employeId = employeId;
+            }
+
+            // Create appointment with employee relation if employee exists
+            const appointment = await prisma.appointment.create({
+              data: {
+                ...appointmentData,
+                ...(employeId &&
+                  assignedTo && {
+                    appointmentEmployees: {
+                      create: {
+                        employeeId: employeId,
+                        assignedTo: assignedTo,
+                      },
+                    },
+                  }),
+              },
+              include: {
+                appointmentEmployees: {
+                  include: {
+                    employee: {
+                      select: {
+                        id: true,
+                        employeeName: true,
+                        email: true,
+                      },
+                    },
+                  },
+                },
+              },
+            });
+            notificationSend(
+              partnerId,
+              "Appointment_Created" as any,
+              `Termin zur Abholung am ${formattedDate} um ${timeString} Uhr`,
+              appointment.id,
+              false,
+              `/dashboard/calendar`
+            );
+
+            appointmentId = appointment.id;
+
+            // Create customer history entry for appointment
+            await prisma.customerHistorie.create({
+              data: {
+                customerId,
+                category: "Termin",
+                url: `/appointment/system-appointment/${customerId}/${appointment.id}`,
+                methord: "GET",
+                system_note: `Termin zur Abholung am ${formattedDate} um ${timeString} Uhr`,
+              },
+            });
+          }
+        }
+      } catch (appointmentError) {
+        // Log error but don't fail the order creation
+        console.error(
+          `Failed to create appointment for order ${order.id}:`,
+          appointmentError
+        );
+      }
+    }
+
+    //====================== Appointment Creation End ==============================
 
     return res.status(201).json({
       success: true,
       message: "Order created successfully",
       orderId: order.id,
       matchedSize: order.matchedSizeKey,
+      appointmentId: appointmentId,
     });
   } catch (error: any) {
     if (error?.message === "NO_MATCHED_SIZE_IN_STORE") {
@@ -2966,8 +3126,18 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
   // Format date in German format: "04. Dezember 2025, 14:23"
   const formatDate = (date: Date): string => {
     const months = [
-      "Januar", "Februar", "März", "April", "Mai", "Juni",
-      "Juli", "August", "September", "Oktober", "November", "Dezember"
+      "Januar",
+      "Februar",
+      "März",
+      "April",
+      "Mai",
+      "Juni",
+      "Juli",
+      "August",
+      "September",
+      "Oktober",
+      "November",
+      "Dezember",
     ];
     const day = date.getDate().toString().padStart(2, "0");
     const month = months[date.getMonth()];
@@ -3040,12 +3210,12 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
     });
 
     // ✅ STEP 1: Calculate the 2 required durations for "Step Duration Overview"
-    
+
     // Filter only status changes (not payment changes)
     const statusChanges = allHistory
-      .filter(record => !record.isPrementChange)
+      .filter((record) => !record.isPrementChange)
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-    
+
     // Build a timeline of status periods
     const timeline: Array<{
       status: string;
@@ -3068,7 +3238,7 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
 
       for (let i = 0; i < statusChanges.length; i++) {
         const record = statusChanges[i];
-        
+
         if (record.statusFrom !== record.statusTo) {
           // Record the period for the previous status
           timeline.push({
@@ -3076,7 +3246,7 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
             startTime: currentStartTime,
             endTime: record.createdAt,
           });
-          
+
           // Start tracking the new status
           currentStatus = record.statusTo;
           currentStartTime = record.createdAt;
@@ -3087,7 +3257,7 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
           currentStartTime = record.createdAt;
         }
       }
-      
+
       // Add the current/last status period
       timeline.push({
         status: currentStatus,
@@ -3095,89 +3265,112 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
         endTime: null, // Still in this status
       });
     }
-    
+
     // 1A. Calculate duration in "Warten_auf_Versorgungsstart" (first step)
     let firstStepDuration = 0;
     let firstStepStartTime = order.createdAt;
     let firstStepEndTime: Date | null = null;
     let firstStepAssignee = order.partner?.name || "System";
     let firstStepAssigneeId = order.partner?.id || null;
-    let firstStepAssigneeType: "employee" | "partner" | "system" = order.partner?.id ? "partner" : "system";
-    
+    let firstStepAssigneeType: "employee" | "partner" | "system" = order.partner
+      ?.id
+      ? "partner"
+      : "system";
+
     // Find the first status history entry (order creation entry)
-    const firstStatusHistory = statusChanges.find(record => 
-      record.statusFrom === "Warten_auf_Versorgungsstart" && 
-      record.statusTo === "Warten_auf_Versorgungsstart"
+    const firstStatusHistory = statusChanges.find(
+      (record) =>
+        record.statusFrom === "Warten_auf_Versorgungsstart" &&
+        record.statusTo === "Warten_auf_Versorgungsstart"
     );
-    
+
     if (firstStatusHistory) {
-      firstStepAssignee = firstStatusHistory.employee?.employeeName || 
-                          firstStatusHistory.partner?.name || 
-                          order.partner?.name || 
-                          "System";
-      firstStepAssigneeId = firstStatusHistory.employee?.id || 
-                           firstStatusHistory.partner?.id || 
-                           order.partner?.id || 
-                           null;
-      firstStepAssigneeType = firstStatusHistory.employee?.id 
-        ? "employee" 
-        : firstStatusHistory.partner?.id 
-        ? "partner" 
+      firstStepAssignee =
+        firstStatusHistory.employee?.employeeName ||
+        firstStatusHistory.partner?.name ||
+        order.partner?.name ||
+        "System";
+      firstStepAssigneeId =
+        firstStatusHistory.employee?.id ||
+        firstStatusHistory.partner?.id ||
+        order.partner?.id ||
+        null;
+      firstStepAssigneeType = firstStatusHistory.employee?.id
+        ? "employee"
+        : firstStatusHistory.partner?.id
+        ? "partner"
         : "system";
     }
-    
-    const firstStepPeriod = timeline.find(period => period.status === "Warten_auf_Versorgungsstart");
+
+    const firstStepPeriod = timeline.find(
+      (period) => period.status === "Warten_auf_Versorgungsstart"
+    );
     if (firstStepPeriod) {
       firstStepStartTime = firstStepPeriod.startTime;
       firstStepEndTime = firstStepPeriod.endTime;
-      firstStepDuration = (firstStepEndTime || new Date()).getTime() - firstStepStartTime.getTime();
+      firstStepDuration =
+        (firstStepEndTime || new Date()).getTime() -
+        firstStepStartTime.getTime();
     }
-    
+
     // 1B. Calculate total time in In_Fertigung + Verpacken_Qualitätssicherung (combined)
     let totalProductionQSTime = 0;
     let productionQSStartTime: Date | null = null;
     let productionQSEndTime: Date | null = null;
     let productionQSAssignee: string | null = null;
     let productionQSAssigneeId: string | null = null;
-    let productionQSAssigneeType: "employee" | "partner" | "system" | null = null;
-    
+    let productionQSAssigneeType: "employee" | "partner" | "system" | null =
+      null;
+
     // Find when order first entered In_Fertigung or Verpacken_Qualitätssicherung
-    const firstProductionQSEntry = statusChanges.find(record => 
-      record.statusTo === "In_Fertigung" || record.statusTo === "Verpacken_Qualitätssicherung"
+    const firstProductionQSEntry = statusChanges.find(
+      (record) =>
+        record.statusTo === "In_Fertigung" ||
+        record.statusTo === "Verpacken_Qualitätssicherung"
     );
-    
+
     if (firstProductionQSEntry) {
       productionQSStartTime = firstProductionQSEntry.createdAt;
-      productionQSAssignee = firstProductionQSEntry.employee?.employeeName || 
-                            firstProductionQSEntry.partner?.name || 
-                            null;
-      productionQSAssigneeId = firstProductionQSEntry.employee?.id || 
-                              firstProductionQSEntry.partner?.id || 
-                              null;
-      productionQSAssigneeType = firstProductionQSEntry.employee?.id 
-        ? "employee" 
-        : firstProductionQSEntry.partner?.id 
-        ? "partner" 
+      productionQSAssignee =
+        firstProductionQSEntry.employee?.employeeName ||
+        firstProductionQSEntry.partner?.name ||
+        null;
+      productionQSAssigneeId =
+        firstProductionQSEntry.employee?.id ||
+        firstProductionQSEntry.partner?.id ||
+        null;
+      productionQSAssigneeType = firstProductionQSEntry.employee?.id
+        ? "employee"
+        : firstProductionQSEntry.partner?.id
+        ? "partner"
         : "system";
     }
-    
+
     // Calculate total duration and find end time
     for (const period of timeline) {
-      if (period.status === "In_Fertigung" || period.status === "Verpacken_Qualitätssicherung") {
+      if (
+        period.status === "In_Fertigung" ||
+        period.status === "Verpacken_Qualitätssicherung"
+      ) {
         const endTime = period.endTime || new Date();
         totalProductionQSTime += endTime.getTime() - period.startTime.getTime();
-        
+
         // Set end time to the latest end time (when order left both statuses)
-        if (!productionQSEndTime || (period.endTime && period.endTime > productionQSEndTime)) {
+        if (
+          !productionQSEndTime ||
+          (period.endTime && period.endTime > productionQSEndTime)
+        ) {
           productionQSEndTime = period.endTime;
         }
       }
     }
-    
+
     // If still in production/QS, endTime is null (currently still in this status)
-    const isStillInProductionQS = timeline.some(period => 
-      (period.status === "In_Fertigung" || period.status === "Verpacken_Qualitätssicherung") && 
-      period.endTime === null
+    const isStillInProductionQS = timeline.some(
+      (period) =>
+        (period.status === "In_Fertigung" ||
+          period.status === "Verpacken_Qualitätssicherung") &&
+        period.endTime === null
     );
     if (isStillInProductionQS) {
       productionQSEndTime = null;
@@ -3190,7 +3383,12 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       user: string;
       action: string;
       note: string;
-      type: "status_change" | "payment_change" | "scan_event" | "order_creation" | "other";
+      type:
+        | "status_change"
+        | "payment_change"
+        | "scan_event"
+        | "order_creation"
+        | "other";
       details: {
         partnerId: string | null;
         employeeId: string | null;
@@ -3214,12 +3412,13 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
     });
 
     // Process all history entries in chronological order
-    const sortedHistory = [...allHistory].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-    
+    const sortedHistory = [...allHistory].sort(
+      (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+    );
+
     for (const record of sortedHistory) {
-      const userName = record.employee?.employeeName || 
-                       record.partner?.name || 
-                       "System";
+      const userName =
+        record.employee?.employeeName || record.partner?.name || "System";
 
       if (record.isPrementChange) {
         // ✅ Payment change entry
@@ -3228,7 +3427,9 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
           date: record.createdAt,
           user: userName,
           action: "Zahlungsstatus geändert",
-          note: `${formatPaymentStatus(record.paymentFrom)} → ${formatPaymentStatus(record.paymentTo)}`,
+          note: `${formatPaymentStatus(
+            record.paymentFrom
+          )} → ${formatPaymentStatus(record.paymentTo)}`,
           type: "payment_change",
           details: {
             partnerId: record.partnerId || null,
@@ -3244,8 +3445,12 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
             id: record.id,
             date: record.createdAt,
             user: userName,
-            action: `${userName} Status geändert: ${formatStatusName(record.statusFrom)} → ${formatStatusName(record.statusTo)}`,
-            note: `${formatStatusName(record.statusFrom)} → ${formatStatusName(record.statusTo)}`,
+            action: `${userName} Status geändert: ${formatStatusName(
+              record.statusFrom
+            )} → ${formatStatusName(record.statusTo)}`,
+            note: `${formatStatusName(record.statusFrom)} → ${formatStatusName(
+              record.statusTo
+            )}`,
             type: "status_change",
             details: {
               partnerId: record.partnerId || null,
@@ -3258,21 +3463,23 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
     }
 
     // Add barcode scan if exists
-    const hasBarcodeLabel = order.barcodeLabel != null && order.barcodeLabel !== "";
+    const hasBarcodeLabel =
+      order.barcodeLabel != null && order.barcodeLabel !== "";
     const hasBarcodeCreatedAt = order.barcodeCreatedAt != null;
-    
+
     if (hasBarcodeLabel || hasBarcodeCreatedAt) {
       // Ensure barcodeCreatedAt is a Date object
       let barcodeDate: Date;
       if (hasBarcodeCreatedAt) {
-        barcodeDate = order.barcodeCreatedAt instanceof Date 
-          ? order.barcodeCreatedAt 
-          : new Date(order.barcodeCreatedAt);
+        barcodeDate =
+          order.barcodeCreatedAt instanceof Date
+            ? order.barcodeCreatedAt
+            : new Date(order.barcodeCreatedAt);
       } else {
         // Fallback: if barcodeLabel exists but barcodeCreatedAt doesn't
         barcodeDate = new Date();
       }
-      
+
       changeLog.push({
         id: "barcode_scan",
         date: barcodeDate,
@@ -3297,7 +3504,7 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       success: true,
       data: {
         orderNumber: order.orderNumber,
-        
+
         // SECTION 1: Step Duration Overview (ONLY these 2 items)
         stepDurationOverview: [
           {
@@ -3323,7 +3530,7 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
             assigneeType: productionQSAssigneeType,
           },
         ],
-        
+
         // SECTION 2: Change Log (ALL events in chronological order - newest first)
         changeLog: changeLog.map((entry) => ({
           id: entry.id,
@@ -3335,16 +3542,17 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
           type: entry.type,
           details: entry.details,
         })),
-        
+
         // SECTION 3: Payment Status History
         paymentStatusHistory: allHistory
-          .filter(record => record.isPrementChange)
+          .filter((record) => record.isPrementChange)
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
           .map((record) => ({
             id: record.id,
             date: formatDate(record.createdAt),
             timestamp: record.createdAt.toISOString(),
-            user: record.employee?.employeeName || record.partner?.name || "System",
+            user:
+              record.employee?.employeeName || record.partner?.name || "System",
             paymentFrom: record.paymentFrom,
             paymentTo: record.paymentTo,
             paymentFromDisplay: formatPaymentStatus(record.paymentFrom),
@@ -3354,22 +3562,23 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
               employeeId: record.employeeId || null,
             },
           })),
-        
+
         // SECTION 4: Barcode Information
         barcodeInfo: (() => {
           if (hasBarcodeLabel || hasBarcodeCreatedAt) {
             // Use barcodeCreatedAt if available, otherwise use current time as fallback
             let barcodeDate: Date;
             if (hasBarcodeCreatedAt) {
-              barcodeDate = order.barcodeCreatedAt instanceof Date 
-                ? order.barcodeCreatedAt 
-                : new Date(order.barcodeCreatedAt);
+              barcodeDate =
+                order.barcodeCreatedAt instanceof Date
+                  ? order.barcodeCreatedAt
+                  : new Date(order.barcodeCreatedAt);
             } else {
               // Fallback: if barcodeLabel exists but barcodeCreatedAt doesn't, use current time
               // This shouldn't happen with current code, but handles edge cases
               barcodeDate = new Date();
             }
-            
+
             return {
               createdAt: formatDate(barcodeDate),
               timestamp: barcodeDate.toISOString(),
@@ -3385,13 +3594,15 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
             };
           }
         })(),
-        
+
         // Summary
         summary: {
           currentStatus: formatStatusName(order.orderStatus),
           currentPaymentStatus: formatPaymentStatus(order.bezahlt),
           totalEvents: changeLog.length,
-          totalPaymentChanges: allHistory.filter(record => record.isPrementChange).length,
+          totalPaymentChanges: allHistory.filter(
+            (record) => record.isPrementChange
+          ).length,
           hasBarcodeScan: hasBarcodeLabel || hasBarcodeCreatedAt,
         },
       },
@@ -3410,31 +3621,29 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
 
-    // First, check if the order exists with customer and versorgung data
+    // Get order with basic info
     const order = await prisma.customerOrders.findUnique({
       where: { id: orderId },
-      select: {
-        id: true,
-        orderNumber: true,
-        versorgungId: true,
-        productId: true,
-        storeId: true,
+      include: {
         customer: {
           select: {
             id: true,
+            vorname: true, // Add first name
+            nachname: true,
             fusslange1: true,
             fusslange2: true,
           },
         },
-        Versorgungen: {
+        product: {
           select: {
             id: true,
+            name: true,
+            material: true,
             diagnosis_status: true,
           },
         },
         store: {
           select: {
-            id: true,
             groessenMengen: true,
           },
         },
@@ -3448,75 +3657,58 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
       });
     }
 
-    // Calculate targetLength (same as in createOrder)
-    let targetLength: number | null = null;
-    let matchedSize: string | null = null;
-    
-    if (order.customer?.fusslange1 != null && order.customer?.fusslange2 != null) {
-      targetLength = Math.max(
-        Number(order.customer.fusslange1),
-        Number(order.customer.fusslange2)
-      ) + 5;
-      
-      // If store exists, find the matched size
-      if (order.store?.groessenMengen && typeof order.store.groessenMengen === "object") {
+    // Calculate foot length
+    let targetLength = null;
+    let matchedSize = null;
+
+    if (order.customer?.fusslange1 && order.customer?.fusslange2) {
+      const foot1 = Number(order.customer.fusslange1);
+      const foot2 = Number(order.customer.fusslange2);
+      targetLength = Math.max(foot1, foot2) + 5;
+
+      if (order.store?.groessenMengen) {
         matchedSize = determineSizeFromGroessenMengen(
-          order.store.groessenMengen as any,
+          order.store.groessenMengen,
           targetLength
         );
       }
     }
 
-    // Fetch product if exists
-    let productData = null;
-    if (order.productId) {
-      productData = await prisma.customerProduct.findUnique({
-        where: { id: order.productId },
-        select: {
-          id: true,
-          name: true,
-          material: true,
-          langenempfehlung: true,
-          rohlingHersteller: true,
-          artikelHersteller: true,
-          versorgung: true,
-          status: true,
-          diagnosis_status: true,
-        },
-      });
-    }
-
-    // Get diagnosis_status from versorgung (preferred) or product
-    // const diagnosis_status = order.Versorgungen?.diagnosis_status || productData?.diagnosis_status || [];
+    // Combine first and last name for full customer name
+    const customerName = order.customer
+      ? `${order.customer.vorname || ""} ${
+          order.customer.nachname || ""
+        }`.trim()
+      : null;
 
     return res.status(200).json({
       success: true,
       data: {
         orderNumber: order.orderNumber,
         productId: order.productId,
-        product: productData,
-        // diagnosis_status: diagnosis_status,
+        product: order.product,
+        fertigstellungBis: order.fertigstellungBis,
+        customerName: customerName,
+        // customerDetails: order.customer,  // Include all customer details
         footLength: {
           fusslange1: order.customer?.fusslange1,
           fusslange2: order.customer?.fusslange2,
-          targetLength: targetLength,
-          matchedSize: matchedSize,
+          targetLength,
+          matchedSize,
         },
       },
     });
-  } catch (error: any) {
-    console.error("Get Supply Info Error:", error);
+  } catch (error) {
+    console.error("Error:", error);
     res.status(500).json({
       success: false,
-      message: "Something went wrong while fetching supply info",
-      error: error.message,
+      message: "Server error",
     });
   }
 };
 
 export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
   try {
-    // Get the picture 23 and 24 from the customer screener file
     const { orderId } = req.params;
 
     if (!orderId) {
@@ -3526,10 +3718,11 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
       });
     }
 
-    // Get customer and product/versorgung information for this order
+    // Get order with fertigstellungBis
     const order = await prisma.customerOrders.findUnique({
       where: { id: orderId },
       select: {
+        fertigstellungBis: true, // Added here
         customer: {
           select: {
             id: true,
@@ -3574,12 +3767,11 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       data: {
+        fertigstellungBis: order.fertigstellungBis, // Added here
         customerName: `${order.customer.vorname} ${order.customer.nachname}`,
-        // Use data from customerProduct (same as in getSupplyInfo)
         versorgungName: order.product?.name ?? null,
         diagnosisStatus: order.product?.diagnosis_status ?? null,
         material: order.product?.material ?? null,
-        // customerId: order.customer.id,
         picture_23: customerScreenerFile.picture_23
           ? getImageUrl(`/uploads/${customerScreenerFile.picture_23}`)
           : null,
@@ -3598,7 +3790,7 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
   }
 };
 
-export const  getBarcodeLabel = async (req: Request, res: Response) => {
+export const getBarcodeLabel = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
 

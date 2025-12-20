@@ -1360,5 +1360,6 @@ model notification {
 
 enum notificationType {
   Appointment_Reminder
+  Appointment_Created
   test
 }

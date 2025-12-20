@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, notificationType } from "@prisma/client";
+import { notificationSend } from "../../../utils/notification.utils";
 
 const prisma = new PrismaClient();
 
@@ -487,40 +488,43 @@ export const createAppointment = async (req: Request, res: Response) => {
               },
             },
           },
-        },
       },
+    },
+  });
+
+  // Format date for notifications and history
+  const formattedDate = appointmentDate.toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+  if (isClient && customerId) {
+    const customerExists = await prisma.customers.findUnique({
+      where: { id: customerId },
+      select: { id: true },
     });
 
-    if (isClient && customerId) {
-      const customerExists = await prisma.customers.findUnique({
-        where: { id: customerId },
+    if (!customerExists) {
+      console.warn(
+        `Customer with ID ${customerId} not found. Skipping history creation.`
+      );
+    } else {
+      await prisma.customerHistorie.create({
+        data: {
+          customerId,
+          category: "Termin",
+          url: `/appointment/system-appointment/${customerId}/${appointment.id}`,
+          methord: "GET",
+          system_note: `Termin zur Laufanalyse am ${formattedDate}`,
+        },
         select: { id: true },
       });
-
-      if (!customerExists) {
-        console.warn(
-          `Customer with ID ${customerId} not found. Skipping history creation.`
-        );
-      } else {
-        const formattedDate = appointmentDate.toLocaleDateString("de-DE", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        });
-
-        await prisma.customerHistorie.create({
-          data: {
-            customerId,
-            category: "Termin",
-            url: `/appointment/system-appointment/${customerId}/${appointment.id}`,
-            methord: "GET",
-            system_note: `Termin zur Laufanalyse am ${formattedDate}`,
-          },
-          select: { id: true },
-        });
-      }
     }
+  }
 
+  notificationSend(id, "Appointment_Created" as notificationType, `Termin zur Laufanalyse am ${formattedDate}`, appointment.id, false, `/dashboard/calendar`);
+    
     res.status(201).json({
       success: true,
       message: "Appointment created successfully",
