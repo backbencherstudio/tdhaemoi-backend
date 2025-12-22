@@ -1,19 +1,17 @@
 import express, { Request, Response, NextFunction } from "express";
-
 import cors from "cors";
 import morgan from "morgan";
-  // Corrected import for Socket.IO
- 
+import http from "http";
 
 import v1 from "./module/v1/index";
 import v2 from "./module/v2/index";
-
 import path from "path";
 
 const app = express();
- 
 
- export const allowedOrigins = [
+const server = http.createServer(app);
+
+export const allowedOrigins = [
   "https://ideas-volumes-continually-danny.trycloudflare.com",
   "http://192.168.30.102:3000",
   "http://192.168.30.102:*",
@@ -50,38 +48,38 @@ const app = express();
   "https://feetf1rst.vercel.app",
   "https://feetf1rst-landing-page.vercel.app",
 ];
-
 app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
   })
 );
- 
-app.use(express.json());
+
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(morgan("dev"));
 
-// Static files
+// app.use("/assets", express.static(path.join(__dirname, "../assets"))); //production
 app.use("/assets", express.static(path.join(__dirname, "./assets")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-// app.use(express.static(path.join(__dirname, "public")));
 
-// API routes
 app.use("/", v1);
 app.use("/v2", v2);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ message: "404 route not found" });
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.status(404).json({
+    message: `404 route not found`,
+  });
 });
 
-// Error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  if (res.headersSent) {
-    return next(err);
-  }
-  res.status(500).json({ message: "500 Something broken!", error: err.message });
+  res.status(500).json({
+    message: `500 Something broken!`,
+    error: err.message,
+  });
 });
+
+// Make sure this line is before your routes
+app.use(express.static(path.join(__dirname, "public")));
 
 export default app;

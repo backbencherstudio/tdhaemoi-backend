@@ -1187,3 +1187,177 @@ export const shoeQuantityPerStatus = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const insurancePaymentComparison = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.user;
+    // Privat_Bezahlt //cash paymnant success
+    // Privat_offen
+  
+    // Krankenkasse_Ungenehmigt
+    // Krankenkasse_Genehmigt
+    // Query orders grouped by bezahlt status
+    const paymentCounts = await prisma.$queryRaw<
+      Array<{ bezahlt: string; count: bigint }>
+    >`
+      SELECT 
+        "bezahlt"::text,
+        COUNT(*)::bigint as count
+      FROM "customerOrders"
+      WHERE "partnerId" = ${id}::text
+        AND "bezahlt" IN ('Krankenkasse_Genehmigt', 'Krankenkasse_Ungenehmigt', 'Privat_Bezahlt', 'Privat_offen')
+      GROUP BY "bezahlt"
+    `;
+
+    /*
+    complate orders meanss "Ausgeführt"
+    1. New Customers means customers who have not placed any orders yet
+    2. Existing Customers Repeat Orders means customers who have placed one order or more
+    3. Existing Customers New Orders means customers who have placed one order but it's not complate yet
+    4. complate orders means orders who are completed order with "Ausgeführt" status
+    */
+
+    // Get order categories data
+    const [
+      completedOrdersCount,
+      newCustomersData,
+      existingCustomersRepeatData,
+      existingCustomersNewData,
+    ] = await Promise.all([
+      // Total completed orders count
+      prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*)::bigint as count
+        FROM "customerOrders"
+        WHERE "partnerId" = ${id}::text
+          AND "orderStatus" = 'Ausgeführt'
+      `,
+      // New Customers: Count of completed orders where customer has exactly 1 completed order AND no incomplete orders
+      prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*)::bigint as count
+        FROM "customerOrders" co
+        WHERE co."partnerId" = ${id}::text
+          AND co."customerId" IS NOT NULL
+          AND co."orderStatus" = 'Ausgeführt'
+          AND (
+            SELECT COUNT(*)
+            FROM "customerOrders" co2
+            WHERE co2."customerId" = co."customerId"
+              AND co2."partnerId" = ${id}::text
+              AND co2."orderStatus" = 'Ausgeführt'
+          ) = 1
+          AND NOT EXISTS (
+            SELECT 1
+            FROM "customerOrders" co3
+            WHERE co3."customerId" = co."customerId"
+              AND co3."partnerId" = ${id}::text
+              AND co3."orderStatus" != 'Ausgeführt'
+          )
+      `,
+      // Existing Customers Repeat Orders: Count of completed orders where customer has 1+ completed orders
+      prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*)::bigint as count
+        FROM "customerOrders" co
+        WHERE co."partnerId" = ${id}::text
+          AND co."customerId" IS NOT NULL
+          AND co."orderStatus" = 'Ausgeführt'
+          AND (
+            SELECT COUNT(*)
+            FROM "customerOrders" co2
+            WHERE co2."customerId" = co."customerId"
+              AND co2."partnerId" = ${id}::text
+              AND co2."orderStatus" = 'Ausgeführt'
+          ) >= 1
+      `,
+      // Existing Customers New Orders: Count of completed orders where customer has 1 completed order but also has incomplete orders
+      prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*)::bigint as count
+        FROM "customerOrders" co
+        WHERE co."partnerId" = ${id}::text
+          AND co."customerId" IS NOT NULL
+          AND co."orderStatus" = 'Ausgeführt'
+          AND (
+            SELECT COUNT(*)
+            FROM "customerOrders" co2
+            WHERE co2."customerId" = co."customerId"
+              AND co2."partnerId" = ${id}::text
+              AND co2."orderStatus" = 'Ausgeführt'
+          ) = 1
+          AND EXISTS (
+            SELECT 1
+            FROM "customerOrders" co3
+            WHERE co3."customerId" = co."customerId"
+              AND co3."partnerId" = ${id}::text
+              AND co3."orderStatus" != 'Ausgeführt'
+          )
+      `,
+    ]);
+
+    // Initialize counts
+    let privatBezahltCount = 0;
+    let privatOffenCount = 0;
+    let krankenkasseGenehmigtCount = 0;
+    let krankenkasseUngenehmigtCount = 0;
+
+    // Extract counts from query results
+    paymentCounts.forEach((item) => {
+      const count = Number(item.count || 0);
+      if (item.bezahlt === "Privat_Bezahlt") {
+        privatBezahltCount = count;
+      } else if (item.bezahlt === "Privat_offen") {
+        privatOffenCount = count;
+      } else if (item.bezahlt === "Krankenkasse_Genehmigt") {
+        krankenkasseGenehmigtCount = count;
+      } else if (item.bezahlt === "Krankenkasse_Ungenehmigt") {
+        krankenkasseUngenehmigtCount = count;
+      }
+    });
+
+    // Group counts
+    const privatCount = privatBezahltCount + privatOffenCount;
+    const insuranceCount = krankenkasseGenehmigtCount + krankenkasseUngenehmigtCount;
+
+    // Calculate total
+    const total = privatCount + insuranceCount;
+
+    // Calculate percentages
+    const privatPercentage =
+      total > 0 ? Math.round((privatCount / total) * 100 * 100) / 100 : 0;
+    const insurancePercentage =
+      total > 0 ? Math.round((insuranceCount / total) * 100 * 100) / 100 : 0;
+
+    // Extract order categories counts
+    const completedOrders = Number(completedOrdersCount[0]?.count || 0);
+    const newCustomers = Number(newCustomersData[0]?.count || 0);
+    const existingCustomersRepeat = Number(existingCustomersRepeatData[0]?.count || 0);
+    const existingCustomersNew = Number(existingCustomersNewData[0]?.count || 0);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        payment: {
+          Privat: {
+            count: privatCount,
+            percentage: privatPercentage,
+          },
+          Insurance: {
+            count: insuranceCount,
+            percentage: insurancePercentage,
+          },
+        },
+        orderCategories: {
+          completedOrders,
+          newCustomers,
+          existingCustomersRepeat,
+          existingCustomersNew,
+          newCustomersViaApp: 0,
+        },
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
