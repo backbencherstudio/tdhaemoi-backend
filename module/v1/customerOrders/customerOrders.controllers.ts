@@ -3230,12 +3230,13 @@ export const uploadBarcodeLabel = async (req: Request, res: Response) => {
       where: { id: orderId },
       data: {
         barcodeLabel: imageFile.filename,
-        barcodeCreatedAt: Date.naw(),
+        barcodeCreatedAt: new Date(),
       },
       select: {
         id: true,
         orderNumber: true,
         barcodeLabel: true,
+        barcodeCreatedAt: true,
         customer: {
           select: {
             vorname: true,
@@ -3255,6 +3256,8 @@ export const uploadBarcodeLabel = async (req: Request, res: Response) => {
         barcodeLabel: updatedOrder.barcodeLabel
           ? getImageUrl(`/uploads/${updatedOrder.barcodeLabel}`)
           : null,
+        barcodeCreatedAt: updatedOrder?.barcodeCreatedAt,
+
         customer: `${updatedOrder.customer.vorname} ${updatedOrder.customer.nachname}`,
         customerNumber: updatedOrder.customer.customerNumber,
       },
