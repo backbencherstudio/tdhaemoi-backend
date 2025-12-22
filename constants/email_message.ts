@@ -663,103 +663,106 @@ export const newImprovementEmail = (
   `;
 };
 
+const formatGermanDate = (date: Date) =>
+  new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+
+const formatGermanTime = (date: Date) =>
+  new Intl.DateTimeFormat("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date) + " Uhr";
+
 export const adminLoginNotificationEmail = (
   adminEmail: string,
   adminName: string,
-  loginDate: string,
-  loginTime: string,
+  loginDateTime: Date,
   ipAddress: string
 ): string => {
+  const loginDate = formatGermanDate(loginDateTime);
+  const loginTime = formatGermanTime(loginDateTime);
+
   return `
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <title>Admin Panel Access Alert - FeetF1rst</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  </head>
-  <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Arial', sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden;">
-      
-      <!-- Header -->
-      <tr>
-        <td style="background-color: rgb(85, 150, 112); padding: 24px 32px; text-align: center;">
-          <h2 style="color: #ffffff; font-size: 22px; margin: 0;">Admin Panel Access Alert</h2>
-        </td>
-      </tr>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin-Zugriffsbenachrichtigung - FeetF1rst</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden;">
+    
+    <tr>
+      <td style="background-color: rgb(85, 150, 112); padding: 24px 32px; text-align: center;">
+        <h2 style="color: #ffffff; font-size: 22px; margin: 0;">Admin-Panel Zugriff</h2>
+      </td>
+    </tr>
 
-      <!-- Intro -->
-      <tr>
-        <td style="padding: 24px 32px; color: #2c3e50;">
-          <p style="font-size: 16px; margin: 0 0 12px;">Hi <strong>${
-            adminName || "Admin"
-          }</strong>,</p>
-          <p style="font-size: 15px; margin: 0 0 16px;">
-            This is to confirm that your FeetF1rst admin account was accessed. Please find the login details below for your records.
-          </p>
-        </td>
-      </tr>
+    <tr>
+      <td style="padding: 24px 32px; color: #2c3e50;">
+        <p style="font-size: 16px; margin: 0 0 12px;">
+          Hallo <strong>${adminName || "Admin"}</strong>,
+        </p>
+        <p style="font-size: 15px; margin: 0 0 16px;">
+          Ihr FeetF1rst-Admin-Konto wurde erfolgreich verwendet.  
+          Nachfolgend finden Sie die Anmeldedaten.
+        </p>
+      </td>
+    </tr>
 
-      <!-- Login Info -->
-      <tr>
-        <td style="padding: 0 32px 24px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e0e0e0; border-radius: 6px; background-color: #f9fafb;">
-            <tr>
-              <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
-                <strong style="color: #2c3e50;">Email:</strong> ${adminEmail}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
-                <strong style="color: #2c3e50;">Name:</strong> ${adminName}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
-                <strong style="color: #2c3e50;">Login Date:</strong> ${loginDate}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
-                <strong style="color: #2c3e50;">Login Time:</strong> ${loginTime}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 12px 20px;">
-                <strong style="color: #2c3e50;">IP Address:</strong> ${ipAddress}
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e0e0e0; border-radius: 6px; background-color: #f9fafb;">
+          <tr>
+            <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
+              <strong>E-Mail:</strong> ${adminEmail}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
+              <strong>Name:</strong> ${adminName}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
+              <strong>Anmeldedatum:</strong> ${loginDate}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 20px; border-bottom: 1px solid #eee;">
+              <strong>Anmeldezeit:</strong> ${loginTime}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 20px;">
+              <strong>IP-Adresse:</strong> ${ipAddress}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
 
-      <!-- Professional Note -->
-      <tr>
-        <td style="padding: 0 32px 24px;">
-          <div style="background-color: #edf2ff; border-left: 4px solid #1e40af; padding: 16px; border-radius: 4px;">
-            <p style="margin: 0; font-size: 14px; color: #1e3a8a;">
-              You're receiving this message because your credentials were used to access the admin panel.  
-              If this was expected, no further action is required.  
-              For internal auditing or multi-device reviews, you may check your admin activity log at your convenience.
-            </p>
-          </div>
-        </td>
-      </tr>
-
-      <!-- Footer -->
-      <tr>
-        <td style="background-color: #f5f6f8; padding: 20px 32px; text-align: center;">
-          <p style="font-size: 13px; color: #7f8c8d; margin: 0;">
-            FeetF1rst Admin Notification System<br>
-            &copy; ${new Date().getFullYear()} FeetF1rst Corporation. All rights reserved.
-          </p>
-        </td>
-      </tr>
-    </table>
-  </body>
-  </html>
-  `;
+    <tr>
+      <td style="background-color: #f5f6f8; padding: 20px 32px; text-align: center;">
+        <p style="font-size: 13px; color: #7f8c8d; margin: 0;">
+          FeetF1rst Admin-Benachrichtigungssystem<br>
+          &copy; ${new Date().getFullYear()} FeetF1rst Corporation
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
 };
+
+
+ 
 
 export const sendPdfToEmailTamplate = (pdf: any): string => `
   <!DOCTYPE html>

@@ -57,7 +57,7 @@ export const sendPartnershipWelcomeEmail = async (
   const htmlContent = partnershipWelcomeEmail(email, password);
   await sendEmail(
     email,
-    "Welcome to TDHaemoi Partnership Program",
+    "Welcome to Feetf1rst Partnership Program",
     htmlContent
   );
 };
@@ -96,32 +96,23 @@ export const sendAdminLoginNotification = async (
   adminName: string,
   ipAddress: string
 ): Promise<void> => {
+
   const now = new Date();
-
-  const loginDate = now.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const loginTime = now.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "numeric",
-    second: "numeric",
-    hour12: true,
-  });
 
   const htmlContent = adminLoginNotificationEmail(
     adminEmail,
     adminName,
-    loginDate,
-    loginTime,
+    now,
     ipAddress
   );
 
-  await sendEmail(adminEmail, "New admin panel login detected", htmlContent);
+  await sendEmail(
+    adminEmail,
+    "New admin panel login detected",
+    htmlContent
+  );
 };
+
 
 export const sendPdfToEmail = async (email: string, pdf: any): Promise<void> => {
   try {
@@ -194,7 +185,7 @@ export const sendInvoiceEmail = async (
     const mailOptions = {
       from: `"TDHaemoi" <${process.env.NODE_MAILER_USER}>`,
       to: toEmail,
-      subject: 'Your TDHaemoi Invoice',
+      subject: 'Your Feetf1rst Invoice',
       html: htmlContent,
       attachments: [
         {
