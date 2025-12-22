@@ -3363,6 +3363,12 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
         barcodeCreatedAt: true,
         bezahlt: true,
         werkstattEmployeeId: true,
+        screenerFile: {
+          select: {
+            id: true,
+            createdAt: true,
+          },
+        },
         partner: {
           select: {
             id: true,
@@ -3797,6 +3803,15 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
             (record) => record.isPrementChange
           ).length,
           hasBarcodeScan: hasBarcodeLabel || hasBarcodeCreatedAt,
+        },
+        scannerInfo: {
+          hasScanner: !!order.screenerFile,
+          scannedAt: order.screenerFile?.createdAt
+            ? formatDate(order.screenerFile.createdAt)
+            : null,
+          timestamp: order.screenerFile?.createdAt
+            ? order.screenerFile.createdAt.toISOString()
+            : null,
         },
       },
     });
