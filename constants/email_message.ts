@@ -152,7 +152,7 @@ export const partnershipWelcomeEmail = (
               <!-- Document Header -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
-                  <td style="background-color: #003818ff; padding: 30px 40px;">
+                  <td style="background-color:rgb(85, 150, 112); padding: 30px 40px;">
                     <h1 style="color: #ffffff; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 24px; font-weight: 600; margin: 0; letter-spacing: 0.3px;">FeetF1rst Partnership Program</h1>
                   </td>
                 </tr>
@@ -187,51 +187,74 @@ export const partnershipWelcomeEmail = (
                 <tr>
                   <td style="padding: 0 40px 30px;">
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 15px;">
-                      Dear Partner,
+                      Guten Tag,
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 15px;">
-                      Thank you for joining the FeetF1rst Partnership Program. We are pleased to confirm that your partnership account has been successfully established.
+                      Guten Tag,
+                      willkommen bei FeetF1rst. Mit dieser Nachricht erhalten Sie offiziell die Berechtigung, unsere Partner-Software zu nutzen. Ab jetzt steht Ihnen eine Plattform zur Verfügung, die Prozesse vereinfacht, Entscheidungen beschleunigt und digitale Versorgung auf ein neues Niveau hebt
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
-                      Please find your account credentials below:
+                      Ihr Einstieg </br> Ihr persönlicher Zugang wurde freigeschaltet:
                     </p>
                   </td>
                 </tr>
               </table>
-              
+  
+
               <!-- Credentials Box -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                <tr>
-                  <td style="padding: 0 40px 30px;">
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border: 1px solid #e0e0e0; border-collapse: collapse;">
-                      <tr>
-                        <td style="background-color: #f5f5f5; padding: 12px 20px; border-bottom: 1px solid #e0e0e0; width: 30%;">
-                          <p style="margin: 0; font-size: 14px; font-weight: 600; color: #2c3e50;">
-                            Email Address:
-                          </p>
-                        </td>
-                        <td style="padding: 12px 20px; border-bottom: 1px solid #e0e0e0;">
-                          <p style="margin: 0; font-size: 14px; color: #2c3e50; font-family: monospace;">
-                            ${email}
-                          </p>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="background-color: #f5f5f5; padding: 12px 20px; width: 30%;">
-                          <p style="margin: 0; font-size: 14px; font-weight: 600; color: #2c3e50;">
-                            Password:
-                          </p>
-                        </td>
-                        <td style="padding: 12px 20px;">
-                          <p style="margin: 0; font-size: 14px; color: #2c3e50; font-family: monospace;">
-                            ${password}
-                          </p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+  <tr>
+    <td style="padding: 0 40px 30px;">
+      <table role="presentation" cellspacing="0" cellpadding="0" border="1" width="100%" style="border: 1px solid #e0e0e0; border-collapse: collapse;">
+        <!-- E-Mail Row -->
+        <tr>
+          <td style="background-color: #f5f5f5; padding: 12px 20px; border: 1px solid #e0e0e0; width: 30%;">
+            <p style="margin: 0; font-size: 14px; font-weight: 600; color: #2c3e50;">
+              E-Mail:
+            </p>
+          </td>
+          <td style="padding: 12px 20px; border: 1px solid #e0e0e0; white-space: nowrap;">
+            <p style="margin: 0; font-size: 14px; color: #2c3e50; font-family: monospace;">
+              ${email}
+            </p>
+          </td>
+        </tr>
+        
+        <!-- Temporäres Passwort -->
+        <tr>
+          <td style="background-color: #f5f5f5; padding: 12px 20px; border: 1px solid #e0e0e0; width: 30%;">
+            <p style="margin: 0; font-size: 14px; font-weight: 600; color: #2c3e50; white-space: nowrap;">
+              Temporäres Passwort:
+            </p>
+          </td>
+          <td style="padding: 12px 20px; border: 1px solid #e0e0e0; white-space: nowrap;">
+            <p style="margin: 0; font-size: 14px; color: #2c3e50; font-family: monospace;">
+              ${password}
+            </p>
+          </td>
+        </tr>
+        
+        <!-- Login -->
+        <tr>
+          <td style="background-color: #f5f5f5; padding: 12px 20px; border: 1px solid #e0e0e0; width: 30%;">
+            <p style="margin: 0; font-size: 14px; font-weight: 600; color: #2c3e50;">
+              Login:
+            </p>
+          </td>
+          <td style="padding: 12px 20px; border: 1px solid #e0e0e0; white-space: nowrap;">
+            <p style="margin: 0; font-size: 14px; color: #2c3e50; font-family: monospace;">
+              <a href="https://feetf1rst.com" target="_blank" style="color: #1a73e8; text-decoration: none; white-space: nowrap;">
+                https://feetf1rst.com
+              </a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+
   
               <!-- Security Notice -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
@@ -250,62 +273,16 @@ export const partnershipWelcomeEmail = (
                 </tr>
               </table>
   
-              <!-- Access Instructions -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                <tr>
-                  <td style="padding: 0 40px 30px;">
-                    <h3 style="color: #2c3e50; font-size: 16px; font-weight: 600; margin: 0 0 15px; text-transform: uppercase;">Access Instructions</h3>
-                    <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 15px;">
-                      To access your partnership account, please follow these steps:
-                    </p>
-                    <ol style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 15px; padding-left: 20px;">
-                      <li style="margin-bottom: 10px;">Navigate to our secure partner portal at <a href="${
-                        process.env.FRONTEND_URL
-                      }/login" style="color: #2980b9; text-decoration: none; font-weight: 500;">${
-    process.env.FRONTEND_URL
-  }/login</a></li>
-                      <li style="margin-bottom: 10px;">Enter your email address and temporary password as provided above</li>
-                      <li>Upon first login, you will be prompted to change your password</li>
-                    </ol>
-                  </td>
-                </tr>
-              </table>
-  
               <!-- Next Steps -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td style="padding: 0 40px 30px;">
-                    <h3 style="color: #2c3e50; font-size: 16px; font-weight: 600; margin: 0 0 15px; text-transform: uppercase;">Next Steps</h3>
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                      <tr>
-                        <td style="padding-bottom: 10px;">
-                          <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
-                            <strong>1.</strong> Complete your partnership profile
+                    <h3 style="color: #2c3e50; font-size: 16px; font-weight: 600; margin: 0 0 15px; text-transform: uppercase;">Ihr nächster Schritt</h3>
+                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
+                             Melden Sie sich an, richten Sie Ihr Profil ein und entdecken Sie die Funktionen in Ihrem eigenen Tempo.
+Wenn Sie möchten, begleiten wir Sie persönlich bei den ersten Schritten. 
+
                           </p>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding-bottom: 10px;">
-                          <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
-                            <strong>2.</strong> Review our partnership guidelines and terms
-                          </p>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding-bottom: 10px;">
-                          <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
-                            <strong>3.</strong> Explore available partnership opportunities
-                          </p>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
-                            <strong>4.</strong> Schedule an onboarding call with your partnership manager
-                          </p>
-                        </td>
-                      </tr>
-                    </table>
                   </td>
                 </tr>
               </table>
@@ -314,15 +291,15 @@ export const partnershipWelcomeEmail = (
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td style="padding: 0 40px 40px;">
-                    <h3 style="color: #2c3e50; font-size: 16px; font-weight: 600; margin: 0 0 15px; text-transform: uppercase;">Contact Information</h3>
+                    <h3 style="color: #2c3e50; font-size: 16px; font-weight: 600; margin: 0 0 15px;">Kontaktinformationen</h3>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
-                      If you have any questions or require assistance, please contact our Partnership Support Team:
+                      Sollten Fragen offen bleiben, begleiten wir Sie gerne persönlich.
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
-                      <strong>Email:</strong> <a href="mailto:partnerships@FeetF1rst.com" style="color: #2980b9; text-decoration: none;">partnerships@FeetF1rst.com</a>
+                      <strong>Email:</strong> <a href="mailto:info@feetf1rst.com" style="color: #2980b9; text-decoration: none;">partnerships@FeetF1rst.com</a>
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
-                      <strong>Phone:</strong> +1 (555) 123-4567
+                      <strong>Phone:</strong> +39 366 508 7742
                     </p>
                   </td>
                 </tr>
@@ -333,16 +310,16 @@ export const partnershipWelcomeEmail = (
                 <tr>
                   <td style="padding: 0 40px 40px;">
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 15px;">
-                      We look forward to a successful and mutually beneficial partnership.
+                      Wir freuen uns, Sie als Partner begrüßen zu dürfen.
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
                       Sincerely,
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
-                      <strong>FeetF1rst Partnership Team</strong>
+                      <strong>Mit freundlichen Grüßen</strong>
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
-                      FeetF1rst Corporation
+                      FeetF1rst Team
                     </p>
                   </td>
                 </tr>
@@ -351,8 +328,8 @@ export const partnershipWelcomeEmail = (
               <!-- Footer -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
-                  <td style="background-color: #f5f5f5; padding: 20px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
-                    <p style="color: #7f8c8d; font-size: 13px; line-height: 20px; margin: 0;">
+                  <td style="background-color:rgb(85, 150, 112); padding: 20px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+                    <p style="color:rgb(255, 255, 255); font-size: 13px; line-height: 20px; margin: 0;">
                       This is a system-generated email. Please do not reply directly to this message.<br>
                       © 2024 FeetF1rst Corporation. All rights reserved.
                     </p>
@@ -706,7 +683,7 @@ export const adminLoginNotificationEmail = (
       
       <!-- Header -->
       <tr>
-        <td style="background-color: #1a237e; padding: 24px 32px; text-align: center;">
+        <td style="background-color: rgb(85, 150, 112); padding: 24px 32px; text-align: center;">
           <h2 style="color: #ffffff; font-size: 22px; margin: 0;">Admin Panel Access Alert</h2>
         </td>
       </tr>
@@ -847,7 +824,9 @@ export const sendPdfToEmailTamplate = (pdf: any): string => `
                     This comprehensive guide includes all the exercises recommended for your specific condition.
                   </p>
                   <p style="color: #0c5460; font-size: 14px; margin: 0; font-weight: 500;">
-                    📎 <strong>Attachment:</strong> ${pdf.originalname || 'foot-exercise-program.pdf'}
+                    📎 <strong>Attachment:</strong> ${
+                      pdf.originalname || "foot-exercise-program.pdf"
+                    }
                   </p>
                 </div>
 
@@ -946,7 +925,8 @@ export const invoiceEmailTemplate = (
 
   total?: number
 ): string => {
-  const formattedTotal = typeof total === "number" ? `${total.toFixed(2)} €` : undefined;
+  const formattedTotal =
+    typeof total === "number" ? `${total.toFixed(2)} €` : undefined;
   return `
   <!DOCTYPE html>
   <html lang="en">
@@ -964,9 +944,15 @@ export const invoiceEmailTemplate = (
       </tr>
       <tr>
         <td style="padding:28px;">
-          <p style="margin:0 0 12px;font-size:15px;">Hello <strong>${customerName || "Customer"}</strong>,</p>
+          <p style="margin:0 0 12px;font-size:15px;">Hello <strong>${
+            customerName || "Customer"
+          }</strong>,</p>
           <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">Please find your invoice attached as a PDF.</p>
-          ${formattedTotal ? `<p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Total:</strong> ${formattedTotal}</p>` : ""}
+          ${
+            formattedTotal
+              ? `<p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Total:</strong> ${formattedTotal}</p>`
+              : ""
+          }
           <p style="margin:12px 0 0;font-size:14px;color:#6b7280;">If you have questions about this invoice, reply to this email and we’ll be happy to help.</p>
         </td>
       </tr>

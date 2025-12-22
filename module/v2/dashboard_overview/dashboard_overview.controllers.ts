@@ -1342,7 +1342,7 @@ export const insurancePaymentComparison = async (req: Request, res: Response) =>
           Insurance: {
             count: insuranceCount,
             percentage: insurancePercentage,
-          },
+      },
         },
         orderCategories: {
           completedOrders,

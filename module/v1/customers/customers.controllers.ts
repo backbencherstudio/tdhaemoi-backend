@@ -1555,7 +1555,6 @@ export const searchCustomers = async (req: Request, res: Response) => {
       limit = 10,
       page = 1,
     } = req.query;
-    // supports: ?geburtsdatum=2000-01-01&customerNumber=123456
 
     const userId = req.user.id;
     const userRole = req.user.role;
@@ -1567,123 +1566,95 @@ export const searchCustomers = async (req: Request, res: Response) => {
     const pageNumber = Math.max(parseInt(page as string) || 1, 1);
     const skip = (pageNumber - 1) * limitNumber;
 
-    if (
-      !search &&
-      !email &&
-      !phone &&
-      !location &&
-      !id &&
-      !name &&
-      !geburtsdatum &&
-      !customerNumber
-    ) {
-      return res.status(200).json({
-        success: true,
-        message: "No search criteria provided",
-        data: {
-          totalResults: 0,
-          totalPages: 0,
-          currentPage: pageNumber,
-          customers: [],
-        },
-      });
+    // Build search conditions array
+    const searchConditions: any[] = [];
+
+    // Always filter by user (except ADMIN can see all)
+    if (userRole !== "ADMIN") {
+      searchConditions.push({ createdBy: userId });
     }
 
-    // Base where conditions for search criteria
-    const searchConditions: any = {};
-
-    if (name && typeof name === "string") {
-      const nameQuery = name.trim();
-      if (nameQuery) {
-        const nameParts = nameQuery.split(/\s+/).filter(Boolean);
-        if (nameParts.length > 1) {
-          searchConditions.AND = [
-            { vorname: { contains: nameParts[0], mode: "insensitive" } },
-            {
-              nachname: {
-                contains: nameParts.slice(1).join(" "),
-                mode: "insensitive",
-              },
-            },
-          ];
-        } else {
-          searchConditions.OR = [
-            { vorname: { contains: nameQuery, mode: "insensitive" } },
-            { nachname: { contains: nameQuery, mode: "insensitive" } },
-          ];
-        }
-      }
-    }
-
+    // Handle general search across multiple fields
     if (search && typeof search === "string") {
       const searchQuery = search.trim();
       if (searchQuery) {
-        searchConditions.OR = [
-          { vorname: { contains: searchQuery, mode: "insensitive" } },
-          { nachname: { contains: searchQuery, mode: "insensitive" } },
-          { email: { contains: searchQuery, mode: "insensitive" } },
-          { telefon: { contains: searchQuery, mode: "insensitive" } },
-          { wohnort: { contains: searchQuery, mode: "insensitive" } },
-        ];
+        searchConditions.push({
+          OR: [
+            { vorname: { contains: searchQuery, mode: "insensitive" } },
+            { nachname: { contains: searchQuery, mode: "insensitive" } },
+            { email: { contains: searchQuery, mode: "insensitive" } },
+            { telefon: { contains: searchQuery, mode: "insensitive" } },
+            { wohnort: { contains: searchQuery, mode: "insensitive" } },
+          ],
+        });
+      }
+    } else {
+      // Specific field searches (only if no general search)
+      if (name && typeof name === "string") {
+        const nameQuery = name.trim();
+        if (nameQuery) {
+          const nameParts = nameQuery.split(/\s+/).filter(Boolean);
+          if (nameParts.length > 1) {
+            searchConditions.push({
+              AND: [
+                { vorname: { contains: nameParts[0], mode: "insensitive" } },
+                { nachname: { contains: nameParts.slice(1).join(" "), mode: "insensitive" } },
+              ],
+            });
+          } else {
+            searchConditions.push({
+              OR: [
+                { vorname: { contains: nameQuery, mode: "insensitive" } },
+                { nachname: { contains: nameQuery, mode: "insensitive" } },
+              ],
+            });
+          }
+        }
+      }
+
+      if (email && typeof email === "string" && email.trim()) {
+        searchConditions.push({
+          email: { contains: email.trim(), mode: "insensitive" },
+        });
+      }
+
+      if (phone && typeof phone === "string" && phone.trim()) {
+        searchConditions.push({
+          telefon: { contains: phone.trim(), mode: "insensitive" },
+        });
+      }
+
+      if (location && typeof location === "string" && location.trim()) {
+        searchConditions.push({
+          wohnort: { contains: location.trim(), mode: "insensitive" },
+        });
       }
     }
 
-    if (email && typeof email === "string" && email.trim() && !search) {
-      searchConditions.email = { contains: email.trim(), mode: "insensitive" };
-    }
-
-    // if (phone && typeof phone === "string" && phone.trim() && !search) {
-    //   searchConditions.telefonnummer = {
-    //     contains: phone.trim(),
-    //     mode: "insensitive",
-    //   };
-    // }
-
-    if (
-      location &&
-      typeof location === "string" &&
-      location.trim() &&
-      !search
-    ) {
-      searchConditions.wohnort = {
-        contains: location.trim(),
-        mode: "insensitive",
-      };
-    }
-
+    // Exact matches (always applied)
     if (id && typeof id === "string" && id.trim()) {
-      searchConditions.id = id.trim();
+      searchConditions.push({ id: id.trim() });
     }
 
-    if (
-      geburtsdatum &&
-      typeof geburtsdatum === "string" &&
-      geburtsdatum.trim()
-    ) {
-      searchConditions.geburtsdatum = geburtsdatum.trim();
+    if (geburtsdatum && typeof geburtsdatum === "string" && geburtsdatum.trim()) {
+      searchConditions.push({ geburtsdatum: geburtsdatum.trim() });
     }
 
     if (customerNumber) {
       const num = Number(customerNumber);
       if (Number.isFinite(num)) {
-        searchConditions.customerNumber = num;
+        searchConditions.push({ customerNumber: num });
       }
     }
 
-    let whereConditions: any = {};
+    // Build final where condition
+    const whereConditions = searchConditions.length > 0 
+      ? { AND: searchConditions }
+      : userRole !== "ADMIN" 
+        ? { createdBy: userId }
+        : {};
 
-    if (userRole === "ADMIN") {
-      if (Object.keys(searchConditions).length > 0) {
-        whereConditions = searchConditions;
-      }
-    } else {
-      if (Object.keys(searchConditions).length > 0) {
-        whereConditions.AND = [{ createdBy: userId }, searchConditions];
-      } else {
-        whereConditions.createdBy = userId;
-      }
-    }
-
+    // Execute queries in parallel
     const [total, customers] = await prisma.$transaction([
       prisma.customers.count({ where: whereConditions }),
       prisma.customers.findMany({
@@ -1693,7 +1664,6 @@ export const searchCustomers = async (req: Request, res: Response) => {
           vorname: true,
           nachname: true,
           email: true,
-          // telefonnummer: true,
           telefon: true,
           wohnort: true,
           customerNumber: true,
@@ -1706,22 +1676,25 @@ export const searchCustomers = async (req: Request, res: Response) => {
       }),
     ]);
 
-    const response = {
+    res.status(200).json({
       success: true,
       message: "Customer search results",
-      data: customers.map((customer) => ({
-        id: customer.id,
-        name: `${customer.vorname} ${customer.nachname}`,
-        email: customer.email,
-        phone: customer.telefon,
-        location: customer.wohnort,
-        customerNumber: customer.customerNumber,
-        geburtsdatum: customer.geburtsdatum,
-        createdAt: customer.createdAt,
-      })),
-    };
-
-    res.status(200).json(response);
+      data: {
+        totalResults: total,
+        totalPages: Math.ceil(total / limitNumber),
+        currentPage: pageNumber,
+        customers: customers.map((customer) => ({
+          id: customer.id,
+          name: `${customer.vorname || ""} ${customer.nachname || ""}`.trim(),
+          email: customer.email,
+          phone: customer.telefon,
+          location: customer.wohnort,
+          customerNumber: customer.customerNumber,
+          geburtsdatum: customer.geburtsdatum,
+          createdAt: customer.createdAt,
+        })),
+      },
+    });
   } catch (error: any) {
     console.error("Search Customers Error:", error);
     res.status(500).json({
