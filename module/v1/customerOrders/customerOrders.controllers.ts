@@ -10,7 +10,6 @@ import {
   sendPdfToEmail,
   sendInvoiceEmail,
 } from "../../../utils/emailService.utils";
-import { notificationSend } from "../../../utils/notification.utils";
 
 const prisma = new PrismaClient();
 
@@ -243,22 +242,16 @@ export const createOrder = async (req: Request, res: Response) => {
       }),
     ]);
 
-    // console.log("============================", versorgung?.storeId);
+    console.log("============================", versorgung?.storeId);
     if (!customer || !versorgung) {
       return res
         .status(404)
         .json({ success: false, message: "Customer or Versorgung not found" });
     }
 
-    if (!versorgung.supplyStatus || versorgung.supplyStatus.price == null) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Supply status price is not set for this versorgung. Please assign a supply status with a price.",
-      });
-    }
-
-    const totalPrice = versorgung.supplyStatus.price;
+   
+    const totalPrice =
+  Number(fussanalysePreis || 0) + Number(einlagenversorgungPreis || 0);  
 
     if (customer.fusslange1 == null || customer.fusslange2 == null) {
       return res.status(400).json({
@@ -285,8 +278,8 @@ export const createOrder = async (req: Request, res: Response) => {
           artikelHersteller: versorgung.artikelHersteller,
           versorgung: versorgung.versorgung,
           material: serializeMaterial(versorgung.material),
-          langenempfehlung: {},
-          status: "Alltagseinlagen",
+          langenempfehlung: {}, // langenempfehlung not available in Versorgungen model
+          status: "Alltagseinlagen", // Default status since it's not in Versorgungen model
           diagnosis_status: versorgung.diagnosis_status,
         },
       });
@@ -410,174 +403,14 @@ export const createOrder = async (req: Request, res: Response) => {
         } as any,
       });
 
-      return { ...newOrder, orderNumber, matchedSizeKey } as any;
+      return { ...newOrder, matchedSizeKey } as any;
     });
-
-    //====================== Appointment Creation ==============================
-    let appointmentId: string | null = null;
-
-    if (fertigstellungBis) {
-      try {
-        const appointmentDate = new Date(fertigstellungBis);
-
-        // Validate date
-        if (isNaN(appointmentDate.getTime())) {
-          console.warn(`Invalid fertigstellungBis date: ${fertigstellungBis}`);
-        } else {
-          // Fetch customer and employee data in parallel
-          const [customerData, employeeData] = await Promise.all([
-            prisma.customers.findUnique({
-              where: { id: customerId },
-              select: {
-                id: true,
-                vorname: true,
-                nachname: true,
-              },
-            }),
-            werkstattEmployeeId
-              ? prisma.employees.findUnique({
-                  where: { id: werkstattEmployeeId },
-                  select: {
-                    id: true,
-                    employeeName: true,
-                  },
-                })
-              : Promise.resolve(null),
-          ]);
-
-          // Validate customer exists
-          if (!customerData) {
-            console.warn(
-              `Customer with ID ${customerId} not found for appointment creation`
-            );
-          } else {
-            // Format time from date (HH:MM format)
-            const hours = appointmentDate
-              .getHours()
-              .toString()
-              .padStart(2, "0");
-            const minutes = appointmentDate
-              .getMinutes()
-              .toString()
-              .padStart(2, "0");
-            const timeString = `${hours}:${minutes}`;
-
-            // Format date for display
-            const formattedDate = appointmentDate.toLocaleDateString("de-DE", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            });
-
-            // Get customer name with fallback priority
-            const customerName =
-              (customerData.vorname && customerData.nachname
-                ? `${customerData.vorname} ${customerData.nachname}`.trim()
-                : customerData.vorname || customerData.nachname) ||
-              kundenName ||
-              "Customer";
-
-            // Determine employee assignment
-            let employeId: string | undefined = undefined;
-            let assignedTo: string = "";
-
-            if (employeeData) {
-              employeId = employeeData.id;
-              assignedTo = employeeData.employeeName;
-            } else if (mitarbeiter) {
-              assignedTo = mitarbeiter;
-            }
-
-            // Prepare appointment data
-            const appointmentData: any = {
-              customer_name: customerName,
-              customerId: customerId,
-              time: timeString,
-              date: appointmentDate,
-              reason: `Anprobe-Abholung`,
-              assignedTo: assignedTo,
-              duration: 0.5,
-              details: `Automatisch erstellt für Bestellung ${
-                order.orderNumber || order.id
-              }`,
-              isClient: true,
-              reminder: 30,
-              userId: partnerId,
-            };
-
-            // Set employeId for backward compatibility if employee exists
-            if (employeId) {
-              appointmentData.employeId = employeId;
-            }
-
-            // Create appointment with employee relation if employee exists
-            const appointment = await prisma.appointment.create({
-              data: {
-                ...appointmentData,
-                ...(employeId &&
-                  assignedTo && {
-                    appointmentEmployees: {
-                      create: {
-                        employeeId: employeId,
-                        assignedTo: assignedTo,
-                      },
-                    },
-                  }),
-              },
-              include: {
-                appointmentEmployees: {
-                  include: {
-                    employee: {
-                      select: {
-                        id: true,
-                        employeeName: true,
-                        email: true,
-                      },
-                    },
-                  },
-                },
-              },
-            });
-            notificationSend(
-              partnerId,
-              "Appointment_Created" as any,
-              `Termin zur Abholung am ${formattedDate} um ${timeString} Uhr`,
-              appointment.id,
-              false,
-              `/dashboard/calendar`
-            );
-
-            appointmentId = appointment.id;
-
-            // Create customer history entry for appointment
-            await prisma.customerHistorie.create({
-              data: {
-                customerId,
-                category: "Termin",
-                url: `/appointment/system-appointment/${customerId}/${appointment.id}`,
-                methord: "GET",
-                system_note: `Termin zur Abholung am ${formattedDate} um ${timeString} Uhr`,
-              },
-            });
-          }
-        }
-      } catch (appointmentError) {
-        // Log error but don't fail the order creation
-        console.error(
-          `Failed to create appointment for order ${order.id}:`,
-          appointmentError
-        );
-      }
-    }
-
-    //====================== Appointment Creation End ==============================
 
     return res.status(201).json({
       success: true,
       message: "Order created successfully",
       orderId: order.id,
       matchedSize: order.matchedSizeKey,
-      appointmentId: appointmentId,
     });
   } catch (error: any) {
     if (error?.message === "NO_MATCHED_SIZE_IN_STORE") {
@@ -1537,7 +1370,7 @@ export const updateMultiplePaymentStatus = async (
           data: {
             orderId: order.id,
             statusFrom: order.orderStatus,
-            statusTo: order.orderStatus,
+            statusTo: order.orderStatus, 
             paymentFrom: order.bezahlt,
             paymentTo: bezahlt,
             isPrementChange: true,
@@ -2210,6 +2043,7 @@ export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
   }
 };
 
+
 export const deleteMultipleOrders = async (req: Request, res: Response) => {
   try {
     const { orderIds } = req.body;
@@ -2675,7 +2509,7 @@ export const getLast30DaysOrderEinlagen = async (
 
 //-----------------------------------------------------------------
 // Helper function to format duration
-const barcodeCreatedAt = (milliseconds: number): string => {
+const formatDuration = (milliseconds: number): string => {
   const seconds = Math.floor(milliseconds / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
@@ -2728,7 +2562,7 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
 
     // Get order with all necessary relations
     const order = await prisma.customerOrders.findUnique({
-      where: { id: orderId },
+      where: { id: orderId, },
       select: {
         id: true,
         orderNumber: true,
@@ -2903,7 +2737,7 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
       ...statusTransitions.map((transition) => ({
         status: transition.status,
         statusDisplay: formatStatusName(transition.status),
-        duration: barcodeCreatedAt(
+        duration: formatDuration(
           transition.endTime
             ? transition.endTime.getTime() - transition.startTime.getTime()
             : new Date().getTime() - transition.startTime.getTime()
@@ -3076,6 +2910,353 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getSupplyInfo = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    // First, check if the order exists
+    const order = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        orderNumber: true,
+        versorgungId: true,
+        productId: true,
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Fetch product if exists
+    let productData = null;
+    if (order.productId) {
+      productData = await prisma.customerProduct.findUnique({
+        where: { id: order.productId },
+        select: {
+          id: true,
+          name: true,
+          material: true,
+          langenempfehlung: true,
+          rohlingHersteller: true,
+          artikelHersteller: true,
+          versorgung: true,
+          status: true,
+          diagnosis_status: true,
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        orderNumber: order.orderNumber,
+        productId: order.productId,
+        product: productData,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get Supply Info Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching supply info",
+      error: error.message,
+    });
+  }
+};
+
+export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
+  try {
+    // Get the picture 23 and 24 from the customer screener file
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required",
+      });
+    }
+
+    // Get customer and product/versorgung information for this order
+    const order = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: {
+        customer: {
+          select: {
+            id: true,
+            vorname: true,
+            nachname: true,
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            diagnosis_status: true,
+            material: true,
+          },
+        },
+      },
+    });
+
+    if (!order || !order.customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Order or customer not found",
+      });
+    }
+
+    const customerScreenerFile = await prisma.screener_file.findFirst({
+      where: { customerId: order.customer.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        picture_23: true,
+        picture_24: true,
+      },
+    });
+
+    if (!customerScreenerFile) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer screener file not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        customerName: `${order.customer.vorname} ${order.customer.nachname}`,
+        // Use data from customerProduct (same as in getSupplyInfo)
+        versorgungName: order.product?.name ?? null,
+        diagnosisStatus: order.product?.diagnosis_status ?? null,
+        material: order.product?.material ?? null,
+        // customerId: order.customer.id,
+        picture_23: customerScreenerFile.picture_23
+          ? getImageUrl(`/uploads/${customerScreenerFile.picture_23}`)
+          : null,
+        picture_24: customerScreenerFile.picture_24
+          ? getImageUrl(`/uploads/${customerScreenerFile.picture_24}`)
+          : null,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get Picture 23 24 By Order ID Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching picture 23 24",
+      error: error.message,
+    });
+  }
+};
+
+export const getBarcodeLabel = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required",
+      });
+    }
+
+    // Get order with partner info (avatar, address) and customer info
+    const order = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: {
+        orderNumber: true,
+        orderStatus: true,
+        geschaeftsstandort: true,
+        createdAt: true,
+        updatedAt: true,
+        customer: {
+          select: {
+            vorname: true,
+            nachname: true,
+            customerNumber: true,
+          },
+        },
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            hauptstandort: true,
+            busnessName: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Get the time when order status changed to "Ausgeführt" if applicable
+    let completedAt: Date | null = null;
+    if (order.orderStatus === "Ausgeführt") {
+      const statusHistory = await prisma.customerOrdersHistory.findFirst({
+        where: {
+          orderId: orderId,
+          statusTo: "Ausgeführt",
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        select: {
+          createdAt: true,
+        },
+      });
+      completedAt = statusHistory?.createdAt || null;
+    }
+
+    // Format partner address from hauptstandort array
+    const partnerAddress = order.partner.hauptstandort
+      ? order.partner.hauptstandort.join(", ")
+      : null;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        partner: {
+          name: order.partner.name || order.partner.busnessName || null,
+          image: order.partner.image
+            ? getImageUrl(`/uploads/${order.partner.image}`)
+            : null,
+        },
+        customer: `${order.customer.vorname} ${order.customer.nachname}`,
+        customerNumber: order.customer.customerNumber,
+        orderNumber: order.orderNumber,
+        orderStatus: order.orderStatus,
+        completedAt: completedAt, // Time when status changed to "Ausgeführt"
+        partnerAddress: order.geschaeftsstandort,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get Barcode Label Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching barcode label",
+      error: error.message,
+    });
+  }
+};
+
+export const uploadBarcodeLabel = async (req: Request, res: Response) => {
+  const files = req.files as any;
+
+  const cleanupFiles = () => {
+    if (!files) return;
+    Object.keys(files).forEach((key) => {
+      files[key].forEach((file: any) => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (err) {
+          console.error(`Failed to delete file ${file.path}`, err);
+        }
+      });
+    });
+  };
+
+  try {
+    const { orderId } = req.params;
+
+    if (!files || !files.image || !files.image[0]) {
+      return res.status(400).json({
+        success: false,
+        message: "Barcode label image file is required",
+      });
+    }
+
+    const imageFile = files.image[0];
+
+    // Check if order exists and get current barcode label
+    const existingOrder = await prisma.customerOrders.findUnique({
+      where: { id: orderId },
+      select: { id: true, barcodeLabel: true },
+    });
+
+    if (!existingOrder) {
+      cleanupFiles();
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Delete old barcode label file if it exists
+    if (existingOrder.barcodeLabel) {
+      const oldBarcodePath = path.join(
+        process.cwd(),
+        "uploads",
+        existingOrder.barcodeLabel
+      );
+      if (fs.existsSync(oldBarcodePath)) {
+        try {
+          fs.unlinkSync(oldBarcodePath);
+          console.log(`Deleted old barcode label file: ${oldBarcodePath}`);
+        } catch (err) {
+          console.error(
+            `Failed to delete old barcode label file: ${oldBarcodePath}`,
+            err
+          );
+        }
+      }
+    }
+
+    // Update order with new barcode label filename
+    const updatedOrder = await prisma.customerOrders.update({
+      where: { id: orderId },
+      data: {
+        barcodeLabel: imageFile.filename,
+        barcodeCreatedAt: Date.naw()
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        barcodeLabel: true,
+        customer: {
+          select: {
+            vorname: true,
+            nachname: true,
+            customerNumber: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Barcode label uploaded successfully",
+      data: {
+        orderId: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        barcodeLabel: updatedOrder.barcodeLabel
+          ? getImageUrl(`/uploads/${updatedOrder.barcodeLabel}`)
+          : null,
+        customer: `${updatedOrder.customer.vorname} ${updatedOrder.customer.nachname}`,
+        customerNumber: updatedOrder.customer.customerNumber,
+      },
+    });
+  } catch (error: any) {
+    cleanupFiles();
+    console.error("Upload Barcode Label Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while uploading barcode label",
+      error: error.message,
+    });
+  }
+};
+
 
 export const getNewOrderHistory = async (req: Request, res: Response) => {
   // Helper functions
@@ -3612,390 +3793,6 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong while fetching order history",
-      error: error.message,
-    });
-  }
-};
-
-export const getSupplyInfo = async (req: Request, res: Response) => {
-  try {
-    const { orderId } = req.params;
-
-    // Get order with basic info
-    const order = await prisma.customerOrders.findUnique({
-      where: { id: orderId },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            vorname: true, // Add first name
-            nachname: true,
-            fusslange1: true,
-            fusslange2: true,
-          },
-        },
-        product: {
-          select: {
-            id: true,
-            name: true,
-            material: true,
-            diagnosis_status: true,
-          },
-        },
-        store: {
-          select: {
-            groessenMengen: true,
-          },
-        },
-      },
-    });
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    // Calculate foot length
-    let targetLength = null;
-    let matchedSize = null;
-
-    if (order.customer?.fusslange1 && order.customer?.fusslange2) {
-      const foot1 = Number(order.customer.fusslange1);
-      const foot2 = Number(order.customer.fusslange2);
-      targetLength = Math.max(foot1, foot2) + 5;
-
-      if (order.store?.groessenMengen) {
-        matchedSize = determineSizeFromGroessenMengen(
-          order.store.groessenMengen,
-          targetLength
-        );
-      }
-    }
-
-    // Combine first and last name for full customer name
-    const customerName = order.customer
-      ? `${order.customer.vorname || ""} ${
-          order.customer.nachname || ""
-        }`.trim()
-      : null;
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        orderNumber: order.orderNumber,
-        productId: order.productId,
-        product: order.product,
-        fertigstellungBis: order.fertigstellungBis,
-        customerName: customerName,
-        // customerDetails: order.customer,  // Include all customer details
-        footLength: {
-          fusslange1: order.customer?.fusslange1,
-          fusslange2: order.customer?.fusslange2,
-          targetLength,
-          matchedSize,
-        },
-      },
-    });
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
-  }
-};
-
-export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
-  try {
-    const { orderId } = req.params;
-
-    if (!orderId) {
-      return res.status(400).json({
-        success: false,
-        message: "Order ID is required",
-      });
-    }
-
-    // Get order with fertigstellungBis
-    const order = await prisma.customerOrders.findUnique({
-      where: { id: orderId },
-      select: {
-        fertigstellungBis: true, // Added here
-        customer: {
-          select: {
-            id: true,
-            vorname: true,
-            nachname: true,
-          },
-        },
-        product: {
-          select: {
-            id: true,
-            name: true,
-            diagnosis_status: true,
-            material: true,
-          },
-        },
-      },
-    });
-
-    if (!order || !order.customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Order or customer not found",
-      });
-    }
-
-    const customerScreenerFile = await prisma.screener_file.findFirst({
-      where: { customerId: order.customer.id },
-      orderBy: { createdAt: "desc" },
-      select: {
-        picture_23: true,
-        picture_24: true,
-      },
-    });
-
-    if (!customerScreenerFile) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer screener file not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        fertigstellungBis: order.fertigstellungBis, // Added here
-        customerName: `${order.customer.vorname} ${order.customer.nachname}`,
-        versorgungName: order.product?.name ?? null,
-        diagnosisStatus: order.product?.diagnosis_status ?? null,
-        material: order.product?.material ?? null,
-        picture_23: customerScreenerFile.picture_23
-          ? getImageUrl(`/uploads/${customerScreenerFile.picture_23}`)
-          : null,
-        picture_24: customerScreenerFile.picture_24
-          ? getImageUrl(`/uploads/${customerScreenerFile.picture_24}`)
-          : null,
-      },
-    });
-  } catch (error: any) {
-    console.error("Get Picture 23 24 By Order ID Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong while fetching picture 23 24",
-      error: error.message,
-    });
-  }
-};
-
-export const getBarcodeLabel = async (req: Request, res: Response) => {
-  try {
-    const { orderId } = req.params;
-
-    if (!orderId) {
-      return res.status(400).json({
-        success: false,
-        message: "Order ID is required",
-      });
-    }
-
-    // Get order with partner info (avatar, address) and customer info
-    const order = await prisma.customerOrders.findUnique({
-      where: { id: orderId },
-      select: {
-        orderNumber: true,
-        orderStatus: true,
-        geschaeftsstandort: true,
-        createdAt: true,
-        updatedAt: true,
-        barcodeLabel: true,
-        barcodeCreatedAt: true,
-        customer: {
-          select: {
-            vorname: true,
-            nachname: true,
-            customerNumber: true,
-          },
-        },
-        partner: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-            hauptstandort: true,
-            busnessName: true,
-          },
-        },
-      },
-    });
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    // Get the time when order status changed to "Ausgeführt" if applicable
-    let completedAt: Date | null = null;
-    if (order.orderStatus === "Ausgeführt") {
-      const statusHistory = await prisma.customerOrdersHistory.findFirst({
-        where: {
-          orderId: orderId,
-          statusTo: "Ausgeführt",
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        select: {
-          createdAt: true,
-        },
-      });
-      completedAt = statusHistory?.createdAt || null;
-    }
-
-    // Format partner address from hauptstandort array
-    const partnerAddress = order.partner.hauptstandort
-      ? order.partner.hauptstandort.join(", ")
-      : null;
-
-    res.status(200).json({
-      success: true,
-      data: {
-        partner: {
-          name: order.partner.name || order.partner.busnessName || null,
-          image: order.partner.image
-            ? getImageUrl(`/uploads/${order.partner.image}`)
-            : null,
-        },
-        customer: `${order.customer.vorname} ${order.customer.nachname}`,
-        customerNumber: order.customer.customerNumber,
-        orderNumber: order.orderNumber,
-        orderStatus: order.orderStatus,
-        completedAt: completedAt, // Time when status changed to "Ausgeführt"
-        partnerAddress: order.geschaeftsstandort,
-        barcodeLabel: order.barcodeLabel
-          ? getImageUrl(`/uploads/${order.barcodeLabel}`)
-          : null,
-        barcodeCreatedAt: order.barcodeCreatedAt,
-      },
-    });
-  } catch (error: any) {
-    console.error("Get Barcode Label Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong while fetching barcode label",
-      error: error.message,
-    });
-  }
-};
-
-export const uploadBarcodeLabel = async (req: Request, res: Response) => {
-  const files = req.files as any;
-
-  const cleanupFiles = () => {
-    if (!files) return;
-    Object.keys(files).forEach((key) => {
-      files[key].forEach((file: any) => {
-        try {
-          fs.unlinkSync(file.path);
-        } catch (err) {
-          console.error(`Failed to delete file ${file.path}`, err);
-        }
-      });
-    });
-  };
-
-  try {
-    const { orderId } = req.params;
-
-    if (!files || !files.image || !files.image[0]) {
-      return res.status(400).json({
-        success: false,
-        message: "Barcode label image file is required",
-      });
-    }
-
-    const imageFile = files.image[0];
-
-    // Check if order exists and get current barcode label
-    const existingOrder = await prisma.customerOrders.findUnique({
-      where: { id: orderId },
-      select: { id: true, barcodeLabel: true },
-    });
-
-    if (!existingOrder) {
-      cleanupFiles();
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    // Delete old barcode label file if it exists
-    if (existingOrder.barcodeLabel) {
-      const oldBarcodePath = path.join(
-        process.cwd(),
-        "uploads",
-        existingOrder.barcodeLabel
-      );
-      if (fs.existsSync(oldBarcodePath)) {
-        try {
-          fs.unlinkSync(oldBarcodePath);
-          console.log(`Deleted old barcode label file: ${oldBarcodePath}`);
-        } catch (err) {
-          console.error(
-            `Failed to delete old barcode label file: ${oldBarcodePath}`,
-            err
-          );
-        }
-      }
-    }
-
-    // Update order with new barcode label filename
-    const updatedOrder = await prisma.customerOrders.update({
-      where: { id: orderId },
-      data: {
-        barcodeLabel: imageFile.filename,
-        barcodeCreatedAt: new Date(),
-      },
-      select: {
-        id: true,
-        orderNumber: true,
-        barcodeLabel: true,
-        barcodeCreatedAt: true,
-        customer: {
-          select: {
-            vorname: true,
-            nachname: true,
-            customerNumber: true,
-          },
-        },
-      },
-    });
-
-    res.status(200).json({
-      success: true,
-      message: "Barcode label uploaded successfully",
-      data: {
-        orderId: updatedOrder.id,
-        orderNumber: updatedOrder.orderNumber,
-        barcodeLabel: updatedOrder.barcodeLabel
-          ? getImageUrl(`/uploads/${updatedOrder.barcodeLabel}`)
-          : null,
-        customer: `${updatedOrder.customer.vorname} ${updatedOrder.customer.nachname}`,
-        customerNumber: updatedOrder.customer.customerNumber,
-        barcodeCreatedAt: updatedOrder.barcodeCreatedAt,
-      },
-    });
-  } catch (error: any) {
-    cleanupFiles();
-    console.error("Upload Barcode Label Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong while uploading barcode label",
       error: error.message,
     });
   }
