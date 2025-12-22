@@ -33,7 +33,7 @@ export const sendEmail = async (
   });
 
   const mailOptions = {
-    from: `"TDHaemoi" <${process.env.NODE_MAILER_USER}>`,
+    from: `"Feetf1rst " <${process.env.NODE_MAILER_USER}>`,
     to,
     subject,
     html: htmlContent,
@@ -134,9 +134,9 @@ export const sendPdfToEmail = async (email: string, pdf: any): Promise<void> => 
     });
 
     const mailOptions = {
-      from: `"TDHaemoi" <${process.env.NODE_MAILER_USER}>`,
+      from: `"Feetf1rst " <${process.env.NODE_MAILER_USER}>`,
       to: email,
-      subject: 'Your Foot Exercise Program - TDHaemoi',
+      subject: 'Your Foot Exercise Program - Feetf1rst ',
       html: htmlContent,
       attachments: [
         {
@@ -183,7 +183,7 @@ export const sendInvoiceEmail = async (
     });
 
     const mailOptions = {
-      from: `"TDHaemoi" <${process.env.NODE_MAILER_USER}>`,
+      from: `"Feetf1rst " <${process.env.NODE_MAILER_USER}>`,
       to: toEmail,
       subject: 'Your Feetf1rst Invoice',
       html: htmlContent,
