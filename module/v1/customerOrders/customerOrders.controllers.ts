@@ -154,7 +154,6 @@ export const createOrder = async (req: Request, res: Response) => {
     const {
       customerId,
       versorgungId,
-
       einlagentyp,
       überzug,
       menge,
@@ -163,7 +162,6 @@ export const createOrder = async (req: Request, res: Response) => {
       kostenvoranschlag,
       ausführliche_diagnose,
       versorgung_laut_arzt,
-      // Inline order payload fields
       kundenName,
       auftragsDatum,
       wohnort,
@@ -177,17 +175,21 @@ export const createOrder = async (req: Request, res: Response) => {
       fussanalysePreis,
       einlagenversorgungPreis,
       werkstattEmployeeId,
+      screenerId,
     } = req.body;
     const partnerId = req.user.id;
-
-    console.log(bezahlt);
-
-    // console.log(customerId, versorgungId, partnerId);
 
     if (!customerId || !versorgungId) {
       return res.status(400).json({
         success: false,
         message: "Customer ID and Versorgung ID are required",
+      });
+    }
+
+    if (!screenerId) {
+      return res.status(400).json({
+        success: false,
+        message: "screenerId are required",
       });
     }
 
@@ -209,6 +211,18 @@ export const createOrder = async (req: Request, res: Response) => {
         success: false,
         message: "Invalid payment status",
         validStatuses: Array.from(validPaymentStatuses),
+      });
+    }
+
+    const validScreenerFile = await prisma.screener_file.findUnique({
+      where: { id: screenerId },
+      select: { id: true },
+    });
+
+    if (!validScreenerFile) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid screener file ID",
       });
     }
 
@@ -249,9 +263,8 @@ export const createOrder = async (req: Request, res: Response) => {
         .json({ success: false, message: "Customer or Versorgung not found" });
     }
 
-   
     const totalPrice =
-  Number(fussanalysePreis || 0) + Number(einlagenversorgungPreis || 0);  
+      Number(fussanalysePreis || 0) + Number(einlagenversorgungPreis || 0);
 
     if (customer.fusslange1 == null || customer.fusslange2 == null) {
       return res.status(400).json({
@@ -1370,7 +1383,7 @@ export const updateMultiplePaymentStatus = async (
           data: {
             orderId: order.id,
             statusFrom: order.orderStatus,
-            statusTo: order.orderStatus, 
+            statusTo: order.orderStatus,
             paymentFrom: order.bezahlt,
             paymentTo: bezahlt,
             isPrementChange: true,
@@ -2043,7 +2056,6 @@ export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
   }
 };
 
-
 export const deleteMultipleOrders = async (req: Request, res: Response) => {
   try {
     const { orderIds } = req.body;
@@ -2562,7 +2574,7 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
 
     // Get order with all necessary relations
     const order = await prisma.customerOrders.findUnique({
-      where: { id: orderId, },
+      where: { id: orderId },
       select: {
         id: true,
         orderNumber: true,
@@ -3217,7 +3229,7 @@ export const uploadBarcodeLabel = async (req: Request, res: Response) => {
       where: { id: orderId },
       data: {
         barcodeLabel: imageFile.filename,
-        barcodeCreatedAt: Date.naw()
+        barcodeCreatedAt: Date.naw(),
       },
       select: {
         id: true,
@@ -3256,7 +3268,6 @@ export const uploadBarcodeLabel = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 export const getNewOrderHistory = async (req: Request, res: Response) => {
   // Helper functions

@@ -578,8 +578,9 @@ model screener_file {
   archIndex1   String? //B120  (.csv)
   archIndex2   String? //C120  (.csv)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  customerOrders customerOrders[]
 
   @@index([customerId])
   @@index([id])
@@ -719,6 +720,9 @@ model customerOrders {
   versorgungId String? // Add this
   Versorgungen Versorgungen? @relation(fields: [versorgungId], references: [id], onDelete: SetNull)
 
+  screenerId String?
+  screenerFile   screener_file? @relation(fields: [screenerId], references: [id], onDelete: SetNull)
+
   fußanalyse        Float?
   einlagenversorgung Float?
   totalPrice         Float
@@ -754,20 +758,20 @@ model customerOrders {
   store   Stores? @relation(fields: [storeId], references: [id], onDelete: SetNull)
 
   // Werkstattzettel (inline fields to avoid extra API)
-  kundenName              String?
-  auftragsDatum           DateTime?
-  wohnort                 String?
-  telefon                 String?
-  email                   String?
-  geschaeftsstandort      String?
-  mitarbeiter             String?
-  fertigstellungBis       DateTime?
-  versorgung              String?
+  kundenName         String?
+  auftragsDatum      DateTime?
+  wohnort            String?
+  telefon            String?
+  email              String?
+  geschaeftsstandort String?
+  mitarbeiter        String?
+  fertigstellungBis  DateTime?
+  versorgung         String?
 
   fussanalysePreis        Float?
   einlagenversorgungPreis Float?
 
-  werkstattEmployeeId     String?
+  werkstattEmployeeId String?
 
   priority                Priority?               @default(Normal)
   customerHistories       customerHistorie[]      @relation("OrderCustomerHistorie")
@@ -775,7 +779,7 @@ model customerOrders {
   customerVersorgungen    customer_versorgungen?  @relation(fields: [customer_versorgungenId], references: [id])
   customer_versorgungenId String?
 
-  barcodeLabel String?
+  barcodeLabel     String?
   barcodeCreatedAt DateTime?
   // KrankenkasseStatus String? @default("Krankenkasse_Ungenehmigt")
 
