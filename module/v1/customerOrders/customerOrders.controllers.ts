@@ -3085,8 +3085,10 @@ export const getBarcodeLabel = async (req: Request, res: Response) => {
         orderNumber: true,
         orderStatus: true,
         geschaeftsstandort: true,
+        barcodeCreatedAt: true,
         createdAt: true,
         updatedAt: true,
+
         customer: {
           select: {
             vorname: true,
@@ -3147,6 +3149,7 @@ export const getBarcodeLabel = async (req: Request, res: Response) => {
         },
         customer: `${order.customer.vorname} ${order.customer.nachname}`,
         customerNumber: order.customer.customerNumber,
+        barcodeCreatedAt: order.barcodeCreatedAt,
         orderNumber: order.orderNumber,
         orderStatus: order.orderStatus,
         completedAt: completedAt, // Time when status changed to "Ausgeführt"
