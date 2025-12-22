@@ -720,8 +720,8 @@ model customerOrders {
   versorgungId String? // Add this
   Versorgungen Versorgungen? @relation(fields: [versorgungId], references: [id], onDelete: SetNull)
 
-  screenerId String?
-  screenerFile   screener_file? @relation(fields: [screenerId], references: [id], onDelete: SetNull)
+  screenerId   String?
+  screenerFile screener_file? @relation(fields: [screenerId], references: [id], onDelete: SetNull)
 
   fußanalyse        Float?
   einlagenversorgung Float?
