@@ -320,6 +320,7 @@ export const createOrder = async (req: Request, res: Response) => {
           kostenvoranschlag,
           storeId: versorgung?.storeId ?? null,
           // bezahlt: werkstattBezahlt ?? null,
+          screenerId,
           bezahlt: bezahlt ?? null,
           kundenName: kundenName ?? null,
           auftragsDatum: auftragsDatum ? new Date(auftragsDatum) : null,
