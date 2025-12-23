@@ -14,7 +14,11 @@ import customers from "./customers/customers.routes";
 import einlagenFinder from "./einlagenFinder/einlagenFinder.routes";
 import exercises from "./exercises/exercises.routes";
 import customerHistory from "./customers-history/customersHistory.routes";
+
 import customerOrders from "./customerOrders/customerOrders.routes";
+import trackOrders from "./customerOrders/track_orders/track_orders.routes"
+import manageOrders from "./customerOrders/manage_orders/manage_orders.routes"
+
 import customerPrice from "./customerPrice/customerPrice.routes";
 import workeshopNote from "./workshopNote/workshopNote.routes";
 import storage from "./storage/storage.routes";
@@ -41,7 +45,12 @@ const moduleRoutes = [
   { path: "/einlagen-finder", route: einlagenFinder },
   { path: "/exercises", route: exercises },
   { path: "/customers-history", route: customerHistory },
+
+  //insole
   { path: "/customer-orders", route: customerOrders },
+  { path: "/customer-orders/track", route: trackOrders },
+  { path: "/customer-orders/manage", route: manageOrders },
+
   { path: "/customer-price", route: customerPrice },
   { path: "/workshop-note", route: workeshopNote },
   { path: "/store", route: storage },

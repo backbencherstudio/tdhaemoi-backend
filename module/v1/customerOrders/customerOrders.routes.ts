@@ -5,30 +5,19 @@ import {
   createOrder,
   getAllOrders,
   getOrderById,
-  
-  updateMultipleOrderStatuses,
-  updateOrderPriority,
   uploadInvoice,
   uploadInvoiceOnly,
   sendInvoiceToCustomer,
   deleteMultipleOrders,
   deleteOrder,
   getOrdersByCustomerId,
-  // updateMultiplekrankenkasseStatus,
-  updateMultiplePaymentStatus,
-  getLast40DaysOrderStats,
-  getEinlagenInProduktion,
-  getLast30DaysOrderEinlagen,
-  getOrdersHistory,
-  getSupplyInfo,
-  getPicture2324ByOrderId,
-  getBarcodeLabel,
-  uploadBarcodeLabel,
-  getNewOrderHistory
+
+  getEinlagenInProduktion
+ 
 } from "./customerOrders.controllers";
 import upload from "../../../config/multer.config";
  
-const router = express.Router();
+export const router = express.Router();
 
 router.get(
   "/einlagen-in-produktion",
@@ -43,21 +32,6 @@ router.get(
   "/customer/:customerId",
   verifyUser("ADMIN", "PARTNER"),
   getOrdersByCustomerId
-);
-
-router.patch("/payment-status", verifyUser("ADMIN", "PARTNER"), updateMultiplePaymentStatus);
-
-// Add this route to your router
-router.patch(
-  "/status/multiple/update",
-  verifyUser("ADMIN", "PARTNER"),
-  updateMultipleOrderStatuses
-);
-//write a 
-router.patch(
-  "/update/priority/:id",
-  verifyUser("ADMIN", "PARTNER"),
-  updateOrderPriority
 );
 
 router.post(
@@ -80,11 +54,6 @@ router.post(
   sendInvoiceToCustomer
 );
 
-router.get(
-  "/stats/retio",
-  verifyUser("ADMIN", "PARTNER"),
-  getLast40DaysOrderStats
-);
 
 router.delete(
   "/multiple/delete",
@@ -94,17 +63,8 @@ router.delete(
 
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteOrder);
 
-router.get("/lest30days/einlagen", verifyUser("ADMIN", "PARTNER"), getLast30DaysOrderEinlagen);
 
-//3 panda
 
-router.get("/history/orders/:orderId", verifyUser("ADMIN", "PARTNER"), getOrdersHistory);
-router.get("/order-history/:orderId", verifyUser("ADMIN", "PARTNER"), getNewOrderHistory);
-router.get("/supply-info/:orderId", verifyUser("ADMIN", "PARTNER"), getSupplyInfo);
-router.get("/picture-23-24/:orderId", verifyUser("ADMIN", "PARTNER"), getPicture2324ByOrderId);
 
-router.get("/barcode-label/:orderId", verifyUser("ADMIN", "PARTNER"), getBarcodeLabel);
-// Upload barcode label using multer - replaces existing barcode if one exists
-router.post("/upload-barcode-label/:orderId", verifyUser("ADMIN", "PARTNER"), upload.fields([{ name: "image", maxCount: 1 }]), uploadBarcodeLabel);
 
 export default router;
