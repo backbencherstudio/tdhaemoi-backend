@@ -222,7 +222,9 @@ export const updateMultipleOrderStatuses = async (
               wohnort: true,
             },
           },
+          
           product: true,
+          
           partner: {
             select: {
               id: true,

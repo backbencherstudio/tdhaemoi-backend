@@ -275,6 +275,7 @@ model Employees {
   massschuheOrders         massschuhe_order[]
   customerOrdersHistories  customerOrdersHistory[]
   massschuheOrderHistories massschuhe_order_history[]
+  customerOrders           customerOrders[]
 
   @@index([createdAt])
 }
@@ -771,7 +772,11 @@ model customerOrders {
   fussanalysePreis        Float?
   einlagenversorgungPreis Float?
 
-  werkstattEmployeeId String?
+  // werkstattEmployeeId String?
+  employeeId  String?
+  employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  //make a relatio with employe
+
 
   priority                Priority?               @default(Normal)
   customerHistories       customerHistorie[]      @relation("OrderCustomerHistorie")

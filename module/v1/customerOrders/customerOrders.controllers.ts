@@ -299,47 +299,81 @@ export const createOrder = async (req: Request, res: Response) => {
 
       const orderNumber = await getNextOrderNumberForPartner(tx, partnerId);
 
+      // Try to get employeeId - try to find default if not provided
+      let finalEmployeeId = werkstattEmployeeId;
+      if (!finalEmployeeId) {
+        // Try to find a default employee for this partner
+        const defaultEmployee = await tx.employees.findFirst({
+          where: { partnerId },
+          select: { id: true },
+        });
+        if (defaultEmployee) {
+          finalEmployeeId = defaultEmployee.id;
+        }
+      }
+
+      // Build order data with nested relations
+      const orderData: any = {
+        orderNumber,
+        fußanalyse: null, // Price now comes from supplyStatus
+        einlagenversorgung: null, // Price now comes from supplyStatus
+        totalPrice,
+        product: { connect: { id: customerProduct.id } },
+        statusUpdate: new Date(),
+        ausführliche_diagnose,
+        versorgung_laut_arzt,
+        einlagentyp,
+        überzug,
+        menge,
+        versorgung_note,
+        schuhmodell_wählen,
+        kostenvoranschlag,
+        bezahlt: bezahlt ?? null,
+        kundenName: kundenName ?? null,
+        auftragsDatum: auftragsDatum ? new Date(auftragsDatum) : null,
+        wohnort: wohnort ?? null,
+        telefon: telefon ?? null,
+        email: werkstattEmail ?? null,
+        geschaeftsstandort: geschaeftsstandort ?? null,
+        mitarbeiter: mitarbeiter ?? null,
+        fertigstellungBis: fertigstellungBis
+          ? new Date(fertigstellungBis)
+          : null,
+        versorgung: werkstattVersorgung ?? null,
+      };
+
+      // Add optional relations only if they exist
+      if (customerId) {
+        orderData.customer = { connect: { id: customerId } };
+      }
+      if (partnerId) {
+        orderData.partner = { connect: { id: partnerId } };
+      }
+      if (versorgungId) {
+        orderData.Versorgungen = { connect: { id: versorgungId } };
+      }
+      if (versorgung?.storeId) {
+        orderData.store = { connect: { id: versorgung.storeId } };
+      }
+      if (screenerId) {
+        orderData.screenerFile = { connect: { id: screenerId } };
+      }
+      if (finalEmployeeId) {
+        orderData.employee = { connect: { id: finalEmployeeId } };
+      }
+      // Add optional price fields
+      if (fussanalysePreis !== undefined && fussanalysePreis !== null) {
+        orderData.fussanalysePreis = fussanalysePreis;
+      }
+      if (einlagenversorgungPreis !== undefined && einlagenversorgungPreis !== null) {
+        orderData.einlagenversorgungPreis = einlagenversorgungPreis;
+      }
+
       const newOrder: any = await tx.customerOrders.create({
-        data: {
-          customerId,
-          partnerId,
-          orderNumber,
-          versorgungId: versorgungId,
-          fußanalyse: null, // Price now comes from supplyStatus
-          einlagenversorgung: null, // Price now comes from supplyStatus
-          totalPrice,
-          productId: customerProduct.id,
-          statusUpdate: new Date(),
-          ausführliche_diagnose,
-          versorgung_laut_arzt,
-          einlagentyp,
-          überzug,
-          menge,
-          versorgung_note,
-          schuhmodell_wählen,
-          kostenvoranschlag,
-          storeId: versorgung?.storeId ?? null,
-          // bezahlt: werkstattBezahlt ?? null,
-          screenerId,
-          bezahlt: bezahlt ?? null,
-          kundenName: kundenName ?? null,
-          auftragsDatum: auftragsDatum ? new Date(auftragsDatum) : null,
-          wohnort: wohnort ?? null,
-          telefon: telefon ?? null,
-          email: werkstattEmail ?? null,
-          geschaeftsstandort: geschaeftsstandort ?? null,
-          mitarbeiter: mitarbeiter ?? null,
-          fertigstellungBis: fertigstellungBis
-            ? new Date(fertigstellungBis)
-            : null,
-          versorgung: werkstattVersorgung ?? null,
-          fussanalysePreis: fussanalysePreis ?? undefined,
-          einlagenversorgungPreis: einlagenversorgungPreis ?? undefined,
-          werkstattEmployeeId: werkstattEmployeeId ?? null,
-        } as any,
+        data: orderData,
         select: {
           id: true,
-          werkstattEmployeeId: true,
+          employeeId: true,
         } as any,
       });
 
@@ -916,7 +950,13 @@ export const getAllOrders = async (req: Request, res: Response) => {
           auftragsDatum: true,
           fertigstellungBis: true,
           versorgung: true,
-          bezahlt: true,
+          employee: {
+            select: {
+              accountName: true,
+              employeeName: true,
+              email: true,
+            },
+          },
         },
       }),
       prisma.customerOrders.count({ where }),
