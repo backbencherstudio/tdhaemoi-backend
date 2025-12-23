@@ -180,13 +180,10 @@ model SuggestionFeetf1rst {
 
 // name, email, firma, phone, suggestion
 model ImprovementSuggestion {
-  id         String  @id @default(uuid())
-  name       String
-  email      String
-  firma      String
-  phone      String
+  id         String   @id @default(uuid())
   suggestion String
   category   String?
+  image      String[]
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String

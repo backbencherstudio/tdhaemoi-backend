@@ -314,32 +314,32 @@ export const createOrder = async (req: Request, res: Response) => {
 
       // Build order data with nested relations
       const orderData: any = {
-        orderNumber,
-        fußanalyse: null, // Price now comes from supplyStatus
-        einlagenversorgung: null, // Price now comes from supplyStatus
-        totalPrice,
+          orderNumber,
+          fußanalyse: null, // Price now comes from supplyStatus
+          einlagenversorgung: null, // Price now comes from supplyStatus
+          totalPrice,
         product: { connect: { id: customerProduct.id } },
-        statusUpdate: new Date(),
-        ausführliche_diagnose,
-        versorgung_laut_arzt,
-        einlagentyp,
-        überzug,
-        menge,
-        versorgung_note,
-        schuhmodell_wählen,
-        kostenvoranschlag,
-        bezahlt: bezahlt ?? null,
-        kundenName: kundenName ?? null,
-        auftragsDatum: auftragsDatum ? new Date(auftragsDatum) : null,
-        wohnort: wohnort ?? null,
-        telefon: telefon ?? null,
-        email: werkstattEmail ?? null,
-        geschaeftsstandort: geschaeftsstandort ?? null,
-        mitarbeiter: mitarbeiter ?? null,
-        fertigstellungBis: fertigstellungBis
-          ? new Date(fertigstellungBis)
-          : null,
-        versorgung: werkstattVersorgung ?? null,
+          statusUpdate: new Date(),
+          ausführliche_diagnose,
+          versorgung_laut_arzt,
+          einlagentyp,
+          überzug,
+          menge,
+          versorgung_note,
+          schuhmodell_wählen,
+          kostenvoranschlag,
+          bezahlt: bezahlt ?? null,
+          kundenName: kundenName ?? null,
+          auftragsDatum: auftragsDatum ? new Date(auftragsDatum) : null,
+          wohnort: wohnort ?? null,
+          telefon: telefon ?? null,
+          email: werkstattEmail ?? null,
+          geschaeftsstandort: geschaeftsstandort ?? null,
+          mitarbeiter: mitarbeiter ?? null,
+          fertigstellungBis: fertigstellungBis
+            ? new Date(fertigstellungBis)
+            : null,
+          versorgung: werkstattVersorgung ?? null,
       };
 
       // Add optional relations only if they exist
@@ -952,8 +952,8 @@ export const getAllOrders = async (req: Request, res: Response) => {
           versorgung: true,
           employee: {
             select: {
-              accountName: true,
-              employeeName: true,
+            accountName: true,
+            employeeName: true,
               email: true,
             },
           },

@@ -10,6 +10,7 @@ import {
   deleteAllImprovements,
 } from "./suggestions.controllers";
 import { verifyUser } from "../../../middleware/verifyUsers";
+import upload from "../../../config/multer.config";
 
 const router = express.Router();
 
@@ -20,10 +21,10 @@ router.delete("/feetf1rst/:id", verifyUser("PARTNER"), deleteSuggestion);
 router.delete("/feetf1rst", verifyUser("PARTNER"), deleteAllSuggestions);
 
 
-router.post("/improvement", verifyUser("PARTNER", "ADMIN"), createImprovement);
+router.post("/improvement", verifyUser("PARTNER", "ADMIN"), upload.array("images", 100), createImprovement);
 
-router.get("/improvement", verifyUser("PARTNER"), getAllImprovements);
-router.delete("/improvement/:id", verifyUser("PARTNER"), deleteImprovement);
-router.delete("/improvement", verifyUser("PARTNER"), deleteAllImprovements);
+router.get("/improvement", getAllImprovements);
+router.delete("/improvement",  deleteImprovement);
+router.delete("/improvement/all", verifyUser("PARTNER"), deleteAllImprovements);
 
 export default router;
