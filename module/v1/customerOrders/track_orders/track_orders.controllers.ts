@@ -46,6 +46,50 @@ const formatDuration = (milliseconds: number): string => {
   return `${seconds}s`;
 };
 
+// Helper functions for size determination
+const extractLengthValue = (value: any): number | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value === "object" && !Array.isArray(value)) {
+    if (Object.prototype.hasOwnProperty.call(value, "length")) {
+      const lengthNumber = Number((value as any).length);
+      return Number.isFinite(lengthNumber) ? lengthNumber : null;
+    }
+  }
+
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const determineSizeFromGroessenMengen = (
+  groessenMengen: any,
+  targetLength: number
+): string | null => {
+  if (!groessenMengen || typeof groessenMengen !== "object") {
+    return null;
+  }
+
+  let closestSizeKey: string | null = null;
+  let smallestDiff = Infinity;
+
+  for (const [sizeKey, sizeData] of Object.entries(
+    groessenMengen as Record<string, any>
+  )) {
+    const lengthValue = extractLengthValue(sizeData);
+    if (lengthValue === null) {
+      continue;
+    }
+    const diff = Math.abs(targetLength - lengthValue);
+    if (diff < smallestDiff) {
+      smallestDiff = diff;
+      closestSizeKey = sizeKey;
+    }
+  }
+
+  return closestSizeKey;
+};
 
 export const getLast40DaysOrderStats = async (req: Request, res: Response) => {
   const formatChartDate = (dateString: string): string => {
@@ -1235,7 +1279,7 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
 
-    // First, check if the order exists
+    // Get order with customer and store information
     const order = await prisma.customerOrders.findUnique({
       where: { id: orderId },
       select: {
@@ -1243,6 +1287,23 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
         orderNumber: true,
         versorgungId: true,
         productId: true,
+        customerId: true,
+        storeId: true,
+        customer: {
+          select: {
+            id: true,
+            fusslange1: true,
+            fusslange2: true,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            produktname: true,
+            hersteller: true,
+            groessenMengen: true,
+          },
+        },
       },
     });
 
@@ -1272,12 +1333,58 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
       });
     }
 
+    // Calculate foot size information
+    let footSizeData = null;
+    let matchedSizeKey: string | null = null;
+    let matchedSizeLength: number | null = null;
+    let largerFusslange: number | null = null;
+
+    if (order.customer) {
+      const { fusslange1, fusslange2 } = order.customer;
+      
+      if (fusslange1 != null && fusslange2 != null) {
+        largerFusslange = Math.max(
+          Number(fusslange1) + 5,
+          Number(fusslange2) + 5
+        );
+
+        footSizeData = {
+          fusslange1: Number(fusslange1),
+          fusslange2: Number(fusslange2),
+          largerFusslange,
+        };
+
+        // Determine matched size from store if store exists
+        if (order.store?.groessenMengen && typeof order.store.groessenMengen === "object") {
+          matchedSizeKey = determineSizeFromGroessenMengen(
+            order.store.groessenMengen,
+            largerFusslange
+          );
+
+          // Extract length for the matched size
+          if (matchedSizeKey) {
+            const matchedSizeData = (order.store.groessenMengen as Record<string, any>)[matchedSizeKey];
+            matchedSizeLength = extractLengthValue(matchedSizeData);
+          }
+        }
+      }
+    }
+
     return res.status(200).json({
       success: true,
       data: {
         orderNumber: order.orderNumber,
         productId: order.productId,
         product: productData,
+        footSize: footSizeData,
+        store: order.store && matchedSizeKey
+          ? {
+              produktname: order.store.produktname,
+              hersteller: order.store.hersteller,
+              matchedSize: matchedSizeKey,
+              length: matchedSizeLength,
+            }
+          : null,
       },
     });
   } catch (error: any) {
@@ -1319,6 +1426,7 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
             name: true,
             diagnosis_status: true,
             material: true,
+            versorgung: true,
           },
         },
       },
@@ -1355,6 +1463,8 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
         versorgungName: order.product?.name ?? null,
         diagnosisStatus: order.product?.diagnosis_status ?? null,
         material: order.product?.material ?? null,
+        versorgung: order.product?.versorgung ?? null,
+
         // customerId: order.customer.id,
         picture_23: customerScreenerFile.picture_23
           ? getImageUrl(`/uploads/${customerScreenerFile.picture_23}`)
