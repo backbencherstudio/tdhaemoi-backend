@@ -1388,7 +1388,7 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
       });
     }
 
-    // Get customer and product/versorgung information for this order
+    // Get order with customer, product, and store information in single query
     const order = await prisma.customerOrders.findUnique({
       where: { id: orderId },
       select: {
@@ -1397,6 +1397,8 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
             id: true,
             vorname: true,
             nachname: true,
+            fusslange1: true,
+            fusslange2: true,
           },
         },
         product: {
@@ -1406,6 +1408,13 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
             diagnosis_status: true,
             material: true,
             versorgung: true,
+          },
+        },
+        store: {
+          select: {
+            produktname: true,
+            hersteller: true,
+            groessenMengen: true,
           },
         },
       },
@@ -1418,6 +1427,7 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
       });
     }
 
+    // Fetch screener file
     const customerScreenerFile = await prisma.screener_file.findFirst({
       where: { customerId: order.customer.id },
       orderBy: { createdAt: "desc" },
@@ -1426,6 +1436,32 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
         picture_24: true,
       },
     });
+
+    // Calculate matched size if customer foot size and store exist
+    let storeInfo = null;
+    const { customer, store } = order;
+    if (
+      customer?.fusslange1 != null &&
+      customer?.fusslange2 != null &&
+      store?.groessenMengen &&
+      typeof store.groessenMengen === "object"
+    ) {
+      const largerFusslange = Math.max(
+        Number(customer.fusslange1) + 5,
+        Number(customer.fusslange2) + 5
+      );
+      const matchedSize = determineSizeFromGroessenMengen(
+        store.groessenMengen,
+        largerFusslange
+      );
+      if (matchedSize) {
+        storeInfo = {
+          produktname: store.produktname,
+          hersteller: store.hersteller,
+          matchedSize,
+        };
+      }
+    }
 
     if (!customerScreenerFile) {
       return res.status(404).json({
@@ -1438,13 +1474,17 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
       success: true,
       data: {
         customerName: `${order.customer.vorname} ${order.customer.nachname}`,
-        // Use data from customerProduct (same as in getSupplyInfo)
         versorgungName: order.product?.name ?? null,
         diagnosisStatus: order.product?.diagnosis_status ?? null,
         material: order.product?.material ?? null,
         versorgung: order.product?.versorgung ?? null,
-
-        // customerId: order.customer.id,
+        insoleStock: storeInfo
+          ? {
+              produktname: storeInfo.produktname,
+              hersteller: storeInfo.hersteller,
+              size: storeInfo.matchedSize,
+            }
+          : null,
         picture_23: customerScreenerFile.picture_23
           ? getImageUrl(`/uploads/${customerScreenerFile.picture_23}`)
           : null,
