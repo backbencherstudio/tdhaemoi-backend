@@ -446,7 +446,7 @@ export const createOrder = async (req: Request, res: Response) => {
           statusFrom: "Warten_auf_Versorgungsstart",
           statusTo: "Warten_auf_Versorgungsstart",
           partnerId: partnerId,
-          employeeId: newOrder.werkstattEmployeeId || null,
+          employeeId: newOrder.employeeId || null,
           note: null,
         } as any,
       });

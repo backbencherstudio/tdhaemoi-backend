@@ -319,6 +319,14 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
         orderStatus: true,
         createdAt: true,
         statusUpdate: true,
+        employeeId: true,
+        employee: {
+          select: {
+            id: true,
+            employeeName: true,
+            email: true,
+          },
+        },
         partner: {
           select: {
             id: true,
@@ -407,13 +415,12 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
       // Track initial status from order creation
       let statusStartTime = order.createdAt;
       let statusAssignee =
-        (order as any).mitarbeiter || (order as any).partner?.name || "System";
+        (order as any).mitarbeiter || order.employee?.employeeName || order.partner?.name || "System";
       let statusAssigneeId =
-        (order as any).werkstattEmployeeId || (order as any).partnerId || null;
-      let statusAssigneeType: "employee" | "partner" | "system" = (order as any)
-        .werkstattEmployeeId
+        order.employeeId || order.partner?.id || null;
+      let statusAssigneeType: "employee" | "partner" | "system" = order.employeeId
         ? "employee"
-        : (order as any).partnerId
+        : order.partner?.id
         ? "partner"
         : "system";
 
@@ -468,15 +475,16 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
         endTime: null,
         assignee:
           (order as any).mitarbeiter ||
-          (order as any).partner?.name ||
+          order.employee?.employeeName ||
+          order.partner?.name ||
           "System",
         assigneeId:
-          (order as any).werkstattEmployeeId ||
-          (order as any).partnerId ||
+          order.employeeId ||
+          order.partner?.id ||
           null,
-        assigneeType: (order as any).werkstattEmployeeId
+        assigneeType: order.employeeId
           ? "employee"
-          : (order as any).partnerId
+          : order.partner?.id
           ? "partner"
           : "system",
       });
@@ -527,7 +535,7 @@ export const getOrdersHistory = async (req: Request, res: Response) => {
       type: "order_creation",
       details: {
         partnerId: order.partner?.id || null,
-        employeeId: (order as any).werkstattEmployeeId || null,
+        employeeId: order.employeeId || null,
       },
     });
 
@@ -753,7 +761,14 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
         barcodeLabel: true,
         barcodeCreatedAt: true,
         bezahlt: true,
-        werkstattEmployeeId: true,
+        employeeId: true,
+        employee: {
+          select: {
+            id: true,
+            employeeName: true,
+            email: true,
+          },
+        },
         screenerFile: {
           select: {
             id: true,
@@ -997,7 +1012,7 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
       type: "order_creation",
       details: {
         partnerId: order.partner?.id || null,
-        employeeId: order.werkstattEmployeeId || null,
+        employeeId: order.employeeId || null,
       },
     });
 
