@@ -59,7 +59,7 @@ export const getAllSoftwareVersions = async (req, res) => {
     const total = await prisma.software_version.count();
 
     const versions = await prisma.software_version.findMany({
-      orderBy: { releaseDate: "desc" },
+      orderBy: { createdAt: "desc" },
       skip,
       take: limit,
     });
