@@ -2906,6 +2906,8 @@ export const createCustomerRequirements = async (
       email: !!email,
       telefon: !!telefon,
       adresse: !!adresse,
+      land: !!land,
+      billingType: !!billingType,
     };
 
     const existingRequirements = await prisma.customer_requirements.findFirst({

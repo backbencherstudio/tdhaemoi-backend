@@ -152,8 +152,8 @@ export const partnershipWelcomeEmail = (
               <!-- Document Header -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
-                  <td style="background-color:rgb(85, 150, 112); padding: 30px 40px;">
-                    <h1 style="color: #ffffff; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 24px; font-weight: 600; margin: 0; letter-spacing: 0.3px;">FeetF1rst Partnership Program</h1>
+                  <td style="background-color: rgb(85, 150, 112); padding: 40px 40px; text-align: center;">
+                    <img src="https://i.ibb.co.com/Dftw5sbd/feet-first-white-logo-2-1.png" alt="FeetF1rst Logo" style="max-width: 300px; height: auto; display: block; margin: 0 auto;" />
                   </td>
                 </tr>
               </table>
@@ -330,11 +330,67 @@ Wenn Sie möchten, begleiten wir Sie persönlich bei den ersten Schritten.
               <!-- Footer -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
-                  <td style="background-color:rgb(85, 150, 112); padding: 20px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
-                    <p style="color:rgb(255, 255, 255); font-size: 13px; line-height: 20px; margin: 0;">
-                      This is a system-generated email. Please do not reply directly to this message.<br>
-                      © 2024 FeetF1rst Corporation. All rights reserved.
-                    </p>
+                  <td style="background-color: rgb(85, 150, 112); padding: 30px 40px; border-top: 1px solid rgba(255, 255, 255, 0.2);">
+                    <!-- Contact Information -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="padding: 0 0 12px 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td style="padding-right: 12px; vertical-align: middle;">
+                                <span style="color: rgb(220, 230, 210); font-size: 16px;">📍</span>
+                              </td>
+                              <td style="vertical-align: middle;">
+                                <p style="color: rgb(220, 230, 210); font-size: 14px; margin: 0; font-family: 'Arial', 'Helvetica', sans-serif;">Bruneck, 39031, Südtirol</p>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 0 0 12px 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td style="padding-right: 12px; vertical-align: middle;">
+                                <span style="color: rgb(220, 230, 210); font-size: 16px;">📞</span>
+                              </td>
+                              <td style="vertical-align: middle;">
+                                <p style="color: rgb(220, 230, 210); font-size: 14px; margin: 0; font-family: 'Arial', 'Helvetica', sans-serif;">
+                                  <a href="https://wa.me/393665087742" style="color: rgb(220, 230, 210); text-decoration: none;">+39 366 508 7742</a>
+                                </p>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td style="padding-right: 12px; vertical-align: middle;">
+                                <span style="color: rgb(220, 230, 210); font-size: 16px;">✉️</span>
+                              </td>
+                              <td style="vertical-align: middle;">
+                                <p style="color: rgb(220, 230, 210); font-size: 14px; margin: 0; font-family: 'Arial', 'Helvetica', sans-serif;">
+                                  <a href="mailto:info@feetfirst.com" style="color: rgb(220, 230, 210); text-decoration: none;">info@feetfirst.com</a>
+                                </p>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                    <!-- Copyright -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.2);">
+                      <tr>
+                        <td style="text-align: center;">
+                          <p style="color: rgb(220, 230, 210); font-size: 12px; line-height: 18px; margin: 0;">
+                            This is a system-generated email. Please do not reply directly to this message.<br>
+                            © ${new Date().getFullYear()} FeetF1rst Corporation. All rights reserved.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
