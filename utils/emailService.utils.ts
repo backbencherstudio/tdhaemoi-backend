@@ -57,7 +57,7 @@ export const sendPartnershipWelcomeEmail = async (
   const htmlContent = partnershipWelcomeEmail(email, password);
   await sendEmail(
     email,
-    "Welcome to Feetf1rst Partnership Program",
+    "Willkommen bei FeetF1rst - Ihr Software Zugang ist jetzt aktiv",
     htmlContent
   );
 };

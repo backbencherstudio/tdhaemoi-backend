@@ -213,16 +213,7 @@ export const appointmentReminderCron = () => {
           appointmentDateTime.getTime() - appointment.reminder! * 60 * 1000
         );
 
-        // If now >= reminderTime → send reminder
         if (now >= reminderTime) {
-          // type: "Appointment_Reminder",
-          // partnerId: appointment.userId,
-          // message: `Reminder: You have an appointment scheduled on ${appointment.date.toDateString()} at ${
-          //   appointment.time
-          // }`,
-          // eventId: appointment.id,
-          // route: `/dashboard/calendar`,
-
           await notificationSend(
             appointment.userId,
             "Appointment_Reminder",
@@ -233,7 +224,7 @@ export const appointmentReminderCron = () => {
             false,
             `/dashboard/calendar`
           );
-          // Mark reminder as sent
+
           await prisma.appointment.update({
             where: { id: appointment.id },
             data: { reminderSent: true },

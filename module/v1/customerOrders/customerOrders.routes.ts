@@ -5,13 +5,9 @@ import {
   createOrder,
   getAllOrders,
   getOrderById,
-  uploadInvoice,
-  uploadInvoiceOnly,
-  sendInvoiceToCustomer,
   deleteMultipleOrders,
   deleteOrder,
   getOrdersByCustomerId,
-
   getEinlagenInProduktion
  
 } from "./customerOrders.controllers";
@@ -32,26 +28,6 @@ router.get(
   "/customer/:customerId",
   verifyUser("ADMIN", "PARTNER"),
   getOrdersByCustomerId
-);
-
-router.post(
-  "/upload-invoice/:orderId",
-  verifyUser("ADMIN", "PARTNER"),
-  upload.fields([{ name: "invoice", maxCount: 1 }]),
-  uploadInvoice
-);
-
-router.post(
-  "/upload-invoice-only/:orderId",
-  verifyUser("ADMIN", "PARTNER"),
-  upload.fields([{ name: "invoice", maxCount: 1 }]),
-  uploadInvoiceOnly
-);
-
-router.post(
-  "/send-invoice/:orderId",
-  verifyUser("ADMIN", "PARTNER"),
-  sendInvoiceToCustomer
 );
 
 

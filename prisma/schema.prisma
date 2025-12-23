@@ -1369,3 +1369,19 @@ enum notificationType {
   Appointment_Created
   test
 }
+
+model software_version {
+  id String @id @default(uuid())
+
+  version     String
+  releaseDate DateTime
+  title       String?
+  description Json?
+
+  isNewest Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([releaseDate])
+}

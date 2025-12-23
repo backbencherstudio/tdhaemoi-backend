@@ -298,9 +298,13 @@ Wenn Sie möchten, begleiten wir Sie persönlich bei den ersten Schritten.
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
                       <strong>Email:</strong> <a href="mailto:info@feetf1rst.com" style="color: #2980b9; text-decoration: none;">info@feetf1rst.com</a>
                     </p>
-                    <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
-                      <strong>Phone:</strong> +39 366 508 7742
-                    </p>
+               <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
+  <strong>Phone:</strong>
+  <a href="https://wa.me/393665087742" style="color: #2c3e50; text-decoration: none;">
+    +39 366 508 7742
+  </a>
+</p>
+
                   </td>
                 </tr>
               </table>
@@ -758,9 +762,6 @@ export const adminLoginNotificationEmail = (
 </html>
 `;
 };
-
-
- 
 
 export const sendPdfToEmailTamplate = (pdf: any): string => `
   <!DOCTYPE html>
