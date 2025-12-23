@@ -33,7 +33,7 @@ export const sendEmail = async (
   });
 
   const mailOptions = {
-    from: `"Feetf1rst " <${process.env.NODE_MAILER_USER}>`,
+    from: `"Feetf1rst" <${process.env.NODE_MAILER_USER}>`,
     to,
     subject,
     html: htmlContent,
@@ -71,7 +71,7 @@ export const sendNewSuggestionEmail = async (
 ): Promise<void> => {
   const htmlContent = newSuggestionEmail(name, email, phone, firma, suggestion);
   await sendEmail(
-    "anamul36.bdcalling@gmail.com",
+    "info@feetf1rst.com",
     "New Suggestion Received",
     htmlContent
   );
@@ -85,7 +85,7 @@ export const sendImprovementEmail = async (
 ): Promise<void> => {
   const htmlContent = newImprovementEmail(company, phone, reason, message);
   await sendEmail(
-    "anamul36.bdcalling@gmail.com",
+    "info@feetf1rst.com",
     "New Improvement Suggestion Received",
     htmlContent
   );
@@ -134,7 +134,7 @@ export const sendPdfToEmail = async (email: string, pdf: any): Promise<void> => 
     });
 
     const mailOptions = {
-      from: `"Feetf1rst " <${process.env.NODE_MAILER_USER}>`,
+      from: `"Feetf1rst" <${process.env.NODE_MAILER_USER}>`,
       to: email,
       subject: 'Your Foot Exercise Program - Feetf1rst ',
       html: htmlContent,
@@ -183,7 +183,7 @@ export const sendInvoiceEmail = async (
     });
 
     const mailOptions = {
-      from: `"Feetf1rst " <${process.env.NODE_MAILER_USER}>`,
+      from: `"Feetf1rst" <${process.env.NODE_MAILER_USER}>`,
       to: toEmail,
       subject: 'Your Feetf1rst Invoice',
       html: htmlContent,

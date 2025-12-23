@@ -171,8 +171,8 @@ export const partnershipWelcomeEmail = (
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td style="padding: 0 40px 30px;">
-                    <p style="color: #5d6975; font-size: 14px; margin: 0;">
-                      Date: ${new Date().toLocaleDateString("en-US", {
+                    <p style="color: rgb(85, 150, 112); font-size: 14px; margin: 0;">
+                      ${new Date().toLocaleDateString("de-DE", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
@@ -191,7 +191,7 @@ export const partnershipWelcomeEmail = (
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 15px;">
                       Guten Tag,
-                      willkommen bei FeetF1rst. Mit dieser Nachricht erhalten Sie offiziell die Berechtigung, unsere Partner-Software zu nutzen. Ab jetzt steht Ihnen eine Plattform zur Verfügung, die Prozesse vereinfacht, Entscheidungen beschleunigt und digitale Versorgung auf ein neues Niveau hebt
+                      willkommen bei FeetF1rst. Mit dieser Nachricht erhalten Sie offiziell die Berechtigung, unsere Partner-Software zu nutzen. Ab jetzt steht Ihnen eine Plattform zur Verfügung, die Prozesse vereinfacht, Entscheidungen beschleunigt und digitale Versorgung auf ein neues Niveau hebt.
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
                       Ihr Einstieg </br> Ihr persönlicher Zugang wurde freigeschaltet:
@@ -243,8 +243,8 @@ export const partnershipWelcomeEmail = (
           </td>
           <td style="padding: 12px 20px; border: 1px solid #e0e0e0; white-space: nowrap;">
             <p style="margin: 0; font-size: 14px; color: #2c3e50; font-family: monospace;">
-              <a href="https://feetf1rst.com" target="_blank" style="color: #1a73e8; text-decoration: none; white-space: nowrap;">
-                https://feetf1rst.com
+              <a href="portal.feetf1rst.com" target="_blank" style="color: #1a73e8; text-decoration: none; white-space: nowrap;">
+                portal.feetf1rst.com
               </a>
             </p>
           </td>
@@ -296,7 +296,7 @@ Wenn Sie möchten, begleiten wir Sie persönlich bei den ersten Schritten.
                       Sollten Fragen offen bleiben, begleiten wir Sie gerne persönlich.
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
-                      <strong>Email:</strong> <a href="mailto:info@feetf1rst.com" style="color: #2980b9; text-decoration: none;">partnerships@FeetF1rst.com</a>
+                      <strong>Email:</strong> <a href="mailto:info@feetf1rst.com" style="color: #2980b9; text-decoration: none;">info@feetf1rst.com</a>
                     </p>
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0;">
                       <strong>Phone:</strong> +39 366 508 7742
@@ -312,9 +312,7 @@ Wenn Sie möchten, begleiten wir Sie persönlich bei den ersten Schritten.
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 15px;">
                       Wir freuen uns, Sie als Partner begrüßen zu dürfen.
                     </p>
-                    <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
-                      Sincerely,
-                    </p>
+             
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
                       <strong>Mit freundlichen Grüßen</strong>
                     </p>
