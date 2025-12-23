@@ -1279,26 +1279,33 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
 
-    // Get order with customer and store information
+    // Fetch all data in parallel with single query
     const order = await prisma.customerOrders.findUnique({
       where: { id: orderId },
       select: {
-        id: true,
         orderNumber: true,
-        versorgungId: true,
         productId: true,
-        customerId: true,
-        storeId: true,
         customer: {
           select: {
-            id: true,
             fusslange1: true,
             fusslange2: true,
           },
         },
-        store: {
+        product: {
           select: {
             id: true,
+            name: true,
+            material: true,
+            langenempfehlung: true,
+            rohlingHersteller: true,
+            artikelHersteller: true,
+            versorgung: true,
+            status: true,
+            diagnosis_status: true,
+          },
+        },
+        store: {
+          select: {
             produktname: true,
             hersteller: true,
             groessenMengen: true,
@@ -1314,58 +1321,37 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
       });
     }
 
-    // Fetch product if exists
-    let productData = null;
-    if (order.productId) {
-      productData = await prisma.customerProduct.findUnique({
-        where: { id: order.productId },
-        select: {
-          id: true,
-          name: true,
-          material: true,
-          langenempfehlung: true,
-          rohlingHersteller: true,
-          artikelHersteller: true,
-          versorgung: true,
-          status: true,
-          diagnosis_status: true,
-        },
-      });
-    }
+    // Calculate foot size and matched size efficiently
+    const { customer, store } = order;
+    let footSize = null;
+    let storeInfo = null;
 
-    // Calculate foot size information
-    let footSizeData = null;
-    let matchedSizeKey: string | null = null;
-    let matchedSizeLength: number | null = null;
-    let largerFusslange: number | null = null;
+    if (customer?.fusslange1 != null && customer?.fusslange2 != null) {
+      const f1 = Number(customer.fusslange1);
+      const f2 = Number(customer.fusslange2);
+      const largerFusslange = Math.max(f1 + 5, f2 + 5);
 
-    if (order.customer) {
-      const { fusslange1, fusslange2 } = order.customer;
-      
-      if (fusslange1 != null && fusslange2 != null) {
-        largerFusslange = Math.max(
-          Number(fusslange1) + 5,
-          Number(fusslange2) + 5
+      footSize = {
+        fusslange1: f1,
+        fusslange2: f2,
+        largerFusslange,
+      };
+
+      // Find matched size if store exists
+      if (store?.groessenMengen && typeof store.groessenMengen === "object") {
+        const matchedSize = determineSizeFromGroessenMengen(
+          store.groessenMengen,
+          largerFusslange
         );
 
-        footSizeData = {
-          fusslange1: Number(fusslange1),
-          fusslange2: Number(fusslange2),
-          largerFusslange,
-        };
-
-        // Determine matched size from store if store exists
-        if (order.store?.groessenMengen && typeof order.store.groessenMengen === "object") {
-          matchedSizeKey = determineSizeFromGroessenMengen(
-            order.store.groessenMengen,
-            largerFusslange
-          );
-
-          // Extract length for the matched size
-          if (matchedSizeKey) {
-            const matchedSizeData = (order.store.groessenMengen as Record<string, any>)[matchedSizeKey];
-            matchedSizeLength = extractLengthValue(matchedSizeData);
-          }
+        if (matchedSize) {
+          const sizeData = (store.groessenMengen as Record<string, any>)[matchedSize];
+          storeInfo = {
+            produktname: store.produktname,
+            hersteller: store.hersteller,
+            matchedSize,
+            length: extractLengthValue(sizeData),
+          };
         }
       }
     }
@@ -1375,16 +1361,9 @@ export const getSupplyInfo = async (req: Request, res: Response) => {
       data: {
         orderNumber: order.orderNumber,
         productId: order.productId,
-        product: productData,
-        footSize: footSizeData,
-        store: order.store && matchedSizeKey
-          ? {
-              produktname: order.store.produktname,
-              hersteller: order.store.hersteller,
-              matchedSize: matchedSizeKey,
-              length: matchedSizeLength,
-            }
-          : null,
+        product: order.product,
+        footSize,
+        store: storeInfo,
       },
     });
   } catch (error: any) {
