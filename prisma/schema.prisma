@@ -507,6 +507,8 @@ model customer_requirements {
   email        Boolean @default(false)
   telefon      Boolean @default(false)
   adresse      Boolean @default(false)
+  land         Boolean @default(false)
+  billingType  Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

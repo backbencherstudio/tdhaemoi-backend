@@ -109,6 +109,8 @@ export const createCustomers = async (req: Request, res: Response) => {
       email: true,
       telefon: true,
       adresse: true,
+      land: true,
+      billingType: true,
     },
   });
 
@@ -119,6 +121,8 @@ export const createCustomers = async (req: Request, res: Response) => {
     email: req.body.email,
     telefon: req.body.telefon,
     adresse: req.body.wohnort,
+    land: req.body.land,
+    billingType: req.body.billingType,
   };
 
   const missingFields: string[] = [];
@@ -1598,7 +1602,12 @@ export const searchCustomers = async (req: Request, res: Response) => {
             searchConditions.push({
               AND: [
                 { vorname: { contains: nameParts[0], mode: "insensitive" } },
-                { nachname: { contains: nameParts.slice(1).join(" "), mode: "insensitive" } },
+                {
+                  nachname: {
+                    contains: nameParts.slice(1).join(" "),
+                    mode: "insensitive",
+                  },
+                },
               ],
             });
           } else {
@@ -1636,7 +1645,11 @@ export const searchCustomers = async (req: Request, res: Response) => {
       searchConditions.push({ id: id.trim() });
     }
 
-    if (geburtsdatum && typeof geburtsdatum === "string" && geburtsdatum.trim()) {
+    if (
+      geburtsdatum &&
+      typeof geburtsdatum === "string" &&
+      geburtsdatum.trim()
+    ) {
       searchConditions.push({ geburtsdatum: geburtsdatum.trim() });
     }
 
@@ -1648,9 +1661,10 @@ export const searchCustomers = async (req: Request, res: Response) => {
     }
 
     // Build final where condition
-    const whereConditions = searchConditions.length > 0 
-      ? { AND: searchConditions }
-      : userRole !== "ADMIN" 
+    const whereConditions =
+      searchConditions.length > 0
+        ? { AND: searchConditions }
+        : userRole !== "ADMIN"
         ? { createdBy: userId }
         : {};
 
@@ -2873,8 +2887,16 @@ export const createCustomerRequirements = async (
       });
     }
 
-    const { vorname, nachname, geburtsdatum, email, telefon, adresse } =
-      req.body;
+    const {
+      vorname,
+      nachname,
+      geburtsdatum,
+      email,
+      telefon,
+      adresse,
+      land,
+      billingType,
+    } = req.body;
 
     // Convert everything to boolean
     const requirementsData = {
@@ -2948,6 +2970,8 @@ export const getCustomerRequirements = async (req: Request, res: Response) => {
         email: true,
         telefon: true,
         adresse: true,
+        land: true,
+        billingType: true,
       },
     });
 
