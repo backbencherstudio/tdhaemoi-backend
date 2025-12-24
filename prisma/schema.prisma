@@ -553,11 +553,17 @@ model screener_file {
   customerId String
   customer   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  //------------------------------------------------------
   picture_10        String? //Fersenneigung left (image)
   picture_23        String? //Plantaransicht left (image)
+
+  paint_24       String? //Paint Fersenneigung left (image)
+  paint_23        String? //Paint Plantaransicht left (image)
+  //------------------------------------------------------
+ 
+
   threed_model_left String? //3D-Model left   (.stl)
   picture_17        String? //Sohlen Index left (image)
-
   picture_11         String? //Fersenneigung right (image)
   picture_24         String? //Plantaransich right  (image)
   threed_model_right String? //3D-Model right   .stl
@@ -1389,3 +1395,4 @@ model software_version {
 
   @@index([releaseDate])
 }
+

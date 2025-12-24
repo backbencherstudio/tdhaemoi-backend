@@ -229,6 +229,8 @@ export const createCustomers = async (req: Request, res: Response) => {
       if (
         files.picture_10 ||
         files.picture_23 ||
+        files.paint_24 ||
+        files.paint_23 ||
         files.threed_model_left ||
         files.picture_17 ||
         files.picture_11 ||
@@ -242,6 +244,8 @@ export const createCustomers = async (req: Request, res: Response) => {
             customerId: newCustomer.id,
             picture_10: files.picture_10?.[0]?.filename || null,
             picture_23: files.picture_23?.[0]?.filename || null,
+            paint_24: files.paint_24?.[0]?.filename || null,
+            paint_23: files.paint_23?.[0]?.filename || null,
             threed_model_left: files.threed_model_left?.[0]?.filename || null,
             picture_17: files.picture_17?.[0]?.filename || null,
             picture_11: files.picture_11?.[0]?.filename || null,
@@ -306,6 +310,12 @@ export const createCustomers = async (req: Request, res: Response) => {
           : null,
         picture_23: screener.picture_23
           ? getImageUrl(`/uploads/${screener.picture_23}`)
+          : null,
+        paint_24: screener.paint_24
+          ? getImageUrl(`/uploads/${screener.paint_24}`)
+          : null,
+        paint_23: screener.paint_23
+          ? getImageUrl(`/uploads/${screener.paint_23}`)
           : null,
         picture_11: screener.picture_11
           ? getImageUrl(`/uploads/${screener.picture_11}`)
@@ -623,6 +633,12 @@ export const getAllCustomers = async (req: Request, res: Response) => {
           : null,
         picture_23: screener.picture_23
           ? getImageUrl(`/uploads/${screener.picture_23}`)
+          : null,
+        paint_24: screener.paint_24
+          ? getImageUrl(`/uploads/${screener.paint_24}`)
+          : null,
+        paint_23: screener.paint_23
+          ? getImageUrl(`/uploads/${screener.paint_23}`)
           : null,
         picture_11: screener.picture_11
           ? getImageUrl(`/uploads/${screener.picture_11}`)
@@ -1077,6 +1093,8 @@ export const getCustomerById = async (req: Request, res: Response) => {
       const imageFields = [
         "picture_10",
         "picture_23",
+        "paint_24",
+        "paint_23",
         "picture_11",
         "picture_24",
         "threed_model_left",
@@ -1257,6 +1275,12 @@ export const assignVersorgungToCustomer = async (
           picture_23: latestScreener.picture_23
             ? getImageUrl(`/uploads/${latestScreener.picture_23}`)
             : null,
+          paint_24: latestScreener.paint_24
+            ? getImageUrl(`/uploads/${latestScreener.paint_24}`)
+            : null,
+          paint_23: latestScreener.paint_23
+            ? getImageUrl(`/uploads/${latestScreener.paint_23}`)
+            : null,
           picture_11: latestScreener.picture_11
             ? getImageUrl(`/uploads/${latestScreener.picture_11}`)
             : null,
@@ -1351,6 +1375,12 @@ export const undoAssignVersorgungToCustomer = async (
             : null,
           picture_23: latestScreener.picture_23
             ? getImageUrl(`/uploads/${latestScreener.picture_23}`)
+            : null,
+          paint_24: latestScreener.paint_24
+            ? getImageUrl(`/uploads/${latestScreener.paint_24}`)
+            : null,
+          paint_23: latestScreener.paint_23
+            ? getImageUrl(`/uploads/${latestScreener.paint_23}`)
             : null,
           picture_11: latestScreener.picture_11
             ? getImageUrl(`/uploads/${latestScreener.picture_11}`)
@@ -1860,6 +1890,8 @@ export const addScreenerFile = async (req: Request, res: Response) => {
         customerId,
         picture_10: files.picture_10?.[0]?.filename || null,
         picture_23: files.picture_23?.[0]?.filename || null,
+        paint_24: files.paint_24?.[0]?.filename || null,
+        paint_23: files.paint_23?.[0]?.filename || null,
         threed_model_left: files.threed_model_left?.[0]?.filename || null,
         picture_17: files.picture_17?.[0]?.filename || null,
         picture_11: files.picture_11?.[0]?.filename || null,
@@ -1891,6 +1923,12 @@ export const addScreenerFile = async (req: Request, res: Response) => {
         : null,
       picture_23: newScreener.picture_23
         ? getImageUrl(`/uploads/${newScreener.picture_23}`)
+        : null,
+      paint_24: newScreener.paint_24
+        ? getImageUrl(`/uploads/${newScreener.paint_24}`)
+        : null,
+      paint_23: newScreener.paint_23
+        ? getImageUrl(`/uploads/${newScreener.paint_23}`)
         : null,
       picture_11: newScreener.picture_11
         ? getImageUrl(`/uploads/${newScreener.picture_11}`)
@@ -1973,6 +2011,9 @@ export const addScreenerFile = async (req: Request, res: Response) => {
 export const updateScreenerFile = async (req: Request, res: Response) => {
   const { customerId, screenerId } = req.params;
   const files = req.files as any;
+
+  // paint_24
+  // paint_23
 
   const cleanupFiles = () => {
     if (!files) return;
@@ -2064,6 +2105,17 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
       deleteOldIfNew(files.picture_23[0], existingScreener.picture_23);
       updateData.picture_23 = files.picture_23[0].filename;
     }
+    // ---------------------------------------------------------------
+    if (files?.paint_24?.[0]) {
+      deleteOldIfNew(files.paint_24[0], existingScreener.paint_24);
+      updateData.paint_24 = files.paint_24[0].filename;
+    }
+    if (files?.paint_23?.[0]) {
+      deleteOldIfNew(files.paint_23[0], existingScreener.paint_23);
+      updateData.paint_23 = files.paint_23[0].filename;
+    }
+    //------------------------------------------------------------------
+
 
     if (files?.threed_model_left?.[0]) {
       deleteOldIfNew(
@@ -2113,6 +2165,10 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
         csvData.B58 ?? existingScreener.fusslange1 ?? null;
       updateData.fusslange2 =
         csvData.C58 ?? existingScreener.fusslange2 ?? null;
+        //----------------------------------------
+      updateData.paint_24 = csvData.B58 ?? existingScreener.paint_24 ?? null;
+      updateData.paint_23 = csvData.C58 ?? existingScreener.paint_23 ?? null;
+      //------------------------------------------
       updateData.fussbreite1 =
         csvData.B73 ?? existingScreener.fussbreite1 ?? null;
       updateData.fussbreite2 =
@@ -2169,6 +2225,10 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
       customerId: updatedScreener.customerId,
       picture_10: formatFileUrl(updatedScreener.picture_10),
       picture_23: formatFileUrl(updatedScreener.picture_23),
+      //----------------------------------------------------------
+      paint_24: formatFileUrl(updatedScreener.paint_24),
+      paint_23: formatFileUrl(updatedScreener.paint_23),
+      //----------------------------------------------------------
       picture_11: formatFileUrl(updatedScreener.picture_11),
       picture_24: formatFileUrl(updatedScreener.picture_24),
       threed_model_left: formatFileUrl(updatedScreener.threed_model_left),
@@ -2293,6 +2353,8 @@ export const getScreenerFileById = async (req: Request, res: Response) => {
       customerId: screenerFile.customerId,
       picture_10: formatFileUrl(screenerFile.picture_10),
       picture_23: formatFileUrl(screenerFile.picture_23),
+      paint_24: formatFileUrl(screenerFile.paint_24),
+      paint_23: formatFileUrl(screenerFile.paint_23),
       picture_11: formatFileUrl(screenerFile.picture_11),
       picture_24: formatFileUrl(screenerFile.picture_24),
       threed_model_left: formatFileUrl(screenerFile.threed_model_left),
