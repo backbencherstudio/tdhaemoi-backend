@@ -100,3 +100,56 @@ export const markeAsReadNotifications = async (req, res) => {
     });
   }
 };
+
+
+export const deleteNotifications = async (req, res) => {
+  try {
+    const partnerId = req.user.id;
+    const { notificationIds } = req.body;
+
+    // Validate input
+    if (!Array.isArray(notificationIds) || notificationIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "notificationIds must be a non-empty array",
+      });
+    }
+
+    // Find notifications that exist and belong to this partner
+    const notificationsToDelete = await prisma.notification.findMany({
+      where: {
+        id: { in: notificationIds },
+        partnerId, // Only delete notifications belonging to this partner
+      },
+      select: { id: true },
+    });
+
+    const foundIds = notificationsToDelete.map((notif) => notif.id);
+    const notFoundIds = notificationIds.filter((id) => !foundIds.includes(id));
+
+    // Delete only the notifications that exist and belong to the partner
+    if (foundIds.length > 0) {
+      await prisma.notification.deleteMany({
+        where: { id: { in: foundIds } },
+      });
+    }
+
+    // Return success with details about what was deleted
+    res.status(200).json({
+      success: true,
+      message: `Successfully deleted ${foundIds.length} notification(s)`,
+      data: {
+        deletedCount: foundIds.length,
+        deletedIds: foundIds,
+        notFoundIds: notFoundIds.length > 0 ? notFoundIds : undefined,
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting notifications:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete notifications",
+      error: error.message,
+    });
+  }
+};
