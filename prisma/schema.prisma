@@ -58,6 +58,7 @@ model User {
   customerRequirements     customer_requirements[]
   featureAccess            FeatureAccess?
   notifications            notification[]
+  storeLocations           store_location[]
 
   @@map("users")
 }
@@ -411,8 +412,31 @@ model customer_settings {
   cover_types        String[]
   laser_print_prices Json?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  storeLocations store_location[]
+}
+
+model store_location {
+  id String @id @default(uuid())
+
+  partnerId String?
+  partner   User?   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  isPrimary Boolean @default(false)
+
+  address     String?
+  description String?
+
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  customerSettings    customer_settings? @relation(fields: [customer_settingsId], references: [id])
+  customer_settingsId String?
+
+  @@index([partnerId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([id])
 }
 
 model customers {
@@ -554,16 +578,15 @@ model screener_file {
   customer   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   //------------------------------------------------------
-  picture_10        String? //Fersenneigung left (image)
-  picture_23        String? //Plantaransicht left (image)
+  picture_10 String? //Fersenneigung left (image)
+  picture_23 String? //Plantaransicht left (image)
 
-  paint_24       String? //Paint Fersenneigung left (image)
-  paint_23        String? //Paint Plantaransicht left (image)
+  paint_24 String? //Paint Fersenneigung left (image)
+  paint_23 String? //Paint Plantaransicht left (image)
   //------------------------------------------------------
- 
 
-  threed_model_left String? //3D-Model left   (.stl)
-  picture_17        String? //Sohlen Index left (image)
+  threed_model_left  String? //3D-Model left   (.stl)
+  picture_17         String? //Sohlen Index left (image)
   picture_11         String? //Fersenneigung right (image)
   picture_24         String? //Plantaransich right  (image)
   threed_model_right String? //3D-Model right   .stl
@@ -778,10 +801,9 @@ model customerOrders {
   einlagenversorgungPreis Float?
 
   // werkstattEmployeeId String?
-  employeeId  String?
+  employeeId String?
   employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   //make a relatio with employe
-
 
   priority                Priority?               @default(Normal)
   customerHistories       customerHistorie[]      @relation("OrderCustomerHistorie")
@@ -1395,4 +1417,3 @@ model software_version {
 
   @@index([releaseDate])
 }
-
