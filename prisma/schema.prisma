@@ -409,7 +409,7 @@ model customer_settings {
   user      User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
   cover_types        String[]
-  laser_print_prices Float[]
+  laser_print_prices Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

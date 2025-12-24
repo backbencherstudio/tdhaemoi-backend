@@ -1,4 +1,4 @@
-    import { Request, Response } from "express";
+import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -39,18 +39,12 @@ export const setCustomerSettings = async (req: Request, res: Response) => {
   try {
     const { cover_types, laser_print_prices } = req.body;
     const partnerId = req.user.id;
-
+    //laser_print_prices is a json object
     // Validate input
     if (!Array.isArray(cover_types)) {
       return res.status(400).json({
         success: false,
         message: "cover_types must be an array",
-      });
-    }
-    if (!Array.isArray(laser_print_prices)) {
-      return res.status(400).json({
-        success: false,
-        message: "laser_print_prices must be an array",
       });
     }
 
@@ -61,12 +55,11 @@ export const setCustomerSettings = async (req: Request, res: Response) => {
 
     let customerSettings;
     if (existingSettings) {
-      // Update existing settings using id
       customerSettings = await prisma.customer_settings.update({
         where: { id: existingSettings.id },
         data: {
-          cover_types: cover_types as string[],
-          laser_print_prices: laser_print_prices as number[],
+          cover_types: cover_types,
+          laser_print_prices: laser_print_prices,
         },
       });
     } else {
@@ -74,8 +67,8 @@ export const setCustomerSettings = async (req: Request, res: Response) => {
       customerSettings = await prisma.customer_settings.create({
         data: {
           partnerId,
-          cover_types: cover_types as string[],
-          laser_print_prices: laser_print_prices as number[],
+          cover_types: cover_types,
+          laser_print_prices: laser_print_prices,
         },
       });
     }
