@@ -156,7 +156,7 @@ export const createOrder = async (req: Request, res: Response) => {
       versorgungId,
       einlagentyp,
       überzug,
-      menge,
+      // menge,
       versorgung_note,
       schuhmodell_wählen,
       kostenvoranschlag,
@@ -176,63 +176,34 @@ export const createOrder = async (req: Request, res: Response) => {
       einlagenversorgungPreis,
       werkstattEmployeeId,
       screenerId,
+      discount,
+      quantity = 1
     } = req.body;
     const partnerId = req.user.id;
 
-    if (!customerId || !versorgungId) {
+    // Combined validation
+    if (!customerId || !versorgungId || !screenerId || !bezahlt) {
       return res.status(400).json({
         success: false,
-        message: "Customer ID and Versorgung ID are required",
+        message: "Customer ID, Versorgung ID, Screener ID, and Payment status are required",
       });
     }
 
-    if (!screenerId) {
-      return res.status(400).json({
-        success: false,
-        message: "screenerId are required",
-      });
-    }
-
-    if (!bezahlt) {
-      return res.status(400).json({
-        success: false,
-        message: "Payment status (bezahlt) is required",
-      });
-    }
-    const validPaymentStatuses = new Set([
-      "Privat_Bezahlt",
-      "Privat_offen",
-      "Krankenkasse_Ungenehmigt",
-      "Krankenkasse_Genehmigt",
-    ]);
-
-    if (!validPaymentStatuses.has(bezahlt)) {
+    const validPaymentStatuses = ["Privat_Bezahlt", "Privat_offen", "Krankenkasse_Ungenehmigt", "Krankenkasse_Genehmigt"];
+    if (!validPaymentStatuses.includes(bezahlt)) {
       return res.status(400).json({
         success: false,
         message: "Invalid payment status",
-        validStatuses: Array.from(validPaymentStatuses),
+        validStatuses: validPaymentStatuses,
       });
     }
 
-    const validScreenerFile = await prisma.screener_file.findUnique({
-      where: { id: screenerId },
-      select: { id: true },
-    });
-
-    if (!validScreenerFile) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid screener file ID",
-      });
-    }
-
-    const [customer, versorgung] = await Promise.all([
+    // Parallel validation and data fetching
+    const [screenerFile, customer, versorgung] = await Promise.all([
+      prisma.screener_file.findUnique({ where: { id: screenerId }, select: { id: true } }),
       prisma.customers.findUnique({
         where: { id: customerId },
-        select: {
-          fusslange1: true,
-          fusslange2: true,
-        },
+        select: { fusslange1: true, fusslange2: true },
       }),
       prisma.versorgungen.findUnique({
         where: { id: versorgungId },
@@ -245,136 +216,98 @@ export const createOrder = async (req: Request, res: Response) => {
           material: true,
           diagnosis_status: true,
           storeId: true,
-          supplyStatus: {
-            select: {
-              id: true,
-              price: true,
-              name: true,
-            },
-          },
         },
       }),
     ]);
 
-    console.log("============================", versorgung?.storeId);
-    if (!customer || !versorgung) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Customer or Versorgung not found" });
+    if (!screenerFile || !customer || !versorgung) {
+      return res.status(404).json({
+        success: false,
+        message: "Screener file, Customer, or Versorgung not found",
+      });
     }
 
-    const totalPrice =
-      Number(fussanalysePreis || 0) + Number(einlagenversorgungPreis || 0);
-
-    if (customer.fusslange1 == null || customer.fusslange2 == null) {
+    if (!customer.fusslange1 || !customer.fusslange2) {
       return res.status(400).json({
         success: false,
-        message: "Customer fusslange1 or fusslange2 not found",
+        message: "Customer fusslange1 and fusslange2 are required",
       });
     }
 
-    const largerFusslange = Math.max(
-      Number(customer.fusslange1) + 5,
-      Number(customer.fusslange2) + 5
-    );
+    // Calculate price
+    const basePrice = Number(fussanalysePreis || 0) + Number(einlagenversorgungPreis || 0);
+    const orderQuantity = quantity ? parseInt(quantity, 10) : 1;
+    const discountAmount = discount ? parseFloat(discount) : 0;
+    const totalPrice = Math.max(0, basePrice * orderQuantity - discountAmount);
 
-    let matchedSizeKey: string | null = determineProductSize(
-      customer,
-      versorgung
-    );
+    let matchedSizeKey = determineProductSize(customer, versorgung);
 
     const order = await prisma.$transaction(async (tx) => {
-      const customerProduct = await tx.customerProduct.create({
-        data: {
-          name: versorgung.name,
-          rohlingHersteller: versorgung.rohlingHersteller,
-          artikelHersteller: versorgung.artikelHersteller,
-          versorgung: versorgung.versorgung,
-          material: serializeMaterial(versorgung.material),
-          langenempfehlung: {}, // langenempfehlung not available in Versorgungen model
-          status: "Alltagseinlagen", // Default status since it's not in Versorgungen model
-          diagnosis_status: versorgung.diagnosis_status,
-        },
-      });
+      // Parallel: Create product, get order number, and find employee
+      const [customerProduct, orderNumber, defaultEmployee] = await Promise.all([
+        tx.customerProduct.create({
+          data: {
+            name: versorgung.name,
+            rohlingHersteller: versorgung.rohlingHersteller,
+            artikelHersteller: versorgung.artikelHersteller,
+            versorgung: versorgung.versorgung,
+            material: serializeMaterial(versorgung.material),
+            langenempfehlung: {},
+            status: "Alltagseinlagen",
+            diagnosis_status: versorgung.diagnosis_status,
+          },
+        }),
+        getNextOrderNumberForPartner(tx, partnerId),
+        !werkstattEmployeeId
+          ? tx.employees.findFirst({ where: { partnerId }, select: { id: true } })
+          : null,
+      ]);
 
-      const orderNumber = await getNextOrderNumberForPartner(tx, partnerId);
+      const finalEmployeeId = werkstattEmployeeId || defaultEmployee?.id;
 
-      // Try to get employeeId - try to find default if not provided
-      let finalEmployeeId = werkstattEmployeeId;
-      if (!finalEmployeeId) {
-        // Try to find a default employee for this partner
-        const defaultEmployee = await tx.employees.findFirst({
-          where: { partnerId },
-          select: { id: true },
-        });
-        if (defaultEmployee) {
-          finalEmployeeId = defaultEmployee.id;
-        }
-      }
-
-      // Build order data with nested relations
+      // Build order data
       const orderData: any = {
-          orderNumber,
-          fußanalyse: null, // Price now comes from supplyStatus
-          einlagenversorgung: null, // Price now comes from supplyStatus
-          totalPrice,
+        orderNumber,
+        fußanalyse: null,
+        einlagenversorgung: null,
+        totalPrice,
         product: { connect: { id: customerProduct.id } },
-          statusUpdate: new Date(),
-          ausführliche_diagnose,
-          versorgung_laut_arzt,
-          einlagentyp,
-          überzug,
-          menge,
-          versorgung_note,
-          schuhmodell_wählen,
-          kostenvoranschlag,
-          bezahlt: bezahlt ?? null,
-          kundenName: kundenName ?? null,
-          auftragsDatum: auftragsDatum ? new Date(auftragsDatum) : null,
-          wohnort: wohnort ?? null,
-          telefon: telefon ?? null,
-          email: werkstattEmail ?? null,
-          geschaeftsstandort: geschaeftsstandort ?? null,
-          mitarbeiter: mitarbeiter ?? null,
-          fertigstellungBis: fertigstellungBis
-            ? new Date(fertigstellungBis)
-            : null,
-          versorgung: werkstattVersorgung ?? null,
+        customer: { connect: { id: customerId } },
+        partner: { connect: { id: partnerId } },
+        Versorgungen: { connect: { id: versorgungId } },
+        screenerFile: { connect: { id: screenerId } },
+        statusUpdate: new Date(),
+        ausführliche_diagnose,
+        versorgung_laut_arzt,
+        einlagentyp,
+        überzug,
+        // menge,
+        versorgung_note,
+        schuhmodell_wählen,
+        kostenvoranschlag,
+        bezahlt,
+        kundenName: kundenName ?? null,
+        auftragsDatum: auftragsDatum ? new Date(auftragsDatum) : null,
+        wohnort: wohnort ?? null,
+        telefon: telefon ?? null,
+        email: werkstattEmail ?? null,
+        geschaeftsstandort: geschaeftsstandort ?? null,
+        mitarbeiter: mitarbeiter ?? null,
+        fertigstellungBis: fertigstellungBis ? new Date(fertigstellungBis) : null,
+        versorgung: werkstattVersorgung ?? null,
+        quantity: orderQuantity,
       };
 
-      // Add optional relations only if they exist
-      if (customerId) {
-        orderData.customer = { connect: { id: customerId } };
-      }
-      if (partnerId) {
-        orderData.partner = { connect: { id: partnerId } };
-      }
-      if (versorgungId) {
-        orderData.Versorgungen = { connect: { id: versorgungId } };
-      }
-      if (versorgung?.storeId) {
-        orderData.store = { connect: { id: versorgung.storeId } };
-      }
-      if (screenerId) {
-        orderData.screenerFile = { connect: { id: screenerId } };
-      }
-      if (finalEmployeeId) {
-        orderData.employee = { connect: { id: finalEmployeeId } };
-      }
-      // Add optional price fields
-      if (fussanalysePreis !== undefined && fussanalysePreis !== null) {
-        orderData.fussanalysePreis = fussanalysePreis;
-      }
-      if (einlagenversorgungPreis !== undefined && einlagenversorgungPreis !== null) {
-        orderData.einlagenversorgungPreis = einlagenversorgungPreis;
-      }
+      if (versorgung.storeId) orderData.store = { connect: { id: versorgung.storeId } };
+      if (finalEmployeeId) orderData.employee = { connect: { id: finalEmployeeId } };
+      if (fussanalysePreis != null) orderData.fussanalysePreis = Number(fussanalysePreis);
+      if (einlagenversorgungPreis != null) orderData.einlagenversorgungPreis = Number(einlagenversorgungPreis);
+      if (discount != null) orderData.discount = discountAmount;
 
-      const newOrder: any = await tx.customerOrders.create({
+      // Create order
+      const newOrder = await tx.customerOrders.create({
         data: orderData,
-        select: {
-          id: true,
-          employeeId: true,
-        } as any,
+        select: { id: true, employeeId: true },
       });
 
       // Update store stock if needed
@@ -385,17 +318,9 @@ export const createOrder = async (req: Request, res: Response) => {
         });
 
         if (store?.groessenMengen && typeof store.groessenMengen === "object") {
-          const sizes = { ...(store.groessenMengen as any) } as Record<
-            string,
-            any
-          >;
-          const targetLength =
-            Math.max(Number(customer.fusslange1), Number(customer.fusslange2)) +
-            5;
-          const storeMatchedSizeKey = determineSizeFromGroessenMengen(
-            sizes,
-            targetLength
-          );
+          const sizes = { ...(store.groessenMengen as any) };
+          const targetLength = Math.max(Number(customer.fusslange1), Number(customer.fusslange2)) + 5;
+          const storeMatchedSizeKey = determineSizeFromGroessenMengen(sizes, targetLength);
 
           if (!storeMatchedSizeKey) throw new Error("NO_MATCHED_SIZE_IN_STORE");
 
@@ -405,53 +330,53 @@ export const createOrder = async (req: Request, res: Response) => {
 
           sizes[storeMatchedSizeKey] = updateSizeQuantity(sizeValue, newQty);
 
-          await tx.stores.update({
-            where: { id: store.id },
-            data: { groessenMengen: sizes },
-          });
-
-          await tx.storesHistory.create({
-            data: {
-              storeId: store.id,
-              changeType: "sales",
-              quantity: currentQty > 0 ? 1 : 0,
-              newStock: newQty,
-              reason: `Order size ${storeMatchedSizeKey}`,
-
-              partnerId: store.userId,
-              customerId,
-              orderId: newOrder.id,
-              status: "SELL_OUT",
-            },
-          });
+          // Parallel: Update store and create history
+          await Promise.all([
+            tx.stores.update({ where: { id: store.id }, data: { groessenMengen: sizes } }),
+            tx.storesHistory.create({
+              data: {
+                storeId: store.id,
+                changeType: "sales",
+                quantity: currentQty > 0 ? 1 : 0,
+                newStock: newQty,
+                reason: `Order size ${storeMatchedSizeKey}`,
+                partnerId: store.userId,
+                customerId,
+                orderId: newOrder.id,
+                status: "SELL_OUT",
+              },
+            }),
+          ]);
 
           matchedSizeKey = storeMatchedSizeKey;
         }
       }
 
-      await tx.customerHistorie.create({
-        data: {
-          customerId,
-          category: "Bestellungen",
-          eventId: newOrder.id,
-          // set hear order id
-          note: `Einlagenauftrag ${newOrder.id} erstellt`,
-          system_note: "New order created",
-          paymentIs: totalPrice.toString(),
-        } as any,
-      });
-      await tx.customerOrdersHistory.create({
-        data: {
-          orderId: newOrder.id,
-          statusFrom: "Warten_auf_Versorgungsstart",
-          statusTo: "Warten_auf_Versorgungsstart",
-          partnerId: partnerId,
-          employeeId: newOrder.employeeId || null,
-          note: null,
-        } as any,
-      });
+      // Parallel: Create both histories
+      await Promise.all([
+        tx.customerHistorie.create({
+          data: {
+            customerId,
+            category: "Bestellungen",
+            eventId: newOrder.id,
+            note: `Einlagenauftrag ${newOrder.id} erstellt`,
+            system_note: "New order created",
+            paymentIs: totalPrice.toString(),
+          } as any,
+        }),
+        tx.customerOrdersHistory.create({
+          data: {
+            orderId: newOrder.id,
+            statusFrom: "Warten_auf_Versorgungsstart",
+            statusTo: "Warten_auf_Versorgungsstart",
+            partnerId,
+            employeeId: newOrder.employeeId || null,
+            note: null,
+          } as any,
+        }),
+      ]);
 
-      return { ...newOrder, matchedSizeKey } as any;
+      return { ...newOrder, matchedSizeKey };
     });
 
     return res.status(201).json({

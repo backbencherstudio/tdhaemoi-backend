@@ -773,12 +773,15 @@ model customerOrders {
   versorgung_laut_arzt   String?
   einlagentyp            String?
   überzug               String?
-  menge                  Int? //quantity
+  // menge                  Int? //quantity
   versorgung_note        String? //Hast du sonstige Anmerkungen oder Notizen zur Versorgung... ?
   schuhmodell_wählen    String? //জুতার মডেল নির্বাচন করুন ম্যানুয়ালি লিখুন (ব্র্যান্ড + মডেল + সাইজ)
   kostenvoranschlag      Boolean? @default(false)
 
   bezahlt paymnentStatus?
+
+  discount Float?
+  quantity Int?
 
   // Privet          String? // Bezahlt - string naw
   // bezahltInsurance       String? // Bezahlt - string naw
