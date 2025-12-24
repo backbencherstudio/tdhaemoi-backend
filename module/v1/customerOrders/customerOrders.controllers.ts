@@ -925,8 +925,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
         select: {
           id: true,
           orderNumber: true,
-          fußanalyse: true,
-          einlagenversorgung: true,
           totalPrice: true,
           orderStatus: true,
           statusUpdate: true,
@@ -936,8 +934,8 @@ export const getAllOrders = async (req: Request, res: Response) => {
           priority: true,
           bezahlt: true,
           barcodeLabel: true,
-          storeLocation: true,
           fertigstellungBis: true,
+          auftragsDatum: true,
           customer: {
             select: {
               id: true,
@@ -949,12 +947,11 @@ export const getAllOrders = async (req: Request, res: Response) => {
             },
           },
           product: true,
-          auftragsDatum: true,
           versorgung: true,
           employee: {
             select: {
-            accountName: true,
-            employeeName: true,
+              accountName: true,
+              employeeName: true,
               email: true,
             },
           },
