@@ -936,6 +936,8 @@ export const getAllOrders = async (req: Request, res: Response) => {
           priority: true,
           bezahlt: true,
           barcodeLabel: true,
+          storeLocation: true,
+          fertigstellungBis: true,
           customer: {
             select: {
               id: true,
@@ -948,7 +950,6 @@ export const getAllOrders = async (req: Request, res: Response) => {
           },
           product: true,
           auftragsDatum: true,
-          fertigstellungBis: true,
           versorgung: true,
           employee: {
             select: {
