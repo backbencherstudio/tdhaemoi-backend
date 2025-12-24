@@ -1000,52 +1000,51 @@ export const insoleQuantityPerStatus = async (req: Request, res: Response) => {
     }
     // If neither year nor month: lifetime data (startDate and endDate remain null)
 
-    // All possible statuses in order
+    // All possible statuses for customerOrders (insoles) in order
     const allStatuses = [
-      "Leistenerstellung",
-      "Bettungsherstellung",
-      "Halbprobenerstellung",
-      "Schafterstellung",
-      "Bodenerstellung",
-      "Geliefert",
+      "Warten_auf_Versorgungsstart",
+      "In_Fertigung",
+      "Verpacken_Qualitätssicherung",
+      "Abholbereit_Versandt",
+      "Ausgeführt",
     ];
 
-    // Count orders by status for massschuhe_order
+    // Count orders by status for customerOrders (insoles)
     // Build query conditionally based on date filters
-    let statusCounts: Array<{ status: string; count: number }>;
+    let statusCounts: Array<{ orderStatus: string; count: number }>;
 
     if (startDate && endDate) {
       // Date range specified
       statusCounts = await prisma.$queryRaw<
-        Array<{ status: string; count: number }>
+        Array<{ orderStatus: string; count: number }>
       >`
         SELECT 
-          status::text,
+          "orderStatus"::text as "orderStatus",
           COUNT(*)::int as count
-        FROM "massschuhe_order"
-        WHERE "userId" = ${id}::text
+        FROM "customerOrders"
+        WHERE "partnerId" = ${id}::text
           AND "createdAt" >= ${startDate}::timestamp
           AND "createdAt" <= ${endDate}::timestamp
-        GROUP BY status
+        GROUP BY "orderStatus"
       `;
     } else {
       // Lifetime data (no date filter)
       statusCounts = await prisma.$queryRaw<
-        Array<{ status: string; count: number }>
+        Array<{ orderStatus: string; count: number }>
       >`
         SELECT 
-          status::text,
+          "orderStatus"::text as "orderStatus",
           COUNT(*)::int as count
-        FROM "massschuhe_order"
-        WHERE "userId" = ${id}::text
-        GROUP BY status
+        FROM "customerOrders"
+        WHERE "partnerId" = ${id}::text
+        GROUP BY "orderStatus"
       `;
     }
 
     // Create a map of status to count
     const statusCountMap = new Map<string, number>();
     statusCounts.forEach((item) => {
-      statusCountMap.set(item.status, Number(item.count || 0));
+      statusCountMap.set(item.orderStatus, Number(item.count || 0));
     });
 
     // Format response - include all statuses, showing 0 for missing ones
