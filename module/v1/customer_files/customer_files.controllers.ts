@@ -324,7 +324,7 @@ export const createCustomerFile = async (req: Request, res: Response) => {
 export const getCustomerFiles = async (req, res) => {
   try {
     const customerId = req.query.id as string;
-    const table = (req.query.table as string) || "all"; // all, screener_file, custom_shafts, customer_files
+    const table = (req.query.table as string) || "all"; // all, screener_file, custom_shafts, customer_files, barcode, insoelInvoice
 
     if (!customerId) {
       return res.status(400).json({
@@ -352,6 +352,8 @@ export const getCustomerFiles = async (req, res) => {
     let screenerRows = [];
     let customShaftRows = [];
     let customerFilesRows = [];
+    let barcodeRows = [];
+    let invoiceRows = [];
 
     // Load only what user requested
     if (table === "all" || table === "screener_file") {
@@ -395,6 +397,30 @@ export const getCustomerFiles = async (req, res) => {
           id: true,
           createdAt: true,
           url: true,
+        },
+      });
+    }
+
+    if (table === "all" || table === "barcode") {
+      barcodeRows = await prisma.customerOrders.findMany({
+        where: { customerId, barcodeLabel: { not: null } },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          createdAt: true,
+          barcodeLabel: true,
+        },
+      });
+    }
+
+    if (table === "all" || table === "insoelInvoice") {
+      invoiceRows = await prisma.customerOrders.findMany({
+        where: { customerId, invoice: { not: null } },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          createdAt: true,
+          invoice: true,
         },
       });
     }
@@ -457,6 +483,34 @@ export const getCustomerFiles = async (req, res) => {
           url: row.url,
           id: row.id,
           fileType: getFileType(row.url),
+          createdAt: row.createdAt,
+        });
+      }
+    }
+
+    // Barcode (from customerOrders)
+    for (const row of barcodeRows) {
+      if (row.barcodeLabel) {
+        allEntries.push({
+          fieldName: "barcodeLabel",
+          table: "barcode",
+          url: row.barcodeLabel,
+          id: row.id,
+          fileType: getFileType(row.barcodeLabel),
+          createdAt: row.createdAt,
+        });
+      }
+    }
+
+    // Invoice (from customerOrders)
+    for (const row of invoiceRows) {
+      if (row.invoice) {
+        allEntries.push({
+          fieldName: "invoice",
+          table: "insoelInvoice",
+          url: row.invoice,
+          id: row.id,
+          fileType: getFileType(row.invoice),
           createdAt: row.createdAt,
         });
       }
