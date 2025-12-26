@@ -59,6 +59,8 @@ model User {
   featureAccess            FeatureAccess?
   notifications            notification[]
   storeLocations           store_location[]
+  customers                customers[]
+  orderSettings            order_settings?
 
   @@map("users")
 }
@@ -441,7 +443,7 @@ model store_location {
 
 model customers {
   id             String  @id @default(uuid())
-  customerNumber Int // Unique per createdBy, not globally
+  customerNumber Int // Unique per partnerId, not globally
   vorname        String?
   nachname       String?
   email          String? @unique
@@ -471,7 +473,8 @@ model customers {
   archIndex1   String? //B120  (.csv)
   archIndex2   String? //C120  (.csv)
 
-  createdBy String
+  partnerId String
+  partner   User    @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   updatedBy String?
 
   // Relation to KundenHistorie
@@ -506,7 +509,7 @@ model customers {
   insolesAnswers           insolesAnswers[]
   massschuheOrderHistories massschuhe_order_history[]
 
-  @@unique([createdBy, customerNumber]) // Unique per partner
+  @@unique([partnerId, customerNumber]) // Unique per partner
   @@index([vorname, nachname])
   // @@index([telefonnummer])
   @@index([wohnort])
@@ -514,6 +517,7 @@ model customers {
   @@index([id, vorname])
   @@index([id, email])
   @@index([createdAt])
+  @@index([partnerId])
 }
 
 model customer_requirements {
@@ -1031,24 +1035,6 @@ enum ChangeType {
   updateStock
 }
 
-model partners_settings {
-  id String @id @default(uuid())
-
-  partnerId String @unique
-  partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-
-  orthotech Boolean @default(false)
-  opannrit  Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([partnerId])
-  @@index([createdAt])
-  @@index([updatedAt])
-  @@map("partners_settings")
-}
-
 model Bestellubersicht {
   id     String @id @default(uuid())
   number Int
@@ -1420,3 +1406,60 @@ model software_version {
 
   @@index([releaseDate])
 }
+
+//--------------------------------------------------------
+//------------------------ALL settings--------------------
+//--------------------------------------------------------
+model partners_settings {
+  id String @id @default(uuid())
+
+  partnerId String @unique
+  partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  orthotech Boolean @default(false)
+  opannrit  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([partnerId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@map("partners_settings")
+}
+
+model order_settings {
+  id        Int      @id @default(autoincrement())
+  updatedAt DateTime @updatedAt
+
+  // 1
+  autoCalcPelottePos Boolean @default(true)
+
+  // 2
+  autoSendToProd Boolean @default(false)
+
+  // 3 - attach scans to order
+  attachFootScans Boolean @default(true)
+
+  // 4 - include basic meas. points 10+11
+  showMeasPoints10_11 Boolean @default(false)
+
+  // 5 - actually print the foot scans
+  printFootScans Boolean @default(true)
+
+  // 6 - detailed / extended meas. points 10+11
+  showMeasPoints10_11_Det Boolean @default(false)
+
+  // Optional: multi-company support
+  partnerId String? @unique
+  partner   User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  @@unique([partnerId])
+  @@index([partnerId])
+  @@index([updatedAt])
+  @@map("order_settings")
+}
+
+//--------------------------------------------------------
+//-----------------------settings end---------------------
+//--------------------------------------------------------

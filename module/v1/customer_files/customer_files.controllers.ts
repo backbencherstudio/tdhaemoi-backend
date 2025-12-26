@@ -409,6 +409,14 @@ export const getCustomerFiles = async (req, res) => {
           id: true,
           createdAt: true,
           barcodeLabel: true,
+          orderNumber: true,
+          fertigstellungBis: true,
+          customer: {
+            select: {
+              vorname: true,
+              nachname: true,
+            },
+          },
         },
       });
     }
@@ -421,6 +429,14 @@ export const getCustomerFiles = async (req, res) => {
           id: true,
           createdAt: true,
           invoice: true,
+          orderNumber: true,
+          fertigstellungBis: true,
+          customer: {
+            select: {
+              vorname: true,
+              nachname: true,
+            },
+          },
         },
       });
     }
@@ -532,10 +548,38 @@ export const getCustomerFiles = async (req, res) => {
       entry.fullUrl = `${baseUrl}/uploads/${entry.url}`;
     });
 
+    // Build exclInfo from barcode or invoice orders
+    let exclInfo: any = {};
+    const allOrderRows = [...barcodeRows, ...invoiceRows];
+    
+    if (allOrderRows.length > 0) {
+      // Sort all orders by createdAt desc to get the most recent one
+      const sortedOrders = allOrderRows.sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+      );
+      const mostRecentOrder = sortedOrders[0];
+      
+      if (mostRecentOrder.customer) {
+        const customerName = [
+          mostRecentOrder.customer.vorname,
+          mostRecentOrder.customer.nachname,
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        exclInfo = {
+          name: customerName || null,
+          orderNumber: mostRecentOrder.orderNumber || null,
+          fertigstellungBis: mostRecentOrder.fertigstellungBis || null,
+        };
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: "Files fetched successfully",
       data: paginatedEntries,
+      exclInfo,
       pagination: {
         page,
         limit,

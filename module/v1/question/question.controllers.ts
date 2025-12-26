@@ -360,7 +360,7 @@ export const getInsolesQuestions = async (req: Request, res: Response) => {
     }
 
     // Determine partner (creator of the customer)
-    const partnerId = customer.createdBy;
+    const partnerId = customer.partnerId;
 
     // Get control configuration for this partner (if any)
     const controlConfig = await prisma.controllQuestions.findUnique({
@@ -497,7 +497,7 @@ export const getShoesQuestions = async (req: Request, res: Response) => {
     }
 
     // Determine partner (creator of the customer)
-    const partnerId = customer.createdBy;
+    const partnerId = customer.partnerId;
 
     // Get control configuration for this partner (if any)
     const controlConfig = await prisma.controllQuestions.findUnique({

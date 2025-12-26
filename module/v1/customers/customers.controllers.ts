@@ -47,10 +47,10 @@ const serializeMaterialField = (material: any): string => {
 // Get next customer number for a partner (starts from 1000)
 const getNextCustomerNumberForPartner = async (
   tx: any,
-  createdBy: string
+  partnerId: string
 ): Promise<number> => {
   const maxCustomer = await tx.customers.findFirst({
-    where: { createdBy },
+    where: { partnerId },
     orderBy: { customerNumber: "desc" },
     select: { customerNumber: true },
   });
@@ -214,7 +214,7 @@ export const createCustomers = async (req: Request, res: Response) => {
           archIndex2: csvData.C120 || null,
           zehentyp1: csvData.B136 || null,
           zehentyp2: csvData.C136 || null,
-          createdBy: req.user.id,
+          partnerId: req.user.id,
           updatedBy: null,
           geburtsdatum: geburtsdatum || null,
           billingType: billingType || null,
@@ -602,7 +602,7 @@ export const getAllCustomers = async (req: Request, res: Response) => {
       prisma.customers.findMany({
         where: {
           ...whereCondition,
-          createdBy: partnerId,
+          partnerId: partnerId,
         },
         skip,
         take: limit,
@@ -618,7 +618,7 @@ export const getAllCustomers = async (req: Request, res: Response) => {
       prisma.customers.count({
         where: {
           ...whereCondition,
-          createdBy: partnerId,
+          partnerId: partnerId,
         },
       }),
     ]);
@@ -1062,7 +1062,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
       }),
       prisma.screener_file.findMany(screenerFileQuery),
       prisma.customerHistorie.findMany({ where: { customerId: id } }),
-      prisma.user.findUnique({ where: { id: customer.createdBy } }),
+      prisma.user.findUnique({ where: { id: customer.partnerId } }),
       prisma.workshopNote.findUnique({ where: { userId: userId } }),
       // Get all screener dates for dropdown options (full ISO strings)
       prisma.screener_file.findMany({
@@ -1605,7 +1605,7 @@ export const searchCustomers = async (req: Request, res: Response) => {
 
     // Always filter by user (except ADMIN can see all)
     if (userRole !== "ADMIN") {
-      searchConditions.push({ createdBy: userId });
+      searchConditions.push({ partnerId: userId });
     }
 
     // Handle general search across multiple fields
@@ -1695,7 +1695,7 @@ export const searchCustomers = async (req: Request, res: Response) => {
       searchConditions.length > 0
         ? { AND: searchConditions }
         : userRole !== "ADMIN"
-        ? { createdBy: userId }
+        ? { partnerId: userId }
         : {};
 
     // Execute queries in parallel
@@ -2570,6 +2570,8 @@ export const filterCustomer = async (req: Request, res: Response) => {
       year,
       completedOrders,
       noOrder,
+      paymnentType,
+      geschaeftsstandort,
       page = "1",
       limit = "10",
       search,
@@ -2582,7 +2584,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
       });
     }
 
-    const userId = req.user.id;
+    const partnerId = req.user.id;
 
     const normalizeString = (value: unknown): string | undefined => {
       if (Array.isArray(value)) {
@@ -2613,12 +2615,27 @@ export const filterCustomer = async (req: Request, res: Response) => {
 
     const completedOrdersFilter = parseBoolean(completedOrders);
     const noOrderFilter = parseBoolean(noOrder);
+    const normalizedPaymnentType = normalizeString(paymnentType)?.toLowerCase();
+    const normalizedGeschaeftsstandort = normalizeString(geschaeftsstandort)?.trim();
 
     if (completedOrdersFilter && noOrderFilter) {
       return res.status(400).json({
         success: false,
         message:
           "Filters 'completedOrders' and 'noOrder' cannot be used together.",
+      });
+    }
+
+    // Validate payment type
+    if (
+      normalizedPaymnentType &&
+      normalizedPaymnentType !== "insurance" &&
+      normalizedPaymnentType !== "private"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid paymnentType. Allowed values: 'insurance' or 'private'",
       });
     }
 
@@ -2768,6 +2785,10 @@ export const filterCustomer = async (req: Request, res: Response) => {
       });
     }
 
+    // Note: Payment type filtering will be done after fetching based on latestOrder
+    // This is because we need to filter by the most recent order's payment status,
+    // not just any order with that payment status
+
     const normalizedSearch = normalizeString(search)?.trim();
     if (normalizedSearch) {
       whereConditions.push({
@@ -2784,12 +2805,19 @@ export const filterCustomer = async (req: Request, res: Response) => {
 
     const where: any = whereConditions.length ? { AND: whereConditions } : {};
 
+    // If payment type or geschaeftsstandort filter is applied, fetch more records to account for filtering
+    // We'll filter after fetching, so we need a larger batch to ensure we get enough results
+    const needsPostFilter = normalizedPaymnentType || normalizedGeschaeftsstandort;
+    const fetchLimit = needsPostFilter
+      ? limitNumber * 5 // Fetch 5x more to account for filtering
+      : limitNumber;
+
     const [totalCount, customers] = await prisma.$transaction([
-      prisma.customers.count({ where: { ...where, createdBy: userId } }),
+      prisma.customers.count({ where: { ...where, partnerId: partnerId } }),
       prisma.customers.findMany({
-        where: { ...where, createdBy: userId },
-        skip,
-        take: limitNumber,
+        where: { ...where, partnerId: partnerId },
+        skip: needsPostFilter ? 0 : skip, // Start from beginning if filtering
+        take: needsPostFilter ? fetchLimit : limitNumber,
         orderBy: { createdAt: "desc" },
         include: {
           customerOrders: {
@@ -2800,6 +2828,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
               totalPrice: true,
               createdAt: true,
               bezahlt: true,
+              geschaeftsstandort: true,
             },
           },
           massschuheOrders: {
@@ -2849,25 +2878,8 @@ export const filterCustomer = async (req: Request, res: Response) => {
           }
         : null;
 
-    // Helper function to determine Kostenträger from bezahlt values
-    const getKostentrager = (orders: any[]): string | null => {
-      for (const order of orders) {
-        if (order.bezahlt) {
-          const bezahltLower = String(order.bezahlt).toLowerCase();
-          if (bezahltLower.includes("privat")) {
-            return "Privat";
-          }
-          if (bezahltLower.includes("krankenkasse")) {
-            return "Krankenkasse";
-          }
-          // If bezahlt is set but doesn't match known patterns, return the value
-          return order.bezahlt;
-        }
-      }
-      return null;
-    };
-
-    const responseData = customers.map((customer) => {
+    // Map customers to response data
+    let responseData = customers.map((customer) => {
       const completedOrdersCount = customer.customerOrders.filter((order) =>
         completedStatusesForCount.has(order.orderStatus)
       ).length;
@@ -2875,7 +2887,7 @@ export const filterCustomer = async (req: Request, res: Response) => {
       const latestOrder = customer.customerOrders[0] || null;
       const latestScreener = formatScreener(customer.screenerFile[0]);
       const latestMassschuheOrder = customer.massschuheOrders?.[0] || null;
-      const kostentrager = getKostentrager(customer.customerOrders);
+      const billingType = latestOrder?.bezahlt || null;
 
       return {
         id: customer.id,
@@ -2891,18 +2903,66 @@ export const filterCustomer = async (req: Request, res: Response) => {
         latestOrder,
         latestScreener,
         latestMassschuheOrder,
-        Kostenträger: kostentrager,
-        billingType: customer.billingType,
+        billingType,
       };
     });
+
+    // Filter by payment type based on latest order's payment status
+    if (normalizedPaymnentType) {
+      if (normalizedPaymnentType === "insurance") {
+        // Insurance: Only include customers whose latest order has insurance payment
+        responseData = responseData.filter((customer) => {
+          const latestOrderBezahlt = customer.latestOrder?.bezahlt;
+          return (
+            latestOrderBezahlt === "Krankenkasse_Ungenehmigt" ||
+            latestOrderBezahlt === "Krankenkasse_Genehmigt"
+          );
+        });
+      } else if (normalizedPaymnentType === "private") {
+        // Private: Only include customers whose latest order has private payment
+        responseData = responseData.filter((customer) => {
+          const latestOrderBezahlt = customer.latestOrder?.bezahlt;
+          return (
+            latestOrderBezahlt === "Privat_Bezahlt" ||
+            latestOrderBezahlt === "Privat_offen"
+          );
+        });
+      }
+    }
+
+    // Filter by geschaeftsstandort based on latest order's geschaeftsstandort
+    if (normalizedGeschaeftsstandort) {
+      responseData = responseData.filter((customer) => {
+        const latestOrderGeschaeftsstandort = customer.latestOrder?.geschaeftsstandort;
+        if (!latestOrderGeschaeftsstandort) return false;
+        // Case-insensitive partial match
+        return latestOrderGeschaeftsstandort
+          .toLowerCase()
+          .includes(normalizedGeschaeftsstandort.toLowerCase());
+      });
+    }
+
+    // Apply pagination after filtering (if any post-fetch filters were applied)
+    if (needsPostFilter) {
+      const startIndex = skip;
+      const endIndex = skip + limitNumber;
+      responseData = responseData.slice(startIndex, endIndex);
+    }
+
+    // Calculate total for pagination
+    // Note: When payment type or geschaeftsstandort filter is applied, totalItems is approximate
+    // as we only count the filtered results from the fetched batch
+    const filteredTotal = needsPostFilter
+      ? Math.min(responseData.length + skip, totalCount) // Approximate
+      : totalCount;
 
     res.status(200).json({
       success: true,
       message: "Customers filtered successfully",
       data: responseData,
       pagination: {
-        totalItems: totalCount,
-        totalPages: Math.ceil(totalCount / limitNumber),
+        totalItems: filteredTotal,
+        totalPages: Math.ceil(filteredTotal / limitNumber),
         currentPage: pageNumber,
         itemsPerPage: limitNumber,
       },
@@ -2916,6 +2976,8 @@ export const filterCustomer = async (req: Request, res: Response) => {
         year: yearNumber,
         completedOrders: completedOrdersFilter,
         noOrder: noOrderFilter,
+        paymnentType: normalizedPaymnentType || undefined,
+        geschaeftsstandort: normalizedGeschaeftsstandort || undefined,
         search: normalizedSearch || undefined,
         dateRange: dateRange
           ? {
