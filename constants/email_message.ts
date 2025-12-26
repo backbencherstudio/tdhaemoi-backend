@@ -135,7 +135,9 @@ export const emailForgotPasswordOTP = (email: string, OTP: string): string => {
 
 export const partnershipWelcomeEmail = (
   email: string,
-  password: string
+  password: string,
+  name?: string,
+  phone?: string
 ): string => {
   return `
       <!DOCTYPE html>
@@ -144,6 +146,33 @@ export const partnershipWelcomeEmail = (
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Welcome to FeetF1rst Partnership</title>
+        <style type="text/css">
+          @media only screen and (max-width: 600px) {
+            .header-logo {
+              max-width: 180px !important;
+              width: 180px !important;
+            }
+            .header-container {
+              padding: 20px 20px !important;
+            }
+            .header-logo-cell {
+              width: 180px !important;
+              max-width: 180px !important;
+            }
+            .header-text-cell {
+              padding-left: 20px !important;
+              padding-top: 15px !important;
+            }
+            .header-text {
+              font-size: 12px !important;
+            }
+          }
+          @media only screen and (min-width: 601px) {
+            .header-text-cell {
+              text-align: right !important;
+            }
+          }
+        </style>
       </head>
       <body style="margin: 0; padding: 0; background-color: #f9f9f9; font-family: 'Arial', 'Helvetica', sans-serif;">
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width: 650px; margin: auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden; margin-top: 40px; margin-bottom: 40px;">
@@ -152,15 +181,30 @@ export const partnershipWelcomeEmail = (
               <!-- Document Header -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
-                  <td style="background-color: rgb(85, 150, 112); padding: 35px 40px;">
+                  <td class="header-container" style="background-color: rgb(85, 150, 112); padding: 35px 40px;">
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                       <tr>
-                        <td style="vertical-align: middle; width: 180px;">
-                          <img src="https://i.ibb.co.com/Dftw5sbd/feet-first-white-logo-2-1.png" alt="FeetF1rst Logo" style="max-width: 180px; height: auto; display: block;" />
+                        <td class="header-logo-cell" style="vertical-align: middle; width: 280px; max-width: 280px;">
+                          <img class="header-logo" src="cid:feetf1rst-logo" alt="FeetF1rst Logo" style="max-width: 280px; width: 100%; height: auto; display: block; pointer-events: none; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;" />
                         </td>
-                        <td style="vertical-align: middle; padding-left: 30px;">
-                          <h1 style="color: #ffffff; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 32px; font-weight: 700; margin: 0 0 6px; letter-spacing: 1px; line-height: 1.2;">FEET F1RST</h1>
-                          <p style="color: #ffffff; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 11px; margin: 0; opacity: 0.98; letter-spacing: 0.5px; line-height: 1.4; text-transform: uppercase;">FOOTWEAR ESSENTIALS, SHOE RECOMMENDATIONS AND MORE</p>
+                        <td class="header-text-cell" style="vertical-align: middle; padding-left: 30px; width: auto; text-align: right;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width: auto; margin-left: auto;">
+                            <tr>
+                              <td class="header-text" style="padding: 4px 0; color: #ffffff; font-family: 'Segoe UI', 'Roboto', 'Open Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; line-height: 1.5; text-align: left;">
+                                <strong style="color: #ffffff; font-weight: 600;">Email:</strong> <a href="mailto:info@feetfirst.com" style="color: #e8f4f8; text-decoration: none; font-weight: 400;">info@feetfirst.com</a>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="header-text" style="padding: 4px 0; color: #ffffff; font-family: 'Segoe UI', 'Roboto', 'Open Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; line-height: 1.5; text-align: left;">
+                                <strong style="color: #ffffff; font-weight: 600;">Phone:</strong> <span style="color: #ffffff; font-weight: 400;">+39 366 508 7742</span>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="header-text" style="padding: 4px 0; color: #ffffff; font-family: 'Segoe UI', 'Roboto', 'Open Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; line-height: 1.5; text-align: left;">
+                                <strong style="color: #ffffff; font-weight: 600;">Address:</strong> <span style="color: #ffffff; font-weight: 400;">demo state!, 123 hous</span>
+                              </td>
+                            </tr>
+                          </table>
                         </td>
                       </tr>
                     </table>
@@ -302,9 +346,11 @@ Wenn Sie möchten, begleiten wir Sie persönlich bei den ersten Schritten.
                 <tr>
                   <td style="padding: 0 40px 40px;">
                     <h3 style="color: #2c3e50; font-size: 16px; font-weight: 600; margin: 0 0 15px;">Kontaktinformationen</h3>
-                    <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
-                      Sollten Fragen offen bleiben, begleiten wir Sie gerne persönlich.
-                    </p>
+                     <!--
+                      <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
+                       Sollten Fragen offen bleiben, begleiten wir Sie gerne persönlich.
+                     </p>
+                    -->
                     <p style="color: #2c3e50; font-size: 15px; line-height: 24px; margin: 0 0 5px;">
                       <strong>Email:</strong> <a href="mailto:info@feetf1rst.com" style="color: #2980b9; text-decoration: none;">info@feetf1rst.com</a>
                     </p>
@@ -343,7 +389,7 @@ Wenn Sie möchten, begleiten wir Sie persönlich bei den ersten Schritten.
                   <td style="background-color:rgb(85, 150, 112); padding: 20px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
                     <p style="color:rgb(255, 255, 255); font-size: 13px; line-height: 20px; margin: 0;">
                       This is a system-generated email. Please do not reply directly to this message.<br>
-                      © 2024 FeetF1rst Corporation. All rights reserved.
+                      © 2026 FeetF1rst Corporation. All rights reserved.
                     </p>
                   </td>
                 </tr>

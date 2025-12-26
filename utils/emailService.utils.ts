@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import fs from "fs";
 import dotenv from "dotenv";
+import https from "https";
 import {
   adminLoginNotificationEmail,
   emailForgotPasswordOTP,
@@ -50,16 +51,74 @@ export const sendForgotPasswordOTP = async (
   await sendEmail(email, "OTP Code for Password Reset", htmlContent);
 };
 
+// Helper function to download image from URL
+const downloadImage = (url: string): Promise<Buffer> => {
+  return new Promise((resolve, reject) => {
+    https.get(url, (response) => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`Failed to download image: ${response.statusCode}`));
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => resolve(Buffer.concat(chunks)));
+      response.on("error", reject);
+    }).on("error", reject);
+  });
+};
+
 export const sendPartnershipWelcomeEmail = async (
   email: string,
-  password: string
+  password: string,
+  name?: string,
+  phone?: string
 ): Promise<void> => {
-  const htmlContent = partnershipWelcomeEmail(email, password);
-  await sendEmail(
-    email,
-    "Willkommen bei FeetF1rst - Ihr Software Zugang ist jetzt aktiv",
-    htmlContent
-  );
+  try {
+    const htmlContent = partnershipWelcomeEmail(email, password, name, phone);
+    
+    // Download the logo image
+    const logoUrl = "https://i.ibb.co/Dftw5sbd/feet-first-white-logo-2-1.png";
+    let logoBuffer: Buffer | null = null;
+    
+    try {
+      logoBuffer = await downloadImage(logoUrl);
+    } catch (error) {
+      console.warn("Failed to download logo image, sending email without embedded image:", error);
+    }
+
+    const mailTransporter = nodemailer.createTransport({
+      service: "gmail",
+      port: 587,
+      auth: {
+        user: process.env.NODE_MAILER_USER || "",
+        pass: process.env.NODE_MAILER_PASSWORD || "",
+      },
+    });
+
+    const mailOptions: any = {
+      from: `"Feetf1rst" <${process.env.NODE_MAILER_USER}>`,
+      to: email,
+      subject: "Willkommen bei FeetF1rst - Ihr Software Zugang ist jetzt aktiv",
+      html: htmlContent,
+    };
+
+    // Add logo as CID attachment if downloaded successfully
+    if (logoBuffer) {
+      mailOptions.attachments = [
+        {
+          filename: "feetf1rst-logo.png",
+          content: logoBuffer,
+          cid: "feetf1rst-logo", // Content-ID used in the HTML template
+        },
+      ];
+    }
+
+    await mailTransporter.sendMail(mailOptions);
+  } catch (error) {
+    console.error("Error in sendPartnershipWelcomeEmail:", error);
+    throw new Error("Failed to send partnership welcome email.");
+  }
 };
 
 export const sendNewSuggestionEmail = async (

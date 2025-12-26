@@ -78,7 +78,7 @@ export const createPartnership = async (req: Request, res: Response) => {
     });
 
     // Send welcome email with credentials
-    sendPartnershipWelcomeEmail(email, password);
+    sendPartnershipWelcomeEmail(email, password, name, phone);
 
     res.status(201).json({
       success: true,
