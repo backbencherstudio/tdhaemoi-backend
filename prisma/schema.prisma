@@ -1454,7 +1454,6 @@ model order_settings {
   partnerId String? @unique
   partner   User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull)
 
-  @@unique([partnerId])
   @@index([partnerId])
   @@index([updatedAt])
   @@map("order_settings")
