@@ -860,6 +860,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
           bezahlt: true,
           barcodeLabel: true,
           fertigstellungBis: true,
+          geschaeftsstandort: true,
           auftragsDatum: true,
           customer: {
             select: {
