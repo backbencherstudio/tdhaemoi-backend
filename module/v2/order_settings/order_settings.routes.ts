@@ -1,12 +1,18 @@
 import express from "express";
 import { verifyUser } from "../../../middleware/verifyUsers";
-import { manageOrderSettings } from "./order_settings.controllers";
+import { getOrderSettings, manageOrderSettings } from "./order_settings.controllers";
 
 
 const router = express.Router();
 
-// router.post("/create", verifyUser("ADMIN"), createSoftwareVersion);
- router.get("/manage",verifyUser("ADMIN", "PARTNER"), manageOrderSettings);
+// GET - Fetch order settings (creates defaults if not exist)
+router.get("/manage", verifyUser("ADMIN", "PARTNER"), getOrderSettings);
+
+// PUT - Update order settings (creates defaults if not exist, then updates)
+router.put("/manage", verifyUser("ADMIN", "PARTNER"), manageOrderSettings);
+
+// POST - Also support POST for update (same as PUT)
+router.patch("/manage", verifyUser("ADMIN", "PARTNER"), manageOrderSettings);
 
 export default router;
  
