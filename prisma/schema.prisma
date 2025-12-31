@@ -61,6 +61,7 @@ model User {
   storeLocations           store_location[]
   customers                customers[]
   orderSettings            order_settings?
+  massschuheOrderAdmin1s   massschuhe_order_admin_1[]
 
   @@map("users")
 }
@@ -1237,6 +1238,7 @@ model massschuhe_order {
   createdAt                DateTime                   @default(now())
   updatedAt                DateTime                   @updatedAt
   massschuheOrderHistories massschuhe_order_history[]
+  massschuheOrderAdmin1s   massschuhe_order_admin_1[]
 
   @@unique([userId, orderNumber]) // Unique per partner
   @@index([createdAt])
@@ -1254,28 +1256,30 @@ enum massschuhe_order_status {
   Geliefert
 }
 
-// model massschuhe_status_treack {
-//   id String @id @default(uuid())
+model massschuhe_order_admin_1 {
+  id String @id @default(uuid())
 
-//   massschuhe_orderId String
-//   massschuhe_order   massschuhe_order @relation(fields: [massschuhe_orderId], references: [id], onDelete: Cascade)
+  massschuhe_orderId String
+  massschuhe_order   massschuhe_order @relation(fields: [massschuhe_orderId], references: [id], onDelete: Cascade)
 
-//   statusFrom massschuhe_order_status?
-//   statusTo   massschuhe_order_status
-//   note       String?
+  partnerId String
+  partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
+  threed_model_right String?
+  threed_model_left  String?
+  invoice            String?
 
-//   @@index([massschuhe_orderId])
-//   @@index([statusFrom])
-//   @@index([statusTo])
-//   @@index([createdAt])
-//   @@index([updatedAt])
-//   @@map("massschuhe_status_treack")
-// }
+  isCompleted Boolean? @default(false)
 
-//as like as customer order history
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([massschuhe_orderId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@map("massschuhe_order_admin_1")
+}
+
 model massschuhe_order_history {
   id String @id @default(uuid())
 

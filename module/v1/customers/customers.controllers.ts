@@ -83,6 +83,7 @@ async function parseCSV(csvPath: string): Promise<any> {
 }
 
 export const createCustomers = async (req: Request, res: Response) => {
+  console.log("createCustomers", req.body);
   const files = req.files as any;
 
   const cleanupFiles = () => {
@@ -98,9 +99,18 @@ export const createCustomers = async (req: Request, res: Response) => {
     });
   };
 
+  // Validate user is authenticated
+  if (!req.user?.id) {
+    cleanupFiles();
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized: user not authenticated",
+    });
+  }
+
   const requireFields = await prisma.customer_requirements.findFirst({
     where: {
-      partnerId: req.user?.id,
+      partnerId: req.user.id,
     },
     select: {
       vorname: true,
@@ -127,9 +137,12 @@ export const createCustomers = async (req: Request, res: Response) => {
 
   const missingFields: string[] = [];
 
-  for (const [field, isRequired] of Object.entries(requireFields)) {
-    if (isRequired && !bodyFieldMap[field as keyof typeof bodyFieldMap]) {
-      missingFields.push(field);
+  // Only validate required fields if requireFields exists
+  if (requireFields) {
+    for (const [field, isRequired] of Object.entries(requireFields)) {
+      if (isRequired && !bodyFieldMap[field as keyof typeof bodyFieldMap]) {
+        missingFields.push(field);
+      }
     }
   }
 
