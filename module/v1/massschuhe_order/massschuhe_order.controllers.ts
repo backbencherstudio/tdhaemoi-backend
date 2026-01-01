@@ -158,7 +158,6 @@ export const createMassschuheOrder = async (req, res) => {
       customer_note,
       location,
     } = req.body;
-    
 
     // Check if customer exists
     const customerExists = await prisma.customers.findUnique({
@@ -173,6 +172,7 @@ export const createMassschuheOrder = async (req, res) => {
       });
     }
 
+    /*
     // Check for existing undelivered orders for the same customer and user
     const leastOrder = await prisma.massschuhe_order.findMany({
       where: {
@@ -186,11 +186,19 @@ export const createMassschuheOrder = async (req, res) => {
     });
 
     if (leastOrder.length > 0) {
+      const existingOrder = leastOrder[0];
       return res.status(400).json({
         success: false,
-        message: "There is an existing order for this customer that is not yet delivered. Please complete or deliver the previous order before creating a new one.",
+        message: `Customer has an existing order (#${existingOrder.id}) that hasn't been delivered yet. Please complete the current order before creating a new one.`,
+        data: {
+          existingOrderId: existingOrder.id,
+          orderNumber: existingOrder.orderNumber,
+          status: existingOrder.status,
+          createdAt: existingOrder.createdAt,
+        },
       });
     }
+    */
 
     // Check if employee exists
     const employeeExists = await prisma.employees.findUnique({
@@ -301,7 +309,6 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
 
-    // Parse pagination parameters
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
@@ -309,7 +316,7 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
 
     // Build where clause
     const where: any = {
-      userId,
+      userId: userId,
     };
 
     // Add status filter
@@ -329,27 +336,102 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
       where.status = status;
     }
 
-    // Add search functionality - search across multiple fields
-    if (search) {
-      const searchConditions = {
-        OR: [
-          { arztliche_diagnose: { contains: search, mode: "insensitive" } },
-          { usführliche_diagnose: { contains: search, mode: "insensitive" } },
-          { rezeptnummer: { contains: search, mode: "insensitive" } },
-          { durchgeführt_von: { contains: search, mode: "insensitive" } },
-          { note: { contains: search, mode: "insensitive" } },
-        ],
-      };
-
-      // If status filter exists, combine with AND
-      if (where.status) {
-        where.AND = [searchConditions];
-      } else {
-        where.AND = [searchConditions];
+    const customerFilters: any = {};
+    
+    if (req.query.geburtsdatum) {
+      const geburtsdatum = (req.query.geburtsdatum as string)?.trim();
+      if (geburtsdatum) {
+        customerFilters.geburtsdatum = { contains: geburtsdatum, mode: "insensitive" };
       }
     }
 
-    // Get total count and orders in parallel
+    if (req.query.customerNumber) {
+      const customerNumber = req.query.customerNumber as string;
+      const customerNumberNum = parseInt(customerNumber);
+      if (!isNaN(customerNumberNum)) {
+        customerFilters.customerNumber = customerNumberNum;
+      }
+    }
+
+    if (req.query.vorname) {
+      const vorname = (req.query.vorname as string)?.trim();
+      if (vorname) {
+        customerFilters.vorname = { contains: vorname, mode: "insensitive" };
+      }
+    }
+
+    if (req.query.nachname) {
+      const nachname = (req.query.nachname as string)?.trim();
+      if (nachname) {
+        customerFilters.nachname = { contains: nachname, mode: "insensitive" };
+      }
+    }
+
+    if (search) {
+      const searchNumber = parseInt(search);
+      const isNumeric = !isNaN(searchNumber);
+
+      const customerSearchConditions: any[] = [
+        { vorname: { contains: search, mode: "insensitive" } },
+        { nachname: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { telefon: { contains: search, mode: "insensitive" } },
+        { wohnort: { contains: search, mode: "insensitive" } },
+        { id: { contains: search, mode: "insensitive" } },
+        { geburtsdatum: { contains: search, mode: "insensitive" } },
+      ];
+
+      if (isNumeric) {
+        customerSearchConditions.push({ customerNumber: searchNumber });
+      }
+
+      const orderSearchConditions: any[] = [
+        { arztliche_diagnose: { contains: search, mode: "insensitive" } },
+        { usführliche_diagnose: { contains: search, mode: "insensitive" } },
+        { rezeptnummer: { contains: search, mode: "insensitive" } },
+        { durchgeführt_von: { contains: search, mode: "insensitive" } },
+        { kunde: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { telefon: { contains: search, mode: "insensitive" } },
+        { customerId: { contains: search, mode: "insensitive" } },
+      ];
+
+      if (isNumeric) {
+        orderSearchConditions.push({ orderNumber: searchNumber });
+      }
+
+      let customerSearchFilter: any;
+      if (Object.keys(customerFilters).length > 0) {
+        customerSearchFilter = {
+          AND: [
+            customerFilters,
+            { OR: customerSearchConditions },
+          ],
+        };
+      } else {
+        customerSearchFilter = { OR: customerSearchConditions };
+      }
+
+      const searchConditions = {
+        OR: [
+          ...orderSearchConditions,
+          {
+            customer: customerSearchFilter,
+          },
+        ],
+      };
+
+      if (where.AND) {
+        where.AND.push(searchConditions);
+      } else {
+        where.AND = [searchConditions];
+      }
+    } else {
+      if (Object.keys(customerFilters).length > 0) {
+        where.customer = customerFilters;
+      }
+    }
+
     const [totalItems, massschuheOrders] = await Promise.all([
       prisma.massschuhe_order.count({ where }),
       prisma.massschuhe_order.findMany({
@@ -357,7 +439,39 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
-        include: {
+        select: {
+          id: true,
+          orderNumber: true,
+          arztliche_diagnose: true,
+          usführliche_diagnose: true,
+          rezeptnummer: true,
+          durchgeführt_von: true,
+          note: true,
+          albprobe_geplant: true,
+          kostenvoranschlag: true,
+          delivery_date: true,
+          telefon: true,
+          filiale: true,
+          kunde: true,
+          email: true,
+          button_text: true,
+          fußanalyse: true,
+          einlagenversorgung: true,
+          bodenerstellungpdf: true,
+          geliefertpdf: true,
+          customer_note: true,
+          location: true,
+          status: true,
+          express: true,
+          customer: {
+            select: {
+              id: true,
+              customerNumber: true,
+              vorname: true,
+              nachname: true,
+              email: true,
+            },
+          },
           massschuheOrderHistories: {
             orderBy: { startedAt: "desc" },
             select: {
@@ -459,6 +573,7 @@ export const getMassschuheOrderByCustomerId = async (
 
       where.status = status;
     }
+
     const [totalItems, massschuheOrders] = await Promise.all([
       prisma.massschuhe_order.count({ where }),
       prisma.massschuhe_order.findMany({
@@ -466,7 +581,30 @@ export const getMassschuheOrderByCustomerId = async (
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
-        include: {
+        select: {
+          id: true,
+          orderNumber: true,
+          arztliche_diagnose: true,
+          usführliche_diagnose: true,
+          rezeptnummer: true,
+          durchgeführt_von: true,
+          note: true,
+          albprobe_geplant: true,
+          kostenvoranschlag: true,
+          delivery_date: true,
+          telefon: true,
+          filiale: true,
+          kunde: true,
+          email: true,
+          button_text: true,
+          fußanalyse: true,
+          einlagenversorgung: true,
+          bodenerstellungpdf: true,
+          geliefertpdf: true,
+          customer_note: true,
+          location: true,
+          status: true,
+          express: true,
           user: {
             select: {
               name: true,
@@ -593,13 +731,24 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
 
     // Direct field mapping (excluding relationships)
     const directFields = [
-      'arztliche_diagnose', 'usführliche_diagnose', 'rezeptnummer',
-      'durchgeführt_von', 'note', 'delivery_date', 'telefon',
-      'filiale', 'kunde', 'email', 'button_text', 'fußanalyse',
-      'einlagenversorgung', 'customer_note', 'location'
+      "arztliche_diagnose",
+      "usführliche_diagnose",
+      "rezeptnummer",
+      "durchgeführt_von",
+      "note",
+      "delivery_date",
+      "telefon",
+      "filiale",
+      "kunde",
+      "email",
+      "button_text",
+      "fußanalyse",
+      "einlagenversorgung",
+      "customer_note",
+      "location",
     ];
 
-    directFields.forEach(field => {
+    directFields.forEach((field) => {
       if (body[field] !== undefined) updateData[field] = body[field];
     });
 
@@ -618,22 +767,34 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
     // Validate and set relationships
     if (body.customerId !== undefined) {
       if (!body.customerId) {
-        return res.status(400).json({ success: false, message: "customerId cannot be empty" });
+        return res
+          .status(400)
+          .json({ success: false, message: "customerId cannot be empty" });
       }
-      const customerExists = await prisma.customers.findUnique({ where: { id: body.customerId } });
+      const customerExists = await prisma.customers.findUnique({
+        where: { id: body.customerId },
+      });
       if (!customerExists) {
-        return res.status(404).json({ success: false, message: "Customer not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Customer not found" });
       }
       updateData.customerId = body.customerId;
     }
 
     if (body.employeeId !== undefined) {
       if (!body.employeeId) {
-        return res.status(400).json({ success: false, message: "employeeId cannot be empty" });
+        return res
+          .status(400)
+          .json({ success: false, message: "employeeId cannot be empty" });
       }
-      const employeeExists = await prisma.employees.findUnique({ where: { id: body.employeeId } });
+      const employeeExists = await prisma.employees.findUnique({
+        where: { id: body.employeeId },
+      });
       if (!employeeExists) {
-        return res.status(404).json({ success: false, message: "Employee not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Employee not found" });
       }
       updateData.employeeId = body.employeeId;
     }
@@ -649,12 +810,13 @@ export const updateMassschuheOrder = async (req: Request, res: Response) => {
       message: "Order updated successfully",
       data: updatedOrder,
     });
-
   } catch (error: any) {
     console.error("Update Error:", error);
 
     if (error.code === "P2025") {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
 
     return res.status(500).json({
@@ -967,7 +1129,6 @@ export const updateMassschuheOrderStatus = async (
     });
   }
 };
-
 
 export const uploadMassschuheOrderPdf = async (req: Request, res: Response) => {
   try {

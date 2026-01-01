@@ -12,11 +12,15 @@ import {
   getSingleCustomShaft,
   updateCustomShaftStatus,
   deleteCustomShaft,
-  totalPriceResponse
+  totalPriceResponse,
 } from "./custom_shafts.controllers";
 
 const router = express.Router();
 
+/*----------------------------------------------
+*this is order breated by partner for customer, when customer make a order in the maintime i hane not this product.
+only this time partner can able to make an order for customer. usiong this 
+*/
 router.post(
   "/create",
   verifyUser("PARTNER", "ADMIN"),
@@ -27,17 +31,9 @@ router.post(
   createTustomShafts
 );
 
-router.get(
-  "/get",
-  verifyUser("PARTNER", "ADMIN"),
-  getTustomShafts
-);
+router.get("/get", verifyUser("PARTNER", "ADMIN"), getTustomShafts);
 
-router.get(
-  "/get/:id",
-  verifyUser("PARTNER", "ADMIN"),
-  getSingleCustomShaft
-);
+router.get("/get/:id", verifyUser("PARTNER", "ADMIN"), getSingleCustomShaft);
 
 router.patch(
   "/update-status/:id",
@@ -45,20 +41,20 @@ router.patch(
   updateCustomShaftStatus
 );
 
-router.delete(
-  "/delete/:id",
-  verifyUser("PARTNER", "ADMIN"),
-  deleteCustomShaft
-);
+router.delete("/delete/:id", verifyUser("PARTNER", "ADMIN"), deleteCustomShaft);
 
-// i need to calculate tottle price of all custom shafts
 router.get(
   "/total-price-resio",
   verifyUser("PARTNER", "ADMIN"),
   totalPriceResponse
 );
 
-//------------------------------------------
+
+/*
+* this created by admin panel for partner.
+* admin can create a new maßschaft kollektion for partner.
+
+*/
 router.post(
   "/create/mabschaft_kollektion",
   verifyUser("PARTNER", "ADMIN"),
@@ -90,8 +86,5 @@ router.delete(
   verifyUser("PARTNER", "ADMIN"),
   deleteMaßschaftKollektion
 );
-
-
-
 
 export default router;

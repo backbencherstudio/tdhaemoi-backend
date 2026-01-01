@@ -368,7 +368,7 @@ export const deleteMaßschaftKollektion = async (
 //     "message": "Maßschaft Kollektion not found"
 // }
 
-export const createTustomShafts = async (req: Request, res: Response) => {
+export const createTustomShafts = async (req, res) => {
   const files = req.files as any;
   const { id } = req.user;
 
@@ -391,15 +391,6 @@ export const createTustomShafts = async (req: Request, res: Response) => {
       osen_einsetzen_price,
       Passenden_schnursenkel_price,
     } = req.body;
-
-    console.log("osen_einsetzen_price", osen_einsetzen_price);
-    console.log("osen_einsetzen_price type", typeof osen_einsetzen_price);
-
-    console.log("passenden_schnursenkel_price", Passenden_schnursenkel_price);
-    console.log(
-      "passenden_schnursenkel_price type",
-      typeof Passenden_schnursenkel_price
-    );
 
     // Validate mutual exclusivity between customerId and other_customer_number
     const hasCustomerId = !!customerId;
