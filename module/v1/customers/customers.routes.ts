@@ -17,7 +17,8 @@ import {
   getEinlagenInProduktion,
   filterCustomer,
   createCustomerRequirements,
-  getCustomerRequirements
+  getCustomerRequirements,
+  getAllVersorgungenByCustomerId
 
 } from "./customers.controllers";
 import upload from "../../../config/multer.config";
@@ -131,6 +132,9 @@ router.get(
 );
 
 router.get("/:id", verifyUser("PARTNER", "ADMIN"), getCustomerById);
+
+// get all Versorgungen by customer id which he buy
+router.get("/supply-status/:customerId", verifyUser("PARTNER", "ADMIN"), getAllVersorgungenByCustomerId);
 
 
 export default router;

@@ -61,7 +61,7 @@ model User {
   storeLocations           store_location[]
   customers                customers[]
   orderSettings            order_settings?
-  massschuheOrderAdmin1s   massschuhe_order_admin_1[]
+  // massschuheOrderAdmin1s   massschuhe_order_admin_1[]
 
   @@map("users")
 }
@@ -1047,8 +1047,6 @@ model Bestellubersicht {
   updatedAt DateTime @updatedAt
 }
 
-
-
 //---------------------------massschuhe_order---------------------
 // model massschuhe_order {
 //   id String @id @default(uuid())
@@ -1104,12 +1102,12 @@ model Bestellubersicht {
 //   @@index([kostenvoranschlag])
 // }
 
-/*
-* @massschuhe_order "This is the main part of our application"
-* এটা হচ্চে জুতার অর্ডার মডেল
-Q. how to order a shooe a customer?
-A. every spapic partner has her own customer database. every customer has spapic insole and foot analysis and shoe.
-*/
+/**
+ * @massschuhe_order "This is the main part of our application"
+ * এটা হচ্চে জুতার অর্ডার মডেল
+ * Q. how to order a shooe a customer?
+ * A. every spapic partner has her own customer database. every customer has spapic insole and foot analysis and shoe.
+ */
 model massschuhe_order {
   id String @id @default(uuid())
 
@@ -1146,6 +1144,12 @@ model massschuhe_order {
 
   //-------------------------------------------------
 
+  //
+  isByPartner_1 Boolean? @default(false)
+  isByPartner_2 Boolean? @default(false)
+
+  production_startedAt DateTime?
+
   //relation with users
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -1159,7 +1163,8 @@ model massschuhe_order {
   createdAt                DateTime                   @default(now())
   updatedAt                DateTime                   @updatedAt
   massschuheOrderHistories massschuhe_order_history[]
-  massschuheOrderAdmin1s   massschuhe_order_admin_1[]
+  // massschuheOrderAdmin1s   massschuhe_order_admin_1[]
+  customShafts             custom_shafts[]
 
   @@unique([userId, orderNumber]) // Unique per partner
   @@index([createdAt])
@@ -1177,29 +1182,29 @@ enum massschuhe_order_status {
   Geliefert
 }
 
-model massschuhe_order_admin_1 {
-  id String @id @default(uuid())
+// model massschuhe_order_admin_1 {
+//   id String @id @default(uuid())
 
-  massschuhe_orderId String
-  massschuhe_order   massschuhe_order @relation(fields: [massschuhe_orderId], references: [id], onDelete: Cascade)
+//   massschuhe_orderId String
+//   massschuhe_order   massschuhe_order @relation(fields: [massschuhe_orderId], references: [id], onDelete: Cascade)
 
-  partnerId String
-  partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+//   partnerId String
+//   partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
-  threed_model_right String?
-  threed_model_left  String?
-  invoice            String?
+//   threed_model_right String?
+//   threed_model_left  String?
+//   invoice            String?
 
-  isCompleted Boolean? @default(false)
+//   isCompleted Boolean? @default(false)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
 
-  @@index([massschuhe_orderId])
-  @@index([createdAt])
-  @@index([updatedAt])
-  @@map("massschuhe_order_admin_1")
-}
+//   @@index([massschuhe_orderId])
+//   @@index([createdAt])
+//   @@index([updatedAt])
+//   @@map("massschuhe_order_admin_1")
+// }
 
 model massschuhe_order_history {
   id String @id @default(uuid())
@@ -1209,9 +1214,10 @@ model massschuhe_order_history {
 
   note String?
 
-  startedAt  DateTime  @default(now()) // when the step begins
+  startedAt  DateTime? // when the step begins
   finishedAt DateTime? // when the step is finished
 
+  orderdAt           DateTime?        @default(now())
   massschuhe_orderId String
   massschuhe_order   massschuhe_order @relation(fields: [massschuhe_orderId], references: [id], onDelete: Cascade)
 
@@ -1236,24 +1242,24 @@ model massschuhe_order_history {
 
 //---------------------------------------------------------------------------
 //এর উদ্দেশ্য হচ্ছে পার্টনার থেক কাষ্টমারের ওইয়ার্ডার অ্যাাডমিন কে পাঠানো
-/*
-@ maßschaft_kollektion হচ্ছে অ্যাাডমিন প্যানেল থেকে কিছু জুতা তৌরি করেই রাখবে! যখন কাষ্টমার order করবে তখন সেই জুতা এই মডেল থেকে নিবে!
-@ custom_shafts হচ্ছে যখন ধরো পার্টনারের পোডাকশনে এই জুতা যেই যেটা তার কাষ্টমার চাচ্ছে। এখন পার্টনার maßschaft_kollektion থেকে জুতা বাছাই করে কাষ্টমারের বর্ত্মন ওইয়ার্ডারকে কমপ্লিট করবে।
-*/
+/**
+ * @ maßschaft_kollektion হচ্ছে অ্যাাডমিন প্যানেল থেকে কিছু জুতা তৌরি করেই রাখবে! যখন কাষ্টমার order করবে তখন সেই জুতা এই মডেল থেকে নিবে!
+ * @ custom_shafts হচ্ছে যখন ধরো পার্টনারের পোডাকশনে এই জুতা যেই যেটা তার কাষ্টমার চাচ্ছে। এখন পার্টনার maßschaft_kollektion থেকে জুতা বাছাই করে কাষ্টমারের বর্ত্মন ওইয়ার্ডারকে কমপ্লিট করবে।
+ */
 //---------------------------------------------------------------------------
 model maßschaft_kollektion {
   id String @id @default(uuid())
 
   ide String?
 
-  name        String?  // জুতার নাম
-  image       String?  // জুতার ছবি
-  price       Float?   // মূল্য
-  catagoary   String?  // ক্যাটাগরি
-  gender      String?  // লিঙ্গ
-  description String?  // বিস্তারিত বিবরণ
+  name        String? // জুতার নাম
+  image       String? // জুতার ছবি
+  price       Float? // মূল্য
+  catagoary   String? // ক্যাটাগরি
+  gender      String? // লিঙ্গ
+  description String? // বিস্তারিত বিবরণ
 
-  customShafts custom_shafts[]  // এই জুতার উপর ভিত্তি করে তৈরি হওয়া কাস্টমাইজড অর্ডারসমূহ
+  customShafts custom_shafts[] // এই জুতার উপর ভিত্তি করে তৈরি হওয়া কাস্টমাইজড অর্ডারসমূহ
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1265,9 +1271,11 @@ model custom_shafts {
   orderNumber           String? // অর্ডার নম্বর (যদি অর্ডার নম্বর থাকে)
   other_customer_number String? // বিকল্প কাস্টমার রেফারেন্স নম্বর (উভয় একসাথে ব্যবহার হবে না)
 
-  image3d_1         String? // 3D ভিউ প্রথম ছবি
-  image3d_2         String? // 3D ভিউ দ্বিতীয় ছবি
-  customerId        String? // সংশ্লিষ্ট কাস্টমারের আইডি
+  image3d_1  String? // 3D ভিউ প্রথম ছবি
+  image3d_2  String? // 3D ভিউ দ্বিতীয় ছবি
+  customerId String? // সংশ্লিষ্ট কাস্টমারের আইডি
+  invoice    String? // ইনভোইস নম্বর
+
   lederfarbe        String? // চামড়ার রঙ
   innenfutter       String? // ভিতরের লাইনিং
   schafthohe        String? // শ্যাফটের উচ্চতা
@@ -1293,21 +1301,28 @@ model custom_shafts {
 
   //relation with shoes
   massschuhe_order_id String?
-  massschuhe_order   massschuhe_order? @relation(fields: [massschuhe_order_id], references: [id], onDelete: SetNull)
+  massschuhe_order    massschuhe_order? @relation(fields: [massschuhe_order_id], references: [id], onDelete: SetNull)
 
-  status custom_shafts_status? @default(Bestellung_eingegangen) // অর্ডার স্ট্যাটাস (ডিফল্ট: অর্ডার প্রাপ্ত)
+  status    custom_shafts_status?    @default(Bestellung_eingegangen) // অর্ডার স্ট্যাটাস (ডিফল্ট: অর্ডার প্রাপ্ত)
+  catagoary custom_shafts_catagoary?
 
-
+  isCompleted Boolean? @default(false)
 
   totalPrice Float?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  @@index([status])         // স্ট্যাটাস অনুসারে দ্রুত সার্চের জন্য
-  @@index([customerId])     // কাস্টমার অনুসারে দ্রুত সার্চের জন্য
+  @@index([status]) // স্ট্যাটাস অনুসারে দ্রুত সার্চের জন্য
+  @@index([customerId]) // কাস্টমার অনুসারে দ্রুত সার্চের জন্য
   @@index([maßschaftKollektionId]) // বেস জুতা অনুসারে দ্রুত সার্চের জন্য
-  @@index([partnerId])      // পার্টনার অনুসারে দ্রুত সার্চের জন্য
-  @@index([createdAt])      // তারিখ অনুসারে দ্রুত সার্চের জন্য
+  @@index([partnerId]) // পার্টনার অনুসারে দ্রুত সার্চের জন্য
+  @@index([createdAt]) // তারিখ অনুসারে দ্রুত সার্চের জন্য
+}
+
+enum custom_shafts_catagoary {
+  Halbprobenerstellung
+  Massschafterstellung
+  Bodenkonstruktion
 }
 
 enum custom_shafts_status {
@@ -1323,6 +1338,16 @@ enum custom_shafts_status {
   Qualitätskontrolle
   Versandt
   Ausgeführt
+
+  //----------------------------------------
+  Leistenerstellung //started
+
+  Bettungsherstellung
+  Halbprobenerstellung
+  Schafterstellung
+  Bodenerstellung
+
+  Geliefert
 }
 
 //---------------------------------------------------------------------------

@@ -2,7 +2,7 @@ import express from "express";
 import { verifyUser } from "../../../../middleware/verifyUsers";
 
 import upload from "../../../../config/multer.config";
-import { sendToAdminOrder_1, getAllAdminOrders_1, approveAdminOrder_1 } from "./admin_order.controllers";
+import { sendToAdminOrder_1,  approveAdminOrder_1 } from "./admin_order.controllers";
 
 //make send to admin a order by partner it's first step
 const router = express.Router();
@@ -18,12 +18,6 @@ router.post(
   sendToAdminOrder_1
 );
 
-//get all admin 1 orders
-router.get(
-  "/get-all-admin-orders-1",
-  verifyUser("ADMIN"),
-  getAllAdminOrders_1
-);
 
 // approve admin 1 order
 router.post(

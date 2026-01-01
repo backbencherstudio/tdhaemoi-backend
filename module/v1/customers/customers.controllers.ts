@@ -3128,3 +3128,125 @@ export const getCustomerRequirements = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+export const getAllVersorgungenByCustomerId = async (req: Request, res: Response) => {
+  try {
+    const { customerId } = req.params;
+    const userId = req.user.id;
+
+    // Parse pagination parameters
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    // Check if customer exists and belongs to user
+    const customer = await prisma.customers.findUnique({
+      where: { id: customerId },
+      select: { id: true, partnerId: true },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    if (customer.partnerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to access this customer's data",
+      });
+    }
+
+    // Get all orders with versorgungId, ordered by creation date (latest first)
+    const orders = await prisma.customerOrders.findMany({
+      where: {
+        customerId,
+        partnerId: userId,
+        versorgungId: { not: null },
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        createdAt: true,
+        geschaeftsstandort: true,
+        versorgungId: true,
+        Versorgungen: {
+          select: {
+            supplyStatus: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                image: true,
+                description: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Group by versorgungId and keep only the latest order for each Versorgungen
+    const versorgungenMap = new Map();
+    
+    orders.forEach((order) => {
+      const versorgungId = order.versorgungId;
+      const supplyStatus = order.Versorgungen?.supplyStatus;
+      
+      if (versorgungId && supplyStatus && supplyStatus.id) {
+        // If this versorgungId hasn't been seen yet, or this order is newer, keep it
+        if (!versorgungenMap.has(versorgungId)) {
+          versorgungenMap.set(versorgungId, {
+            supplyStatus: {
+              ...supplyStatus,
+              image: supplyStatus.image
+                ? getImageUrl(`/uploads/${supplyStatus.image}`)
+                : null,
+            },
+            order: {
+              id: order.id,
+              orderNumber: order.orderNumber,
+              createdAt: order.createdAt,
+              filiale: order.geschaeftsstandort || null,
+            },
+          });
+        }
+      }
+    });
+
+    // Convert to array and apply pagination
+    const allVersorgungen = Array.from(versorgungenMap.values());
+    const totalItems = allVersorgungen.length;
+    const paginatedVersorgungen = allVersorgungen.slice(skip, skip + limit);
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalItems / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    return res.status(200).json({
+      success: true,
+      message: "Versorgungen with order info fetched successfully",
+      data: paginatedVersorgungen,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get All Versorgungen By Customer Id Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching versorgungen",
+      error: error.message,
+    });
+  }
+};

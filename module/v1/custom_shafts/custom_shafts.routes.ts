@@ -53,7 +53,6 @@ router.get(
 /*
 * this created by admin panel for partner.
 * admin can create a new maßschaft kollektion for partner.
-
 */
 router.post(
   "/create/mabschaft_kollektion",

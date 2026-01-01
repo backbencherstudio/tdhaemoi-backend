@@ -172,33 +172,32 @@ export const createMassschuheOrder = async (req, res) => {
       });
     }
 
-    /*
-    // Check for existing undelivered orders for the same customer and user
-    const leastOrder = await prisma.massschuhe_order.findMany({
-      where: {
-        customerId,
-        userId,
-        status: { not: "Geliefert" },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    // // Check for existing undelivered orders for the same customer and user
+    // const leastOrder = await prisma.massschuhe_order.findMany({
+    //   where: {
+    //     customerId,
+    //     userId,
+    //     status: { not: "Geliefert" },
+    //   },
+    //   orderBy: {
+    //     createdAt: "desc",
+    //   },
+    // });
 
-    if (leastOrder.length > 0) {
-      const existingOrder = leastOrder[0];
-      return res.status(400).json({
-        success: false,
-        message: `Customer has an existing order (#${existingOrder.id}) that hasn't been delivered yet. Please complete the current order before creating a new one.`,
-        data: {
-          existingOrderId: existingOrder.id,
-          orderNumber: existingOrder.orderNumber,
-          status: existingOrder.status,
-          createdAt: existingOrder.createdAt,
-        },
-      });
-    }
-    */
+    // if (leastOrder.length > 0) {
+    //   const existingOrder = leastOrder[0];
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: `Customer has an existing order (#${existingOrder.id}) that hasn't been delivered yet. Please complete the current order before creating a new one.`,
+    //     data: {
+    //       existingOrderId: existingOrder.id,
+    //       orderNumber: existingOrder.orderNumber,
+    //       status: existingOrder.status,
+    //       createdAt: existingOrder.createdAt,
+    //     },
+    //   });
+    // }
+
 
     // Check if employee exists
     const employeeExists = await prisma.employees.findUnique({
@@ -265,18 +264,19 @@ export const createMassschuheOrder = async (req, res) => {
       });
 
       // Create order history
-      await tx.massschuhe_order_history.create({
-        data: {
-          massschuhe_orderId: newOrder.id,
-          statusFrom: null,
-          statusTo: newOrder.status,
-          partnerId: userId,
-          employeeId: employeeId || null,
-          customerId: customerId || null,
-          note: "Order created",
-          startedAt: new Date(),
-        },
-      });
+      // await tx.massschuhe_order_history.create({
+      //   data: {
+      //     massschuhe_orderId: newOrder.id,
+      //     statusFrom: null,
+      //     statusTo: newOrder.status,
+      //     partnerId: userId,
+      //     employeeId: employeeId || null,
+      //     customerId: customerId || null,
+      //     note: "Order created",
+      //     // startedAt: new Date(),
+      //     orderdAt: new Date(),
+      //   },
+      // });
 
       return newOrder;
     });
@@ -463,6 +463,8 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
           location: true,
           status: true,
           express: true,
+          isByPartner_1: true,
+          isByPartner_2: true,
           customer: {
             select: {
               id: true,
@@ -1026,33 +1028,47 @@ export const updateMassschuheOrderStatus = async (
     const result = await prisma.$transaction(async (tx) => {
       const now = new Date();
 
-      // Update all orders with matching IDs
+      // Update all orders with status and isByPartner_1
       await tx.massschuhe_order.updateMany({
         where: { id: { in: orderIds } },
-        data: { status },
+        data: { 
+          status, 
+          isByPartner_1: true,
+        },
       });
 
-      // For each order, update history
+      // Set production_startedAt when status changes to "Bettungsherstellung"
+      if (status === "Bettungsherstellung") {
+        console.log("production_startedAt", new Date().toISOString());
+        await tx.massschuhe_order.updateMany({
+          where: { id: { in: orderIds } },
+          data: { 
+            production_startedAt: new Date().toISOString(),
+          },
+        });
+      }
+
+ 
       for (const order of currentOrders) {
-        // Mark the previous status as finished (if there's an active history entry)
+ 
         const previousHistory = await tx.massschuhe_order_history.findFirst({
           where: {
             massschuhe_orderId: order.id,
             statusTo: order.status,
-            finishedAt: null, // Only update entries that haven't been finished
+            finishedAt: null, 
           },
           orderBy: { startedAt: "desc" },
         });
 
         if (previousHistory) {
-          // Mark previous status as finished
+ 
           await tx.massschuhe_order_history.update({
             where: { id: previousHistory.id },
             data: { finishedAt: now },
           });
         }
 
-        // Create new history entry for the new status
+ 
         await tx.massschuhe_order_history.create({
           data: {
             massschuhe_orderId: order.id,
@@ -1089,8 +1105,10 @@ export const updateMassschuheOrderStatus = async (
           fußanalyse: true,
           einlagenversorgung: true,
           location: true,
-          createdAt: true,
-          updatedAt: true,
+          production_startedAt: true,
+          //boolin field
+          isByPartner_1: true,
+          isByPartner_2: true,
           massschuheOrderHistories: {
             orderBy: { startedAt: "desc" },
             select: {

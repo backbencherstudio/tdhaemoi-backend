@@ -34,9 +34,10 @@ export const sendToAdminOrder_1 = async (req: Request, res: Response) => {
     }
 
     // check if the order is already sent to admin 1
-    const isOrderSent = await prisma.massschuhe_order_admin_1.findFirst({
+    const isOrderSent = await prisma.custom_shafts.findFirst({
       where: {
-        massschuhe_orderId: orderId,
+        massschuhe_order_id: orderId,
+        catagoary: "Halbprobenerstellung",
         isCompleted: false,
       },
     });
@@ -54,24 +55,33 @@ export const sendToAdminOrder_1 = async (req: Request, res: Response) => {
         message: "You are not authorized to send this order to admin",
       });
     }
-    const adminOrder = await prisma.massschuhe_order_admin_1.create({
+    const adminOrder = await prisma.custom_shafts.create({
       data: {
-        massschuhe_orderId: orderId,
+        massschuhe_order_id: orderId,
         partnerId: userId,
-        threed_model_right: threed_model_right,
-        threed_model_left: threed_model_left,
+        image3d_1: threed_model_right,
+        image3d_2: threed_model_left,
         invoice: invoice,
         isCompleted: false,
+        catagoary: "Halbprobenerstellung",
+      },
+      select: {
+        id: true,
+        image3d_1: true,
+        image3d_2: true,
+        invoice: true,
+        isCompleted: true,
+        catagoary: true,
       },
     });
 
     const formattedOrder = {
       ...adminOrder,
-      threed_model_right: adminOrder.threed_model_right
-        ? getImageUrl(`/uploads/${adminOrder.threed_model_right}`)
+      image3d_1: adminOrder.image3d_1
+        ? getImageUrl(`/uploads/${adminOrder.image3d_1}`)
         : null,
-      threed_model_left: adminOrder.threed_model_left
-        ? getImageUrl(`/uploads/${adminOrder.threed_model_left}`)
+      image3d_2: adminOrder.image3d_2
+        ? getImageUrl(`/uploads/${adminOrder.image3d_2}`)
         : null,
       invoice: adminOrder.invoice
         ? getImageUrl(`/uploads/${adminOrder.invoice}`)
@@ -93,188 +103,7 @@ export const sendToAdminOrder_1 = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllAdminOrders_1 = async (req: Request, res: Response) => {
-  try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
-    const search = (req.query.search as string) || "";
-    const where: any = {};
-    if (search) {
-      where.OR = [
-        {
-          massschuhe_order: {
-            customer: { vorname: { contains: search, mode: "insensitive" } },
-          },
-        },
-        {
-          massschuhe_order: {
-            customer: { nachname: { contains: search, mode: "insensitive" } },
-          },
-        },
-        {
-          massschuhe_order: {
-            customer: { email: { contains: search, mode: "insensitive" } },
-          },
-        },
-      ];
-    }
-    const [adminOrders, totalItems] = await Promise.all([
-      prisma.massschuhe_order_admin_1.findMany({
-        where,
-        select: {
-          id: true,
-          threed_model_right: true,
-          threed_model_left: true,
-          invoice: true,
-          isCompleted: true,
-          createdAt: true,
-          partner: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              phone: true,
-              busnessName: true,
-            },
-          },
-
-          // id String @id @default(uuid())
-
-          // orderNumber Int?
-
-          // arztliche_diagnose    String?
-          // usführliche_diagnose String?
-          // rezeptnummer          String?
-          // durchgeführt_von     String?
-          // note                  String?
-
-          // albprobe_geplant   Boolean? @default(false)
-          // kostenvoranschlag  Boolean? @default(false)
-          // //-------------------------------------------------
-          // //workload section
-          // delivery_date      String?
-          // telefon            String?
-          // filiale            String? //location
-          // kunde              String? //customer name
-          // email              String?
-          // button_text        String?
-          // // PREISAUSWAHL
-          // fußanalyse        Float?
-          // einlagenversorgung Float?
-
-          // bodenerstellungpdf String?
-          // geliefertpdf       String?
-
-          // customer_note String?
-          // location      String?
-          // //-------------------------------------------------
-          // status        massschuhe_order_status @default(Leistenerstellung)
-          // express       Boolean?                @default(false)
-
-          // //-------------------------------------------------
-
-          // //relation with users
-          // userId String?
-          // user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-          // employeeId String?
-          // employee   Employees? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
-
-          // customerId String?
-          // customer   customers? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-
-          // createdAt                DateTime                   @default(now())
-          // updatedAt                DateTime                   @updatedAt
-          // massschuheOrderHistories massschuhe_order_history[]
-          // massschuheOrderAdmin1s   massschuhe_order_admin_1[]
-
-          massschuhe_order: {
-            select: {
-              id: true,
-              orderNumber: true,
-              status: true,
-              express: true,
-              delivery_date: true,
-              telefon: true,
-              filiale: true,
-              kunde: true,
-              email: true,
-              button_text: true,
-              fußanalyse: true,
-              einlagenversorgung: true,
-              bodenerstellungpdf: true,
-              geliefertpdf: true,
-              customer_note: true,
-              location: true,
-              customer: {
-                select: {
-                  vorname: true,
-                  nachname: true,
-                  email: true,
-                },
-              },
-            },
-          },
-        },
-
-        skip,
-        take: limit,
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.massschuhe_order_admin_1.count({
-        where,
-      }),
-    ]);
-
-    const totalPages = Math.ceil(totalItems / limit);
-    const hasNextPage = page < totalPages;
-    const hasPrevPage = page > 1;
-
-    const formattedAdminOrders = adminOrders.map((adminOrder) => ({
-      ...adminOrder,
-      threed_model_right: adminOrder.threed_model_right
-        ? getImageUrl(`/uploads/${adminOrder.threed_model_right}`)
-        : null,
-      threed_model_left: adminOrder.threed_model_left
-        ? getImageUrl(`/uploads/${adminOrder.threed_model_left}`)
-        : null,
-      invoice: adminOrder.invoice
-        ? getImageUrl(`/uploads/${adminOrder.invoice}`)
-        : null,
-      partner: {
-        ...adminOrder.partner,
-        image: adminOrder.partner.image
-          ? getImageUrl(`/uploads/${adminOrder.partner.image}`)
-          : null,
-      },
-    }));
-
-    return res.status(200).json({
-      success: true,
-      message: "Admin orders 1 fetched successfully",
-      data: formattedAdminOrders,
-      pagination: {
-        totalItems: totalItems,
-        totalPages: totalPages,
-        currentPage: page,
-        itemsPerPage: limit,
-        hasNextPage: hasNextPage,
-        hasPrevPage: hasPrevPage,
-      },
-    });
-  } catch (error) {
-    console.error("Get all Admin Orders 1 Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
-};
-
-//approve admin 1 order i need to approved list of orders
+ 
 export const approveAdminOrder_1 = async (req: Request, res: Response) => {
   try {
     // Validate user is authenticated
@@ -352,7 +181,8 @@ export const approveAdminOrder_1 = async (req: Request, res: Response) => {
     if (invalidStatusOrders.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "Some orders are not in the correct status (Leistenerstellung)",
+        message:
+          "Some orders are not in the correct status (Leistenerstellung)",
         invalidOrderIds: invalidStatusOrders.map((order) => order.id),
       });
     }

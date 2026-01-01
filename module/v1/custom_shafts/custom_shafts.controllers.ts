@@ -612,12 +612,15 @@ export const createTustomShafts = async (req, res) => {
   }
 };
 
+
+//==============================Importent==================================================
 export const getTustomShafts = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = (req.query.search as string) || "";
     const status = req.query.status;
+    const catagoary = req.query.catagoary;
     const skip = (page - 1) * limit;
 
     const whereCondition: any = {};
@@ -630,6 +633,12 @@ export const getTustomShafts = async (req: Request, res: Response) => {
       "Ausgeführt",
     ] as const;
 
+    const validCatagoaries = [
+      "Halbprobenerstellung",
+      "Massschafterstellung",
+      "Bodenkonstruktion",
+    ] as const;
+
     // Safe status validation
     if (status && !validStatuses.includes(status.toString() as any)) {
       return res.status(400).json({
@@ -639,8 +648,21 @@ export const getTustomShafts = async (req: Request, res: Response) => {
       });
     }
 
+    // Safe catagoary validation
+    if (catagoary && !validCatagoaries.includes(catagoary.toString() as any)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid catagoary value",
+        validCatagoaries: validCatagoaries,
+      });
+    }
+
     if (status) {
       whereCondition.status = status;
+    }
+
+    if (catagoary) {
+      whereCondition.catagoary = catagoary;
     }
 
     if (search) {
@@ -796,6 +818,8 @@ export const getTustomShafts = async (req: Request, res: Response) => {
     });
   }
 };
+
+//==============================================================================
 
 export const getSingleCustomShaft = async (req: Request, res: Response) => {
   try {
