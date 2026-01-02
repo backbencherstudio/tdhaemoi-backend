@@ -181,7 +181,7 @@ export const createMessage = async (req: Request, res: Response) => {
             name: newMessage.recipient.name,
             email: newMessage.recipient.email,
             image: newMessage.recipient.image
-              ? getImageUrl(`${newMessage.recipient.image}`)
+              ? getImageUrl(`/uploads/${newMessage.recipient.image}`)
               : null,
           }
         : null,
@@ -269,7 +269,7 @@ export const createMessage = async (req: Request, res: Response) => {
 //             name: message.recipient.name,
 //             email: message.recipient.email,
 //             image: message.recipient.image
-//               ? getImageUrl(`${message.recipient.image}`)
+//               ? getImageUrl(`/uploads/${message.recipient.image}`)
 //               : null,
 //             role: message.recipient.role,
 //           }
@@ -374,7 +374,7 @@ export const getSentMessages = async (req: Request, res: Response) => {
             name: message.recipient.name,
             email: message.recipient.email,
             image: message.recipient.image
-              ? getImageUrl(`${message.recipient.image}`)
+              ? getImageUrl(`/uploads/${message.recipient.image}`)
               : null,
             role: message.recipient.role,
           }
@@ -478,7 +478,7 @@ export const getSentMessages = async (req: Request, res: Response) => {
 //             name: message.sender.name,
 //             email: message.sender.email,
 //             image: message.sender.image
-//               ? getImageUrl(`${message.sender.image}`)
+//               ? getImageUrl(`/uploads/${message.sender.image}`)
 //               : null,
 //             role: message.sender.role,
 //           }
@@ -589,7 +589,7 @@ export const getReceivedMessages = async (req: Request, res: Response) => {
             name: message.sender.name,
             email: message.sender.email,
             image: message.sender.image
-              ? getImageUrl(`${message.sender.image}`)
+              ? getImageUrl(`/uploads/${message.sender.image}`)
               : null,
             role: message.sender.role,
           }
@@ -706,7 +706,7 @@ export const setToFavorite = async (req: Request, res: Response) => {
             name: message.recipient.name,
             email: message.recipient.email,
             image: message.recipient.image
-              ? getImageUrl(`${message.recipient.image}`)
+              ? getImageUrl(`/uploads/${message.recipient.image}`)
               : null,
             role: message.recipient.role,
           }
@@ -829,7 +829,7 @@ export const getFavoriteMessages = async (req: Request, res: Response) => {
               name: visibility.message.sender.name,
               email: visibility.message.sender.email,
               image: visibility.message.sender.image
-                ? getImageUrl(`${visibility.message.sender.image}`)
+                ? getImageUrl(`/uploads/${visibility.message.sender.image}`)
                 : null,
               role: visibility.message.sender.role,
             }
@@ -840,7 +840,7 @@ export const getFavoriteMessages = async (req: Request, res: Response) => {
               name: visibility.message.recipient.name,
               email: visibility.message.recipient.email,
               image: visibility.message.recipient.image
-                ? getImageUrl(`${visibility.message.recipient.image}`)
+                ? getImageUrl(`/uploads/${visibility.message.recipient.image}`)
                 : null,
               role: visibility.message.recipient.role,
             }
@@ -936,7 +936,7 @@ export const getMessageById = async (req: Request, res: Response) => {
             name: message.sender.name,
             email: message.sender.email,
             image: message.sender.image
-              ? getImageUrl(`${message.sender.image}`)
+              ? getImageUrl(`/uploads/${message.sender.image}`)
               : null,
             role: message.sender.role,
           }
@@ -947,7 +947,7 @@ export const getMessageById = async (req: Request, res: Response) => {
             name: message.recipient.name,
             email: message.recipient.email,
             image: message.recipient.image
-              ? getImageUrl(`${message.recipient.image}`)
+              ? getImageUrl(`/uploads/${message.recipient.image}`)
               : null,
             role: message.recipient.role,
           }
@@ -1135,7 +1135,7 @@ export const getSystemInboxMessage = async (req: Request, res: Response) => {
             name: message.sender.name,
             email: message.sender.email,
             image: message.sender.image
-              ? getImageUrl(`${message.sender.image}`)
+              ? getImageUrl(`/uploads/${message.sender.image}`)
               : null,
             role: message.sender.role,
           }
@@ -1146,7 +1146,7 @@ export const getSystemInboxMessage = async (req: Request, res: Response) => {
             name: message.recipient.name,
             email: message.recipient.email,
             image: message.recipient.image
-              ? getImageUrl(`${message.recipient.image}`)
+              ? getImageUrl(`/uploads/${message.recipient.image}`)
               : null,
             role: message.recipient.role,
           }

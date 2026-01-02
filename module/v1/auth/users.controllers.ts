@@ -58,7 +58,7 @@ const prisma = new PrismaClient();
 //       { expiresIn: "100d" }
 //     );
 
-//     const imageUrl = user.image ? getImageUrl(`${user.image}`) : null;
+//     const imageUrl = user.image ? getImageUrl(`/uploads/${user.image}`) : null;
 
 //     res.status(201).json({
 //       success: true,
@@ -139,7 +139,7 @@ export const createUser = async (req: Request, res: Response) => {
       { expiresIn: "100d" }
     );
 
-    const imageUrl = user.image ? getImageUrl(`${user.image}`) : null;
+    const imageUrl = user.image ? getImageUrl(`/uploads/${user.image}`) : null;
 
     res.status(201).json({
       success: true,
@@ -243,7 +243,7 @@ export const loginUser = async (req: Request, res: Response) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        image: user.image ? `${baseUrl}${user.image}` : null,
+        image: user.image ? getImageUrl(`/uploads/${user.image}`) : null,
         role: user.role,
       },
       token,
@@ -297,7 +297,7 @@ export const updateUser = async (req: Request, res: Response) => {
       },
     });
 
-    const imageUrl = user.image ? getImageUrl(`${user.image}`) : null;
+    const imageUrl = user.image ? getImageUrl(`/uploads/${user.image}`) : null;
 
     res.status(200).json({
       success: true,
@@ -468,7 +468,7 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
       },
     });
 
-    const imageUrl = user.image ? getImageUrl(`${user.image}`) : null;
+    const imageUrl = user.image ? getImageUrl(`/uploads/${user.image}`) : null;
 
     res.status(200).json({
       success: true,
@@ -517,7 +517,7 @@ export const getAllPartners = async (req: Request, res: Response) => {
 
     const partnersWithImageUrls = partners.map((partner) => ({
       ...partner,
-      image: partner.image ? getImageUrl(`${partner.image}`) : null,
+      image: partner.image ? getImageUrl(`/uploads/${partner.image}`) : null,
     }));
 
     res.status(200).json({
@@ -589,7 +589,7 @@ export const checkAuthStatus = async (req: Request, res: Response) => {
       success: true,
       user: {
         ...userData,
-        image: user.image ? `${baseUrl}${user.image}` : null,
+        image: user.image ? getImageUrl(`/uploads/${user.image}`) : null,
       },
     });
   } catch (error) {

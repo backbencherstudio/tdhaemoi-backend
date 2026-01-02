@@ -79,12 +79,12 @@ export const sendToAdminOrder_1 = async (req: Request, res: Response) => {
     const formattedOrder = {
       ...adminOrder,
       image3d_1: adminOrder.image3d_1
-        ? getImageUrl(`${adminOrder.image3d_1}`)
+        ? getImageUrl(`/uploads/${adminOrder.image3d_1}`)
         : null,
       image3d_2: adminOrder.image3d_2
-        ? getImageUrl(`${adminOrder.image3d_2}`)
+        ? getImageUrl(`/uploads/${adminOrder.image3d_2}`)
         : null,
-      invoice: adminOrder.invoice ? getImageUrl(`${adminOrder.invoice}`) : null,
+      invoice: adminOrder.invoice ? getImageUrl(`/uploads/${adminOrder.invoice}`) : null,
     };
 
     return res.status(200).json({
@@ -411,16 +411,16 @@ export const sendToAdminOrder_2 = async (req, res) => {
     const formattedCustomShaft = {
       ...customShaft,
       image3d_1: customShaft.image3d_1
-        ? getImageUrl(`${customShaft.image3d_1}`)
+        ? getImageUrl(`/uploads/${customShaft.image3d_1}`)
         : null,
       image3d_2: customShaft.image3d_2
-        ? getImageUrl(`${customShaft.image3d_2}`)
+        ? getImageUrl(`/uploads/${customShaft.image3d_2}`)
         : null,
       maßschaft_kollektion: customShaft.maßschaft_kollektion
         ? {
             ...customShaft.maßschaft_kollektion,
             image: customShaft.maßschaft_kollektion.image
-              ? getImageUrl(`${customShaft.maßschaft_kollektion.image}`)
+              ? getImageUrl(`/uploads/${customShaft.maßschaft_kollektion.image}`)
               : null,
           }
         : null,
@@ -428,7 +428,7 @@ export const sendToAdminOrder_2 = async (req, res) => {
         ? {
             ...customShaft.user,
             image: customShaft.user.image
-              ? getImageUrl(`${customShaft.user.image}`)
+              ? getImageUrl(`/uploads/${customShaft.user.image}`)
               : null,
           }
         : null,

@@ -279,7 +279,7 @@ export const updateMultipleOrderStatuses = async (
     // Format orders with invoice URLs
     const formattedOrders = result.updatedOrders.map((order) => ({
       ...order,
-      invoice: order.invoice ? getImageUrl(`${order.invoice}`) : null,
+      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
     }));
 
     res.status(200).json({
@@ -389,7 +389,7 @@ export const uploadBarcodeLabel = async (req: Request, res: Response) => {
         orderId: updatedOrder.id,
         orderNumber: updatedOrder.orderNumber,
         barcodeLabel: updatedOrder.barcodeLabel
-          ? getImageUrl(`${updatedOrder.barcodeLabel}`)
+          ? getImageUrl(`/uploads/${updatedOrder.barcodeLabel}`)
           : null,
         barcodeCreatedAt: updatedOrder?.barcodeCreatedAt,
 
@@ -449,7 +449,7 @@ export const updateOrderPriority = async (req: Request, res: Response) => {
     const formattedOrder = {
       ...updatedOrder,
       invoice: updatedOrder.invoice
-        ? getImageUrl(`${updatedOrder.invoice}`)
+        ? getImageUrl(`/uploads/${updatedOrder.invoice}`)
         : null,
     };
 
@@ -573,13 +573,13 @@ export const uploadInvoice = async (req: Request, res: Response) => {
     const formattedOrder = {
       ...updatedOrder,
       invoice: updatedOrder.invoice
-        ? getImageUrl(`${updatedOrder.invoice}`)
+        ? getImageUrl(`/uploads/${updatedOrder.invoice}`)
         : null,
       partner: updatedOrder.partner
         ? {
             ...updatedOrder.partner,
             image: updatedOrder.partner.image
-              ? getImageUrl(`${updatedOrder.partner.image}`)
+              ? getImageUrl(`/uploads/${updatedOrder.partner.image}`)
               : null,
           }
         : null,
@@ -722,13 +722,13 @@ export const uploadInvoiceOnly = async (req: Request, res: Response) => {
     const formattedOrder = {
       ...updatedOrder,
       invoice: updatedOrder.invoice
-        ? getImageUrl(`${updatedOrder.invoice}`)
+        ? getImageUrl(`/uploads/${updatedOrder.invoice}`)
         : null,
       partner: updatedOrder.partner
         ? {
             ...updatedOrder.partner,
             image: updatedOrder.partner.image
-              ? getImageUrl(`${updatedOrder.partner.image}`)
+              ? getImageUrl(`/uploads/${updatedOrder.partner.image}`)
               : null,
           }
         : null,
@@ -841,13 +841,13 @@ export const sendInvoiceToCustomer = async (req: Request, res: Response) => {
       const formattedOrder = {
         ...order,
         invoice: order.invoice
-          ? getImageUrl(`${order.invoice}`)
+          ? getImageUrl(`/uploads/${order.invoice}`)
           : null,
         partner: order.partner
           ? {
               ...order.partner,
               image: order.partner.image
-                ? getImageUrl(`${order.partner.image}`)
+                ? getImageUrl(`/uploads/${order.partner.image}`)
                 : null,
             }
           : null,

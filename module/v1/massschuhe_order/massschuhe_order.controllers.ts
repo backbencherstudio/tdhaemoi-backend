@@ -501,10 +501,10 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
       return {
         ...formatted,
         bodenerstellungpdf: o.bodenerstellungpdf
-          ? getImageUrl(`${o.bodenerstellungpdf}`)
+          ? getImageUrl(`/uploads/${o.bodenerstellungpdf}`)
           : null,
         geliefertpdf: o.geliefertpdf
-          ? getImageUrl(`${o.geliefertpdf}`)
+          ? getImageUrl(`/uploads/${o.geliefertpdf}`)
           : null,
       };
     });
@@ -656,7 +656,7 @@ export const getMassschuheOrderByCustomerId = async (
         ? {
             ...order.user,
             image: order.user.image
-              ? getImageUrl(`${order.user.image}`)
+              ? getImageUrl(`/uploads/${order.user.image}`)
               : null,
           }
         : null;
@@ -933,7 +933,7 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
       ? {
           ...orderAny.user,
           image: orderAny.user.image
-            ? getImageUrl(`${orderAny.user.image}`)
+            ? getImageUrl(`/uploads/${orderAny.user.image}`)
             : null,
         }
       : null;
@@ -944,10 +944,10 @@ export const getMassschuheOrderById = async (req: Request, res: Response) => {
         ...formattedOrder,
         partner: partnerWithImage,
         bodenerstellungpdf: orderAny.bodenerstellungpdf
-          ? getImageUrl(`${orderAny.bodenerstellungpdf}`)
+          ? getImageUrl(`/uploads/${orderAny.bodenerstellungpdf}`)
           : null,
         geliefertpdf: orderAny.geliefertpdf
-          ? getImageUrl(`${orderAny.geliefertpdf}`)
+          ? getImageUrl(`/uploads/${orderAny.geliefertpdf}`)
           : null,
       },
     });
@@ -1234,10 +1234,10 @@ export const uploadMassschuheOrderPdf = async (req: Request, res: Response) => {
         orderId,
         ...data,
         bodenerstellungpdf: bodenerstellungFileName
-          ? getImageUrl(`${bodenerstellungFileName}`)
+          ? getImageUrl(`/uploads/${bodenerstellungFileName}`)
           : null,
         geliefertpdf: geliefertFileName
-          ? getImageUrl(`${geliefertFileName}`)
+          ? getImageUrl(`/uploads/${geliefertFileName}`)
           : null,
       },
     });

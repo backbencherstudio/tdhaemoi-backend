@@ -299,7 +299,7 @@ export const createCustomerFile = async (req: Request, res: Response) => {
       fieldName: "image",
       table: "customer_files",
       url: filename,
-      fullUrl: getImageUrl(`${filename}`),
+      fullUrl: getImageUrl(`/uploads/${filename}`),
       id: customerFile.id,
       fileType,
     };
