@@ -256,7 +256,7 @@ export const createImprovement = async (req: Request, res: Response) => {
     // Format response with image URLs
     const formattedImprovement = {
       ...newImprovement,
-      image: newImprovement.image.map((img) => getImageUrl(`/uploads/${img}`)),
+      image: newImprovement.image.map((img) => getImageUrl(`${img}`)),
     };
 
     res.status(201).json({
@@ -327,10 +327,10 @@ export const getAllImprovements = async (req: Request, res: Response) => {
     // Format improvements with image URLs
     const formattedImprovements = improvements.map((improvement) => ({
       ...improvement,
-      image: improvement.image.map((img) => getImageUrl(`/uploads/${img}`)),
+      image: improvement.image.map((img) => getImageUrl(`${img}`)),
       user: {
         ...improvement.user,
-        image: improvement.user.image ? getImageUrl(`/uploads/${improvement.user.image}`) : null,
+        image: improvement.user.image ? getImageUrl(`${improvement.user.image}`) : null,
       },
     }));
 

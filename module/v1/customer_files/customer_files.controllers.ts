@@ -42,7 +42,7 @@ const addFileEntry = (entries, row, field, table, rowId, createdAt) => {
 //   //     "id": "abdb9ab5-c989-480c-b464-6b6adaab47a6",
 //   //     "fileType": "stl",
 //   //     "createdAt": "2025-11-10T11:13:33.686Z",
-//   //     "fullUrl": "http://192.168.7.12:3001/uploads/071ee896-2e6b-4776-9e26-d73234cae793.stl"
+//   //     "fullUrl": "http://192.168.7.12:3001071ee896-2e6b-4776-9e26-d73234cae793.stl"
 //   // },
 
 //     // i wanna query by table ?table=customer_files or ect
@@ -195,7 +195,7 @@ const addFileEntry = (entries, row, field, table, rowId, createdAt) => {
 //     const baseUrl =
 //       process.env.APP_URL || req.protocol + "://" + req.get("host");
 //     paginatedEntries.forEach((entry) => {
-//       entry.fullUrl = `${baseUrl}/uploads/${entry.url}`;
+//       entry.fullUrl = `${baseUrl}${entry.url}`;
 //     });
 
 //     // -----------------------------------------------------------------
@@ -299,7 +299,7 @@ export const createCustomerFile = async (req: Request, res: Response) => {
       fieldName: "image",
       table: "customer_files",
       url: filename,
-      fullUrl: getImageUrl(`/uploads/${filename}`),
+      fullUrl: getImageUrl(`${filename}`),
       id: customerFile.id,
       fileType,
     };
@@ -545,7 +545,7 @@ export const getCustomerFiles = async (req, res) => {
       process.env.APP_URL || req.protocol + "://" + req.get("host");
 
     paginatedEntries.forEach((entry) => {
-      entry.fullUrl = `${baseUrl}/uploads/${entry.url}`;
+      entry.fullUrl = `${baseUrl}${entry.url}`;
     });
 
     // Build exclInfo from barcode or invoice orders
@@ -881,7 +881,7 @@ export const updateCustomerFile = async (req: Request, res: Response) => {
           id: updatedFile.id,
           fileType: getFileType(newFilename),
           createdAt: updatedFile.createdAt,
-          fullUrl: `${baseUrl}/uploads/${newFilename}`,
+          fullUrl: `${baseUrl}${newFilename}`,
         };
 
         return res.status(200).json({
@@ -954,7 +954,7 @@ export const updateCustomerFile = async (req: Request, res: Response) => {
           id,
           fileType: getFileType(newFilename),
           createdAt: screenerRow.createdAt,
-          fullUrl: `${baseUrl}/uploads/${newFilename}`,
+          fullUrl: `${baseUrl}${newFilename}`,
         };
 
         return res.status(200).json({
@@ -1016,7 +1016,7 @@ export const updateCustomerFile = async (req: Request, res: Response) => {
           id,
           fileType: getFileType(newFilename),
           createdAt: shaftRow.createdAt,
-          fullUrl: `${baseUrl}/uploads/${newFilename}`,
+          fullUrl: `${baseUrl}${newFilename}`,
         };
 
         return res.status(200).json({

@@ -86,7 +86,7 @@ export const createPartnership = async (req: Request, res: Response) => {
       partnership: {
         ...partnership,
         image: partnership.image
-          ? getImageUrl(`/uploads/${partnership.image}`)
+          ? getImageUrl(`${partnership.image}`)
           : null,
       },
     });
@@ -161,7 +161,7 @@ export const updatePartnerProfile = async (req: Request, res: Response) => {
       },
     });
 
-    const imageUrl = user.image ? getImageUrl(`/uploads/${user.image}`) : null;
+    const imageUrl = user.image ? getImageUrl(`${user.image}`) : null;
 
     return res.status(200).json({
       success: true,
@@ -259,7 +259,7 @@ export const getAllPartners = async (req: Request, res: Response) => {
 
     const partnersWithImageUrls = partners.map((partner) => ({
       ...partner,
-      image: partner.image ? getImageUrl(`/uploads/${partner.image}`) : null,
+      image: partner.image ? getImageUrl(`${partner.image}`) : null,
     }));
 
     res.status(200).json({
@@ -300,7 +300,7 @@ export const getPartnerById = async (req: Request, res: Response) => {
       success: true,
       partner: {
         ...partner,
-        image: partner.image ? getImageUrl(`/uploads/${partner.image}`) : null,
+        image: partner.image ? getImageUrl(`${partner.image}`) : null,
       },
     });
   } catch (error) {
@@ -423,7 +423,7 @@ export const updatePartnerByAdmin = async (
         name: updated.name,
         email: updated.email,
         role: updated.role,
-        image: updated.image ? getImageUrl(`/uploads/${updated.image}`) : null,
+        image: updated.image ? getImageUrl(`${updated.image}`) : null,
         phone: updated.phone,
         absenderEmail: updated.absenderEmail,
         bankName: updated.bankName,

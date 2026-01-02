@@ -48,7 +48,7 @@ export const createMaßschaftKollektion = async (
     const formattedKollektion = {
       ...kollektion,
       image: kollektion.image
-        ? getImageUrl(`/uploads/${kollektion.image}`)
+        ? getImageUrl(`${kollektion.image}`)
         : null,
     };
 
@@ -131,7 +131,7 @@ export const getAllMaßschaftKollektion = async (
 
     const formattedKollektion = kollektion.map((item) => ({
       ...item,
-      image: item.image ? getImageUrl(`/uploads/${item.image}`) : null,
+      image: item.image ? getImageUrl(`${item.image}`) : null,
     }));
 
     const totalPages = Math.ceil(totalCount / limit);
@@ -233,7 +233,7 @@ export const updateMaßschaftKollektion = async (
     const formattedKollektion = {
       ...updatedKollektion,
       image: updatedKollektion.image
-        ? getImageUrl(`/uploads/${updatedKollektion.image}`)
+        ? getImageUrl(`${updatedKollektion.image}`)
         : null,
     };
 
@@ -283,7 +283,7 @@ export const getMaßschaftKollektionById = async (
     const formattedKollektion = {
       ...kollektion,
       image: kollektion.image
-        ? getImageUrl(`/uploads/${kollektion.image}`)
+        ? getImageUrl(`${kollektion.image}`)
         : null,
     };
 
@@ -549,17 +549,17 @@ export const createTustomShafts = async (req, res) => {
     const formattedCustomShaft = {
       ...customShaft,
       image3d_1: customShaft.image3d_1
-        ? getImageUrl(`/uploads/${customShaft.image3d_1}`)
+        ? getImageUrl(`${customShaft.image3d_1}`)
         : null,
       image3d_2: customShaft.image3d_2
-        ? getImageUrl(`/uploads/${customShaft.image3d_2}`)
+        ? getImageUrl(`${customShaft.image3d_2}`)
         : null,
       maßschaft_kollektion: customShaft.maßschaft_kollektion
         ? {
             ...customShaft.maßschaft_kollektion,
             image: customShaft.maßschaft_kollektion.image
               ? getImageUrl(
-                  `/uploads/${customShaft.maßschaft_kollektion.image}`
+                  `${customShaft.maßschaft_kollektion.image}`
                 )
               : null,
           }
@@ -568,7 +568,7 @@ export const createTustomShafts = async (req, res) => {
         ? {
             ...customShaft.user,
             image: customShaft.user.image
-              ? getImageUrl(`/uploads/${customShaft.user.image}`)
+              ? getImageUrl(`${customShaft.user.image}`)
               : null,
           }
         : null,
@@ -765,10 +765,10 @@ export const getTustomShafts = async (req: Request, res: Response) => {
     const formattedCustomShafts = customShafts.map(({ user, ...shaft }) => ({
       ...shaft,
       image3d_1: shaft.image3d_1
-        ? getImageUrl(`/uploads/${shaft.image3d_1}`)
+        ? getImageUrl(`${shaft.image3d_1}`)
         : null,
       image3d_2: shaft.image3d_2
-        ? getImageUrl(`/uploads/${shaft.image3d_2}`)
+        ? getImageUrl(`${shaft.image3d_2}`)
         : null,
       customer: shaft.customer
         ? {
@@ -779,14 +779,14 @@ export const getTustomShafts = async (req: Request, res: Response) => {
         ? {
             ...shaft.maßschaft_kollektion,
             image: shaft.maßschaft_kollektion.image
-              ? getImageUrl(`/uploads/${shaft.maßschaft_kollektion.image}`)
+              ? getImageUrl(`${shaft.maßschaft_kollektion.image}`)
               : null,
           }
         : null,
       partner: user
         ? {
             ...user,
-            image: user.image ? getImageUrl(`/uploads/${user.image}`) : null,
+            image: user.image ? getImageUrl(`${user.image}`) : null,
           }
         : null,
     }));
@@ -890,10 +890,10 @@ export const getSingleCustomShaft = async (req: Request, res: Response) => {
     const formattedShaft = {
       ...shaftWithoutUser,
       image3d_1: customShaft.image3d_1
-        ? getImageUrl(`/uploads/${customShaft.image3d_1}`)
+        ? getImageUrl(`${customShaft.image3d_1}`)
         : null,
       image3d_2: customShaft.image3d_2
-        ? getImageUrl(`/uploads/${customShaft.image3d_2}`)
+        ? getImageUrl(`${customShaft.image3d_2}`)
         : null,
       customer: customShaft.customer
         ? {
@@ -905,7 +905,7 @@ export const getSingleCustomShaft = async (req: Request, res: Response) => {
             ...customShaft.maßschaft_kollektion,
             image: customShaft.maßschaft_kollektion.image
               ? getImageUrl(
-                  `/uploads/${customShaft.maßschaft_kollektion.image}`
+                  `${customShaft.maßschaft_kollektion.image}`
                 )
               : null,
           }
@@ -913,7 +913,7 @@ export const getSingleCustomShaft = async (req: Request, res: Response) => {
       partner: user
         ? {
             ...user,
-            image: user.image ? getImageUrl(`/uploads/${user.image}`) : null,
+            image: user.image ? getImageUrl(`${user.image}`) : null,
           }
         : null,
     };
@@ -1061,10 +1061,10 @@ export const updateCustomShaftStatus = async (req: Request, res: Response) => {
     const formattedShaft = {
       ...shaftWithoutUser,
       image3d_1: updatedCustomShaft.image3d_1
-        ? getImageUrl(`/uploads/${updatedCustomShaft.image3d_1}`)
+        ? getImageUrl(`${updatedCustomShaft.image3d_1}`)
         : null,
       image3d_2: updatedCustomShaft.image3d_2
-        ? getImageUrl(`/uploads/${updatedCustomShaft.image3d_2}`)
+        ? getImageUrl(`${updatedCustomShaft.image3d_2}`)
         : null,
       customer: updatedCustomShaft.customer
         ? {
@@ -1076,7 +1076,7 @@ export const updateCustomShaftStatus = async (req: Request, res: Response) => {
             ...updatedCustomShaft.maßschaft_kollektion,
             image: updatedCustomShaft.maßschaft_kollektion.image
               ? getImageUrl(
-                  `/uploads/${updatedCustomShaft.maßschaft_kollektion.image}`
+                  `${updatedCustomShaft.maßschaft_kollektion.image}`
                 )
               : null,
           }
@@ -1084,7 +1084,7 @@ export const updateCustomShaftStatus = async (req: Request, res: Response) => {
       partner: user
         ? {
             ...user,
-            image: user.image ? getImageUrl(`/uploads/${user.image}`) : null,
+            image: user.image ? getImageUrl(`${user.image}`) : null,
           }
         : null,
     };

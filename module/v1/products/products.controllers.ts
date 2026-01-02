@@ -176,7 +176,7 @@ const sortQuery = (sortBy: string, sortOrder: string) => {
 //       ...color,
 //       images: color.images.map((image) => ({
 //         ...image,
-//         url: getImageUrl(`/uploads/${image.url}`),
+//         url: getImageUrl(`${image.url}`),
 //       })),
 //     })),
 //   }));
@@ -189,7 +189,7 @@ const formatProductsWithImageUrls = (products: any[]) =>
       ...color,
       images: color.images.map((image) => ({
         ...image,
-        url: getImageUrl(`/uploads/${image.url}`),
+        url: getImageUrl(`${image.url}`),
       })),
     })),
   }));
@@ -543,7 +543,7 @@ export const updateProduct = async (req: Request, res: Response) => {
         ...color,
         images: color.images.map((image) => ({
           ...image,
-          url: getImageUrl(`/uploads/${image.url}`),
+          url: getImageUrl(`${image.url}`),
         })),
       })),
     };
@@ -909,7 +909,7 @@ export const getSingleProduct = async (req: Request, res: Response) => {
         ...color,
         images: color.images.map((image) => ({
           ...image,
-          url: getImageUrl(`/uploads/${image.url}`),
+          url: getImageUrl(`${image.url}`),
         })),
       })),
     };
@@ -1028,7 +1028,7 @@ export const getCategorizedProducts = async (req: Request, res: Response) => {
               ...color,
               images: color.images.map(image => ({
                 ...image,
-                url: getImageUrl(`/uploads/${image.url}`)
+                url: getImageUrl(`${image.url}`)
               }))
             }))
           }))
@@ -1082,7 +1082,7 @@ export const getCategorizedProducts = async (req: Request, res: Response) => {
                 ...color,
                 images: color.images.map(image => ({
                   ...image,
-                  url: getImageUrl(`/uploads/${image.url}`)
+                  url: getImageUrl(`${image.url}`)
                 }))
               }))
             }))

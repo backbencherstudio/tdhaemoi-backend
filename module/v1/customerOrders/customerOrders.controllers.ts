@@ -684,7 +684,7 @@ export const getAllOrders_v1 = async (req: Request, res: Response) => {
 
     const formattedOrders = orders.map((order) => ({
       ...order,
-      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+      invoice: order.invoice ? getImageUrl(`${order.invoice}`) : null,
     }));
 
     const totalPages = Math.ceil(totalCount / limit);
@@ -888,9 +888,9 @@ export const getAllOrders = async (req: Request, res: Response) => {
 
     const formattedOrders = orders.map((order) => ({
       ...order,
-      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+      invoice: order.invoice ? getImageUrl(`${order.invoice}`) : null,
       barcodeLabel: order.barcodeLabel
-        ? getImageUrl(`/uploads/${order.barcodeLabel}`)
+        ? getImageUrl(`${order.barcodeLabel}`)
         : null,
     }));
 
@@ -1126,7 +1126,7 @@ export const getOrderById = async (req: Request, res: Response) => {
     console.log("============================", nearestSize);
     const formattedOrder = {
       ...order,
-      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+      invoice: order.invoice ? getImageUrl(`${order.invoice}`) : null,
       customer: order.customer
         ? {
             ...order.customer,
@@ -1140,7 +1140,7 @@ export const getOrderById = async (req: Request, res: Response) => {
         ? {
             ...order.partner,
             image: order.partner.image
-              ? getImageUrl(`/uploads/${order.partner.image}`)
+              ? getImageUrl(`${order.partner.image}`)
               : null,
             hauptstandort: order.partner.workshopNote?.sameAsBusiness
               ? order.partner.hauptstandort[0]
@@ -1239,7 +1239,7 @@ export const getOrdersByCustomerId = async (req: Request, res: Response) => {
 
     const formattedOrders = orders.map((order) => ({
       ...order,
-      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+      invoice: order.invoice ? getImageUrl(`${order.invoice}`) : null,
     }));
 
     const totalPages = Math.ceil(totalCount / limit);

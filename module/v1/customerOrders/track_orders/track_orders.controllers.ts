@@ -1231,7 +1231,7 @@ export const getNewOrderHistory = async (req: Request, res: Response) => {
             return {
               createdAt: formatDate(barcodeDate),
               timestamp: barcodeDate.toISOString(),
-              // barcodeLabel: hasBarcodeLabel ? getImageUrl(`/uploads/${order.barcodeLabel}`) : null,
+              // barcodeLabel: hasBarcodeLabel ? getImageUrl(`${order.barcodeLabel}`) : null,
               hasBarcode: true,
             };
           } else {
@@ -1486,10 +1486,10 @@ export const getPicture2324ByOrderId = async (req: Request, res: Response) => {
             }
           : null,
         picture_23: customerScreenerFile.picture_23
-          ? getImageUrl(`/uploads/${customerScreenerFile.picture_23}`)
+          ? getImageUrl(`${customerScreenerFile.picture_23}`)
           : null,
         picture_24: customerScreenerFile.picture_24
-          ? getImageUrl(`/uploads/${customerScreenerFile.picture_24}`)
+          ? getImageUrl(`${customerScreenerFile.picture_24}`)
           : null,
       },
     });
@@ -1580,7 +1580,7 @@ export const getBarcodeLabel = async (req: Request, res: Response) => {
         partner: {
           name: order.partner.name || order.partner.busnessName || null,
           image: order.partner.image
-            ? getImageUrl(`/uploads/${order.partner.image}`)
+            ? getImageUrl(`${order.partner.image}`)
             : null,
         },
         customer: `${order.customer.vorname} ${order.customer.nachname}`,

@@ -66,7 +66,7 @@ export const getAllVersorgungen = async (req: Request, res: Response) => {
           name: rest.supplyStatus?.name ?? null,
           price: rest.supplyStatus?.price ?? null,
           image: rest.supplyStatus?.image
-            ? getImageUrl(`/uploads/${rest.supplyStatus.image}`)
+            ? getImageUrl(`${rest.supplyStatus.image}`)
             : null,
         },
       })
@@ -583,7 +583,7 @@ export const createVersorgungen = async (req: Request, res: Response) => {
         ? {
             ...newVersorgungen.supplyStatus,
             image: newVersorgungen.supplyStatus.image
-              ? getImageUrl(`/uploads/${newVersorgungen.supplyStatus.image}`)
+              ? getImageUrl(`${newVersorgungen.supplyStatus.image}`)
               : null,
           }
         : null,
@@ -677,7 +677,7 @@ export const createVersorgungen = async (req: Request, res: Response) => {
 //     ? {
 //         ...updatedVersorgungen.supplyStatus,
 //         image: updatedVersorgungen.supplyStatus.image
-//           ? getImageUrl(`/uploads/${updatedVersorgungen.supplyStatus.image}`)
+//           ? getImageUrl(`${updatedVersorgungen.supplyStatus.image}`)
 //           : null,
 //       }
 //     : null,
@@ -873,7 +873,7 @@ export const patchVersorgungen = async (req: Request, res: Response) => {
         ? {
             ...updated.supplyStatus,
             image: updated.supplyStatus.image
-              ? getImageUrl(`/uploads/${updated.supplyStatus.image}`)
+              ? getImageUrl(`${updated.supplyStatus.image}`)
               : null,
           }
         : null,
@@ -1139,7 +1139,7 @@ export const getVersorgungenByDiagnosis = async (
         ? {
             ...versorgung.supplyStatus,
             image: versorgung.supplyStatus.image
-              ? getImageUrl(`/uploads/${versorgung.supplyStatus.image}`)
+              ? getImageUrl(`${versorgung.supplyStatus.image}`)
               : null,
           }
         : null,
@@ -1211,7 +1211,7 @@ export const getSingleVersorgungen = async (req: Request, res: Response) => {
         ? {
             ...versorgungen.supplyStatus,
             image: versorgungen.supplyStatus.image
-              ? getImageUrl(`/uploads/${versorgungen.supplyStatus.image}`)
+              ? getImageUrl(`${versorgungen.supplyStatus.image}`)
               : null,
           }
         : null,
@@ -1283,7 +1283,7 @@ export const getSupplyStatus = async (req: Request, res: Response) => {
 
     const formattedSupplyStatus = supplyStatus.map((item) => ({
       ...item,
-      image: item.image ? getImageUrl(`/uploads/${item.image}`) : null,
+      image: item.image ? getImageUrl(`${item.image}`) : null,
     }));
 
     res.status(200).json({
@@ -1338,13 +1338,13 @@ export const getSingleSupplyStatus = async (req: Request, res: Response) => {
       data: {
         ...supplyStatus,
         image: supplyStatus.image
-          ? getImageUrl(`/uploads/${supplyStatus.image}`)
+          ? getImageUrl(`${supplyStatus.image}`)
           : null,
         partner: supplyStatus.partner
           ? {
               ...supplyStatus.partner,
               image: supplyStatus.partner.image
-                ? getImageUrl(`/uploads/${supplyStatus.partner.image}`)
+                ? getImageUrl(`${supplyStatus.partner.image}`)
                 : null,
             }
           : null,
@@ -1411,7 +1411,7 @@ export const createSupplyStatus = async (req: Request, res: Response) => {
       },
     });
 
-    const imageUrl = image ? getImageUrl(`/uploads/${image}`) : null;
+    const imageUrl = image ? getImageUrl(`${image}`) : null;
 
     res.status(201).json({
       success: true,
@@ -1494,7 +1494,7 @@ export const updateSupplyStatus = async (req: Request, res: Response) => {
       message: "Supply status updated",
       data: {
         ...updated,
-        image: updated.image ? getImageUrl(`/uploads/${updated.image}`) : null,
+        image: updated.image ? getImageUrl(`${updated.image}`) : null,
       },
     });
   } catch (error) {

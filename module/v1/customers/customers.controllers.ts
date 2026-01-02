@@ -319,37 +319,37 @@ export const createCustomers = async (req: Request, res: Response) => {
         id: screener.id,
         customerId: screener.customerId,
         picture_10: screener.picture_10
-          ? getImageUrl(`/uploads/${screener.picture_10}`)
+          ? getImageUrl(`${screener.picture_10}`)
           : null,
         picture_23: screener.picture_23
-          ? getImageUrl(`/uploads/${screener.picture_23}`)
+          ? getImageUrl(`${screener.picture_23}`)
           : null,
         paint_24: screener.paint_24
-          ? getImageUrl(`/uploads/${screener.paint_24}`)
+          ? getImageUrl(`${screener.paint_24}`)
           : null,
         paint_23: screener.paint_23
-          ? getImageUrl(`/uploads/${screener.paint_23}`)
+          ? getImageUrl(`${screener.paint_23}`)
           : null,
         picture_11: screener.picture_11
-          ? getImageUrl(`/uploads/${screener.picture_11}`)
+          ? getImageUrl(`${screener.picture_11}`)
           : null,
         picture_24: screener.picture_24
-          ? getImageUrl(`/uploads/${screener.picture_24}`)
+          ? getImageUrl(`${screener.picture_24}`)
           : null,
         threed_model_left: screener.threed_model_left
-          ? getImageUrl(`/uploads/${screener.threed_model_left}`)
+          ? getImageUrl(`${screener.threed_model_left}`)
           : null,
         threed_model_right: screener.threed_model_right
-          ? getImageUrl(`/uploads/${screener.threed_model_right}`)
+          ? getImageUrl(`${screener.threed_model_right}`)
           : null,
         picture_17: screener.picture_17
-          ? getImageUrl(`/uploads/${screener.picture_17}`)
+          ? getImageUrl(`${screener.picture_17}`)
           : null,
         picture_16: screener.picture_16
-          ? getImageUrl(`/uploads/${screener.picture_16}`)
+          ? getImageUrl(`${screener.picture_16}`)
           : null,
         csvFile: screener.csvFile
-          ? getImageUrl(`/uploads/${screener.csvFile}`)
+          ? getImageUrl(`${screener.csvFile}`)
           : null,
         createdAt: screener.createdAt,
         updatedAt: screener.updatedAt,
@@ -545,31 +545,31 @@ export const createCustomers = async (req: Request, res: Response) => {
 //           id: screener.id,
 //           customerId: screener.customerId,
 //           picture_10: screener.picture_10
-//             ? getImageUrl(`/uploads/${screener.picture_10}`)
+//             ? getImageUrl(`${screener.picture_10}`)
 //             : null,
 //           picture_23: screener.picture_23
-//             ? getImageUrl(`/uploads/${screener.picture_23}`)
+//             ? getImageUrl(`${screener.picture_23}`)
 //             : null,
 //           picture_11: screener.picture_11
-//             ? getImageUrl(`/uploads/${screener.picture_11}`)
+//             ? getImageUrl(`${screener.picture_11}`)
 //             : null,
 //           picture_24: screener.picture_24
-//             ? getImageUrl(`/uploads/${screener.picture_24}`)
+//             ? getImageUrl(`${screener.picture_24}`)
 //             : null,
 //           threed_model_left: screener.threed_model_left
-//             ? getImageUrl(`/uploads/${screener.threed_model_left}`)
+//             ? getImageUrl(`${screener.threed_model_left}`)
 //             : null,
 //           threed_model_right: screener.threed_model_right
-//             ? getImageUrl(`/uploads/${screener.threed_model_right}`)
+//             ? getImageUrl(`${screener.threed_model_right}`)
 //             : null,
 //           picture_17: screener.picture_17
-//             ? getImageUrl(`/uploads/${screener.picture_17}`)
+//             ? getImageUrl(`${screener.picture_17}`)
 //             : null,
 //           picture_16: screener.picture_16
-//             ? getImageUrl(`/uploads/${screener.picture_16}`)
+//             ? getImageUrl(`${screener.picture_16}`)
 //             : null,
 //           csvFile: screener.csvFile
-//             ? getImageUrl(`/uploads/${screener.csvFile}`)
+//             ? getImageUrl(`${screener.csvFile}`)
 //             : null,
 //           createdAt: screener.createdAt,
 //           updatedAt: screener.updatedAt,
@@ -642,37 +642,37 @@ export const getAllCustomers = async (req: Request, res: Response) => {
         id: screener.id,
         customerId: screener.customerId,
         picture_10: screener.picture_10
-          ? getImageUrl(`/uploads/${screener.picture_10}`)
+          ? getImageUrl(`${screener.picture_10}`)
           : null,
         picture_23: screener.picture_23
-          ? getImageUrl(`/uploads/${screener.picture_23}`)
+          ? getImageUrl(`${screener.picture_23}`)
           : null,
         paint_24: screener.paint_24
-          ? getImageUrl(`/uploads/${screener.paint_24}`)
+          ? getImageUrl(`${screener.paint_24}`)
           : null,
         paint_23: screener.paint_23
-          ? getImageUrl(`/uploads/${screener.paint_23}`)
+          ? getImageUrl(`${screener.paint_23}`)
           : null,
         picture_11: screener.picture_11
-          ? getImageUrl(`/uploads/${screener.picture_11}`)
+          ? getImageUrl(`${screener.picture_11}`)
           : null,
         picture_24: screener.picture_24
-          ? getImageUrl(`/uploads/${screener.picture_24}`)
+          ? getImageUrl(`${screener.picture_24}`)
           : null,
         threed_model_left: screener.threed_model_left
-          ? getImageUrl(`/uploads/${screener.threed_model_left}`)
+          ? getImageUrl(`${screener.threed_model_left}`)
           : null,
         threed_model_right: screener.threed_model_right
-          ? getImageUrl(`/uploads/${screener.threed_model_right}`)
+          ? getImageUrl(`${screener.threed_model_right}`)
           : null,
         picture_17: screener.picture_17
-          ? getImageUrl(`/uploads/${screener.picture_17}`)
+          ? getImageUrl(`${screener.picture_17}`)
           : null,
         picture_16: screener.picture_16
-          ? getImageUrl(`/uploads/${screener.picture_16}`)
+          ? getImageUrl(`${screener.picture_16}`)
           : null,
         csvFile: screener.csvFile
-          ? getImageUrl(`/uploads/${screener.csvFile}`)
+          ? getImageUrl(`${screener.csvFile}`)
           : null,
         createdAt: screener.createdAt,
         updatedAt: screener.updatedAt,
@@ -1119,7 +1119,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
 
       imageFields.forEach((field) => {
         if (result[field]) {
-          result[field] = getImageUrl(`/uploads/${result[field]}`);
+          result[field] = getImageUrl(`${result[field]}`);
         }
       });
 
@@ -1136,7 +1136,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
       ? {
           ...partner,
           image: partner.image
-            ? getImageUrl(`/uploads/${partner.image}`)
+            ? getImageUrl(`${partner.image}`)
             : null,
         }
       : null;
@@ -1283,37 +1283,37 @@ export const assignVersorgungToCustomer = async (
           id: latestScreener.id,
           customerId: latestScreener.customerId,
           picture_10: latestScreener.picture_10
-            ? getImageUrl(`/uploads/${latestScreener.picture_10}`)
+            ? getImageUrl(`${latestScreener.picture_10}`)
             : null,
           picture_23: latestScreener.picture_23
-            ? getImageUrl(`/uploads/${latestScreener.picture_23}`)
+            ? getImageUrl(`${latestScreener.picture_23}`)
             : null,
           paint_24: latestScreener.paint_24
-            ? getImageUrl(`/uploads/${latestScreener.paint_24}`)
+            ? getImageUrl(`${latestScreener.paint_24}`)
             : null,
           paint_23: latestScreener.paint_23
-            ? getImageUrl(`/uploads/${latestScreener.paint_23}`)
+            ? getImageUrl(`${latestScreener.paint_23}`)
             : null,
           picture_11: latestScreener.picture_11
-            ? getImageUrl(`/uploads/${latestScreener.picture_11}`)
+            ? getImageUrl(`${latestScreener.picture_11}`)
             : null,
           picture_24: latestScreener.picture_24
-            ? getImageUrl(`/uploads/${latestScreener.picture_24}`)
+            ? getImageUrl(`${latestScreener.picture_24}`)
             : null,
           threed_model_left: latestScreener.threed_model_left
-            ? getImageUrl(`/uploads/${latestScreener.threed_model_left}`)
+            ? getImageUrl(`${latestScreener.threed_model_left}`)
             : null,
           threed_model_right: latestScreener.threed_model_right
-            ? getImageUrl(`/uploads/${latestScreener.threed_model_right}`)
+            ? getImageUrl(`${latestScreener.threed_model_right}`)
             : null,
           picture_17: latestScreener.picture_17
-            ? getImageUrl(`/uploads/${latestScreener.picture_17}`)
+            ? getImageUrl(`${latestScreener.picture_17}`)
             : null,
           picture_16: latestScreener.picture_16
-            ? getImageUrl(`/uploads/${latestScreener.picture_16}`)
+            ? getImageUrl(`${latestScreener.picture_16}`)
             : null,
           csvFile: latestScreener.csvFile
-            ? getImageUrl(`/uploads/${latestScreener.csvFile}`)
+            ? getImageUrl(`${latestScreener.csvFile}`)
             : null,
           createdAt: latestScreener.createdAt,
           updatedAt: latestScreener.updatedAt,
@@ -1384,37 +1384,37 @@ export const undoAssignVersorgungToCustomer = async (
           id: latestScreener.id,
           customerId: latestScreener.customerId,
           picture_10: latestScreener.picture_10
-            ? getImageUrl(`/uploads/${latestScreener.picture_10}`)
+            ? getImageUrl(`${latestScreener.picture_10}`)
             : null,
           picture_23: latestScreener.picture_23
-            ? getImageUrl(`/uploads/${latestScreener.picture_23}`)
+            ? getImageUrl(`${latestScreener.picture_23}`)
             : null,
           paint_24: latestScreener.paint_24
-            ? getImageUrl(`/uploads/${latestScreener.paint_24}`)
+            ? getImageUrl(`${latestScreener.paint_24}`)
             : null,
           paint_23: latestScreener.paint_23
-            ? getImageUrl(`/uploads/${latestScreener.paint_23}`)
+            ? getImageUrl(`${latestScreener.paint_23}`)
             : null,
           picture_11: latestScreener.picture_11
-            ? getImageUrl(`/uploads/${latestScreener.picture_11}`)
+            ? getImageUrl(`${latestScreener.picture_11}`)
             : null,
           picture_24: latestScreener.picture_24
-            ? getImageUrl(`/uploads/${latestScreener.picture_24}`)
+            ? getImageUrl(`${latestScreener.picture_24}`)
             : null,
           threed_model_left: latestScreener.threed_model_left
-            ? getImageUrl(`/uploads/${latestScreener.threed_model_left}`)
+            ? getImageUrl(`${latestScreener.threed_model_left}`)
             : null,
           threed_model_right: latestScreener.threed_model_right
-            ? getImageUrl(`/uploads/${latestScreener.threed_model_right}`)
+            ? getImageUrl(`${latestScreener.threed_model_right}`)
             : null,
           picture_17: latestScreener.picture_17
-            ? getImageUrl(`/uploads/${latestScreener.picture_17}`)
+            ? getImageUrl(`${latestScreener.picture_17}`)
             : null,
           picture_16: latestScreener.picture_16
-            ? getImageUrl(`/uploads/${latestScreener.picture_16}`)
+            ? getImageUrl(`${latestScreener.picture_16}`)
             : null,
           csvFile: latestScreener.csvFile
-            ? getImageUrl(`/uploads/${latestScreener.csvFile}`)
+            ? getImageUrl(`${latestScreener.csvFile}`)
             : null,
           createdAt: latestScreener.createdAt,
           updatedAt: latestScreener.updatedAt,
@@ -1932,37 +1932,37 @@ export const addScreenerFile = async (req: Request, res: Response) => {
       id: newScreener.id,
       customerId: newScreener.customerId,
       picture_10: newScreener.picture_10
-        ? getImageUrl(`/uploads/${newScreener.picture_10}`)
+        ? getImageUrl(`${newScreener.picture_10}`)
         : null,
       picture_23: newScreener.picture_23
-        ? getImageUrl(`/uploads/${newScreener.picture_23}`)
+        ? getImageUrl(`${newScreener.picture_23}`)
         : null,
       paint_24: newScreener.paint_24
-        ? getImageUrl(`/uploads/${newScreener.paint_24}`)
+        ? getImageUrl(`${newScreener.paint_24}`)
         : null,
       paint_23: newScreener.paint_23
-        ? getImageUrl(`/uploads/${newScreener.paint_23}`)
+        ? getImageUrl(`${newScreener.paint_23}`)
         : null,
       picture_11: newScreener.picture_11
-        ? getImageUrl(`/uploads/${newScreener.picture_11}`)
+        ? getImageUrl(`${newScreener.picture_11}`)
         : null,
       picture_24: newScreener.picture_24
-        ? getImageUrl(`/uploads/${newScreener.picture_24}`)
+        ? getImageUrl(`${newScreener.picture_24}`)
         : null,
       threed_model_left: newScreener.threed_model_left
-        ? getImageUrl(`/uploads/${newScreener.threed_model_left}`)
+        ? getImageUrl(`${newScreener.threed_model_left}`)
         : null,
       threed_model_right: newScreener.threed_model_right
-        ? getImageUrl(`/uploads/${newScreener.threed_model_right}`)
+        ? getImageUrl(`${newScreener.threed_model_right}`)
         : null,
       picture_17: newScreener.picture_17
-        ? getImageUrl(`/uploads/${newScreener.picture_17}`)
+        ? getImageUrl(`${newScreener.picture_17}`)
         : null,
       picture_16: newScreener.picture_16
-        ? getImageUrl(`/uploads/${newScreener.picture_16}`)
+        ? getImageUrl(`${newScreener.picture_16}`)
         : null,
       csvFile: newScreener.csvFile
-        ? getImageUrl(`/uploads/${newScreener.csvFile}`)
+        ? getImageUrl(`${newScreener.csvFile}`)
         : null,
       // CSV export data for this scanner set
       csvData: {
@@ -2231,7 +2231,7 @@ export const updateScreenerFile = async (req: Request, res: Response) => {
 
     // Format the response with image URLs
     const formatFileUrl = (filename: string | null) =>
-      filename ? getImageUrl(`/uploads/${filename}`) : null;
+      filename ? getImageUrl(`${filename}`) : null;
 
     const formattedScreener = {
       id: updatedScreener.id,
@@ -2359,7 +2359,7 @@ export const getScreenerFileById = async (req: Request, res: Response) => {
     }
 
     const formatFileUrl = (filename: string | null) =>
-      filename ? getImageUrl(`/uploads/${filename}`) : null;
+      filename ? getImageUrl(`${filename}`) : null;
 
     const formattedScreener = {
       id: screenerFile.id,
@@ -2502,12 +2502,12 @@ export const getEinlagenInProduktion = async (req: Request, res: Response) => {
     // Format orders with invoice URL and partner image URL
     const formattedOrders = orders.map((order) => ({
       ...order,
-      invoice: order.invoice ? getImageUrl(`/uploads/${order.invoice}`) : null,
+      invoice: order.invoice ? getImageUrl(`${order.invoice}`) : null,
       partner: order.partner
         ? {
             ...order.partner,
             image: order.partner.image
-              ? getImageUrl(`/uploads/${order.partner.image}`)
+              ? getImageUrl(`${order.partner.image}`)
               : null,
           }
         : null,
@@ -2877,16 +2877,16 @@ export const filterCustomer = async (req: Request, res: Response) => {
             id: screener.id,
             createdAt: screener.createdAt,
             // picture_10: screener.picture_10
-            //   ? getImageUrl(`/uploads/${screener.picture_10}`)
+            //   ? getImageUrl(`${screener.picture_10}`)
             //   : null,
             // picture_23: screener.picture_23
-            //   ? getImageUrl(`/uploads/${screener.picture_23}`)
+            //   ? getImageUrl(`${screener.picture_23}`)
             //   : null,
             // picture_11: screener.picture_11
-            //   ? getImageUrl(`/uploads/${screener.picture_11}`)
+            //   ? getImageUrl(`${screener.picture_11}`)
             //   : null,
             // picture_24: screener.picture_24
-            //   ? getImageUrl(`/uploads/${screener.picture_24}`)
+            //   ? getImageUrl(`${screener.picture_24}`)
             //   : null,
           }
         : null;
@@ -3204,7 +3204,7 @@ export const getAllVersorgungenByCustomerId = async (req: Request, res: Response
             supplyStatus: {
               ...supplyStatus,
               image: supplyStatus.image
-                ? getImageUrl(`/uploads/${supplyStatus.image}`)
+                ? getImageUrl(`${supplyStatus.image}`)
                 : null,
             },
             order: {

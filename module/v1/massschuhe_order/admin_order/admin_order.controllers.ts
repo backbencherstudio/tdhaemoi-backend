@@ -78,13 +78,13 @@ export const sendToAdminOrder_1 = async (req: Request, res: Response) => {
     const formattedOrder = {
       ...adminOrder,
       image3d_1: adminOrder.image3d_1
-        ? getImageUrl(`/uploads/${adminOrder.image3d_1}`)
+        ? getImageUrl(`${adminOrder.image3d_1}`)
         : null,
       image3d_2: adminOrder.image3d_2
-        ? getImageUrl(`/uploads/${adminOrder.image3d_2}`)
+        ? getImageUrl(`${adminOrder.image3d_2}`)
         : null,
       invoice: adminOrder.invoice
-        ? getImageUrl(`/uploads/${adminOrder.invoice}`)
+        ? getImageUrl(`${adminOrder.invoice}`)
         : null,
     };
 
