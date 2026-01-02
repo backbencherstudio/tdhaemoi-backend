@@ -433,12 +433,12 @@ export const createTustomShafts = async (req, res) => {
       }
     }
 
-    // Run validations in parallel
+ 
     const [customer, kollektion] = await Promise.all([
       hasCustomerId
         ? prisma.customers.findUnique({
             where: { id: customerId },
-            select: { id: true }, // Only select what you need
+            select: { id: true },  
           })
         : Promise.resolve(null),
 
