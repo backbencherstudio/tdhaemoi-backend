@@ -70,15 +70,12 @@ export const sendToAdminOrder_1 = async (req: Request, res: Response) => {
       return isNaN(parsed) ? null : parsed;
     };
 
-    // Get files - handle both old and new field names
     const files = req.files as any;
 
-    // Log received files for debugging
     if (files) {
       console.log("Received file fields:", Object.keys(files));
     }
 
-    // Priority: image3d_1/image3d_2 (new) then threed_model_right/threed_model_left (old)
     const threed_model_right =
       files?.image3d_1?.[0]?.filename ||
       files?.threed_model_right?.[0]?.filename ||
@@ -246,48 +243,6 @@ export const sendToAdminOrder_1 = async (req: Request, res: Response) => {
   }
 };
 
-// Bettungsdicke         String? // "Min. 5mm", "Min. 7mm", "Min. 10mm"
-// Haertegrad_Shore      String? // "A30 (Weich)", "A40 (Mittel)", "A30 Vorfuß A50 Rückfuß", "A65/25/20 (Diabetesbettung)"
-// Fersenschale          String? // "Leichte Fersenschale (Standard)", "Keine Fersenschale", "Hohe Fersenschale"
-// Laengsgewölbestütze String? // "Mittel", "Leicht", "Stark", "Nach Fußscan"
-
-// //page 2
-// // Palotte/Querpalotte
-// Palotte_oder_Querpalotte String? // "Keine", "Ja, Palotte", "Ja, Querpalotte 1-5", "Ja, Querpalotte 2-5"
-
-// // Korrektur der Fußstellung
-// Korrektur_der_Fußstellung String? // "Keine", "Innenranderhöhung", "Aussenranderhöhung"
-
-// // Zehenelemente
-// Zehenelemente_Details     String? // "bei folgenden Zehen: ______"
-// eine_korrektur_nötig_ist String? // "In welchem Bereich? Wenn"
-// Spezielles_Fußproblem    String? // free text
-
-// // Zusatzkorrekturen
-// Zusatzkorrektur_Absatzerhöhung String?
-// Vertiefungen_Aussparungen       String?
-// Oberfläche_finish              String?
-
-// //page 3
-// Überzug_Stärke        String?
-// // Anmerkungen zur Bettung
-// Anmerkungen_zur_Bettung String?
-
-// // Leistenkonfigurator
-// Leisten_mit_ohne_Platzhalter String? // "Ohne Platzhalter", "Mit Platzhalter"
-// Schuhleisten_Typ             String? // "Halbschuh", "Knöchelhoch"
-// Material_des_Leisten         String? // "Kunststoff (Standard)", "Buchenholz"
-// Leisten_gleiche_Länge       Boolean? @default(true)
-// Absatzhöhe                  String? // "5cm", "10cm", "15cm", "20cm"
-// Abrollhilfe                  String? // "Standard", "Verbesserte Mittelfußrolle", "Verbesserte Ballenrolle"
-
-// //page 3
-// // Spezielle Fußprobleme für Leisten
-// Spezielle_Fußprobleme_Leisten String?
-
-// // Anmerkungen zum Leisten
-// Anmerkungen_zum_Leisten String?
-
 export const sendToAdminOrder_2 = async (req, res) => {
   const files = req.files as any;
   const { id } = req.user;
@@ -315,14 +270,6 @@ export const sendToAdminOrder_2 = async (req, res) => {
         message: "Order not found",
       });
     }
-
-    // Verify order belongs to user
-    // if (order.userId !== id) {
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: "You are not authorized to send this order to admin",
-    //   });
-    // }
 
     // Check if order already sent to admin 2
     const isOrderSent = await prisma.custom_shafts.findFirst({
@@ -546,17 +493,6 @@ export const sendToAdminOrder_2 = async (req, res) => {
     });
   }
 };
-
-// Konstruktionsart              String? // "Әeklebt", "Rohmengendht (Maschine)"
-// Fersenkappe                   String? // "Normal", "Verstärkt"
-// Farbauswahl_Bodenkonstruktion String? // "Nach Produktfoto", "Nach Personal (passendstes)", "Eigene Angabe"
-// Sohlenmaterial                String? // "EVA Shore 58 (Lunalight)", "EVA Shore 53 (AL)", "EVA Shore 30 (SLW)", "Leder"
-// Absatz_Höhe String? // first "mm" field
-// Absatz_Form String? // "Keilabsatz", "Steckteil", "Absatzkeil", "Flügelabsatz innen", "Flügelabsatz außen"
-// Abrollhilfe_Rolle String? // "Keine", "Mittelfußrolle", "Absatzrolle", "Ballenrolle"
-// Laufsohle_Profil_Art String? // From "Select" dropdown
-// Sohlenstärke String? // "4 mm", "6 mm"
-// Besondere_Hinweise String? // Textfield
 
 export const sendToAdminOrder_3 = async (req, res) => {
   try {

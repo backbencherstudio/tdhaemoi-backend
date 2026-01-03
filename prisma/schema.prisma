@@ -1262,7 +1262,7 @@ model custom_shafts {
   image3d_2 String? // 3D ভিউ দ্বিতীয় ছবি
 
   /**
-   * Halbprobenerstellung Started
+   * Massschafterstellung Started
    * --------------------------------------------------------------------------
    * --------------------------------------------------------------------------
    */
@@ -1284,13 +1284,13 @@ model custom_shafts {
 
   maßschaftKollektionId String? // বেস জুতার রেফারেন্স আইডি
   /**
-   * Halbprobenerstellung Ended
+   * Massschafterstellung Ended
    * --------------------------------------------------------------------------
    * --------------------------------------------------------------------------
    */
 
   /**
-   * Massschafterstellung Started
+   * Halbprobenerstellung Started
    * --------------------------------------------------------------------------
    * --------------------------------------------------------------------------
    */
@@ -1301,8 +1301,8 @@ model custom_shafts {
   // Upload 3D-Datei
   // image3d_1 String? 
   // image3d_2 String? 
-
-  // Bettungskonfigurator
+ 
+  // 
   Bettungsdicke         String? // "Min. 5mm", "Min. 7mm", "Min. 10mm"
   Haertegrad_Shore      String? // "A30 (Weich)", "A40 (Mittel)", "A30 Vorfuß A50 Rückfuß", "A65/25/20 (Diabetesbettung)"
   Fersenschale          String? // "Leichte Fersenschale (Standard)", "Keine Fersenschale", "Hohe Fersenschale"
@@ -1350,7 +1350,7 @@ model custom_shafts {
    * --------------------------------------------------------------------------
    * --------------------------------------------------------------------------
    */
-
+ 
   /**
    * Bodenkonstruktion Started
    * --------------------------------------------------------------------------
@@ -1418,15 +1418,15 @@ enum custom_shafts_status {
   Versandt
   Ausgeführt
 
-  //----------------------------------------
-  Leistenerstellung //started
+  // //----------------------------------------
+  // Leistenerstellung //started
 
-  Bettungsherstellung
-  Halbprobenerstellung
-  Schafterstellung
-  Bodenerstellung
+  // Bettungsherstellung
+  // Halbprobenerstellung
+  // Schafterstellung
+  // Bodenerstellung
 
-  Geliefert
+  // Geliefert
 }
 
 model maßschuhe_transitions {
