@@ -387,7 +387,7 @@ export const createTustomShafts = async (req, res) => {
       nahtfarbe,
       nahtfarbe_text,
       lederType,
-
+      totalPrice,
       osen_einsetzen_price,
       Passenden_schnursenkel_price,
     } = req.body;
@@ -480,6 +480,7 @@ export const createTustomShafts = async (req, res) => {
       nahtfarbe: nahtfarbe || null,
       nahtfarbe_text: nahtfarbe_text || null,
       lederType: lederType || null,
+      totalPrice: totalPrice ? parseFloat(totalPrice) : null,
       orderNumber: `MS-${new Date().getFullYear()}-${Math.floor(
         10000 + Math.random() * 90000
       )}`,
@@ -1196,15 +1197,18 @@ export const totalPriceResponse = async (req: Request, res: Response) => {
       },
       select: {
         id: true,
-        osen_einsetzen_price: true,
-        Passenden_schnursenkel_price: true,
         status: true,
         orderNumber: true,
         createdAt: true,
-        maßschaft_kollektion: {
+        massschuhe_order: {
           select: {
             id: true,
-            price: true,
+            maßschuheTransitions: {
+              select: {
+                id: true,
+                price: true,
+              },
+            },
           },
         },
       },
@@ -1243,17 +1247,17 @@ export const totalPriceResponse = async (req: Request, res: Response) => {
     const dailyTotals: { [key: string]: number } = {};
     
     // Group orders by date and calculate daily totals
-    // Total = maßschaft_kollektion.price + osen_einsetzen_price + Passenden_schnursenkel_price
+    // Total = sum of prices from maßschuhe_transitions
     customShafts.forEach((shaft) => {
       const orderDate = new Date(shaft.createdAt);
       // Use local date to avoid timezone issues
       const dateKey = formatDateLocal(orderDate);
       
-      // Base price from maßschaft_kollektion
-      const basePrice = shaft.maßschaft_kollektion?.price || 0;
-      const osenPrice = shaft.osen_einsetzen_price || 0;
-      const schnursenkelPrice = shaft.Passenden_schnursenkel_price || 0;
-      const orderTotal = basePrice + osenPrice + schnursenkelPrice;
+      // Calculate total price from maßschuhe_transitions
+      const transitions = shaft.massschuhe_order?.maßschuheTransitions || [];
+      const orderTotal = transitions.reduce((sum, transition) => {
+        return sum + (transition.price || 0);
+      }, 0);
       
       currentBalance += orderTotal;
       

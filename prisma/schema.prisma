@@ -62,6 +62,7 @@ model User {
   customers                customers[]
   orderSettings            order_settings?
   // massschuheOrderAdmin1s   massschuhe_order_admin_1[]
+  maßschuheTransitions    maßschuhe_transitions[]
 
   @@map("users")
 }
@@ -1165,6 +1166,7 @@ model massschuhe_order {
   massschuheOrderHistories massschuhe_order_history[]
   // massschuheOrderAdmin1s   massschuhe_order_admin_1[]
   customShafts             custom_shafts[]
+  maßschuheTransitions    maßschuhe_transitions[]
 
   @@unique([userId, orderNumber]) // Unique per partner
   @@index([createdAt])
@@ -1181,30 +1183,6 @@ enum massschuhe_order_status {
 
   Geliefert
 }
-
-// model massschuhe_order_admin_1 {
-//   id String @id @default(uuid())
-
-//   massschuhe_orderId String
-//   massschuhe_order   massschuhe_order @relation(fields: [massschuhe_orderId], references: [id], onDelete: Cascade)
-
-//   partnerId String
-//   partner   User   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-
-//   threed_model_right String?
-//   threed_model_left  String?
-//   invoice            String?
-
-//   isCompleted Boolean? @default(false)
-
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-
-//   @@index([massschuhe_orderId])
-//   @@index([createdAt])
-//   @@index([updatedAt])
-//   @@map("massschuhe_order_admin_1")
-// }
 
 model massschuhe_order_history {
   id String @id @default(uuid())
@@ -1268,14 +1246,26 @@ model maßschaft_kollektion {
 model custom_shafts {
   id String @id @default(uuid())
 
+  /**
+   * common info
+   * -------------------------------------------------------------------------------------------
+   * -------------------------------------------------------------------------------------------
+   */
   orderNumber           String? // অর্ডার নম্বর (যদি অর্ডার নম্বর থাকে)
   other_customer_number String? // বিকল্প কাস্টমার রেফারেন্স নম্বর (উভয় একসাথে ব্যবহার হবে না)
+  customerId            String? // সংশ্লিষ্ট কাস্টমারের আইডি
+  invoice               String? // ইনভোইস নম্বর
+  totalPrice            Float? // মোট প্রাপ্তিত খরচ
 
-  image3d_1  String? // 3D ভিউ প্রথম ছবি
-  image3d_2  String? // 3D ভিউ দ্বিতীয় ছবি
-  customerId String? // সংশ্লিষ্ট কাস্টমারের আইডি
-  invoice    String? // ইনভোইস নম্বর
+  // common for (Halbprobenerstellung || Massschafterstellung)
+  image3d_1 String? // 3D ভিউ প্রথম ছবি
+  image3d_2 String? // 3D ভিউ দ্বিতীয় ছবি
 
+  /**
+   * Halbprobenerstellung Started
+   * --------------------------------------------------------------------------
+   * --------------------------------------------------------------------------
+   */
   lederfarbe        String? // চামড়ার রঙ
   innenfutter       String? // ভিতরের লাইনিং
   schafthohe        String? // শ্যাফটের উচ্চতা
@@ -1293,8 +1283,98 @@ model custom_shafts {
   lederType String? // চামড়ার ধরন
 
   maßschaftKollektionId String? // বেস জুতার রেফারেন্স আইডি
-  maßschaft_kollektion  maßschaft_kollektion? @relation(fields: [maßschaftKollektionId], references: [id]) // সংশ্লিষ্ট বেস জুতা
-  customer               customers?             @relation(fields: [customerId], references: [id]) // সংশ্লিষ্ট কাস্টমার
+  /**
+   * Halbprobenerstellung Ended
+   * --------------------------------------------------------------------------
+   * --------------------------------------------------------------------------
+   */
+
+  /**
+   * Massschafterstellung Started
+   * --------------------------------------------------------------------------
+   * --------------------------------------------------------------------------
+   */
+  // Kunde                String?  // "Brugger Theo"
+  // Bestellnr            String?  // order number
+  // Liefertermin         DateTime? // delivery date
+
+  // Upload 3D-Datei
+  // image3d_1 String? 
+  // image3d_2 String? 
+
+  // Bettungskonfigurator
+  Bettungsdicke         String? // "Min. 5mm", "Min. 7mm", "Min. 10mm"
+  Haertegrad_Shore      String? // "A30 (Weich)", "A40 (Mittel)", "A30 Vorfuß A50 Rückfuß", "A65/25/20 (Diabetesbettung)"
+  Fersenschale          String? // "Leichte Fersenschale (Standard)", "Keine Fersenschale", "Hohe Fersenschale"
+  Laengsgewölbestütze String? // "Mittel", "Leicht", "Stark", "Nach Fußscan"
+
+  //page 2
+  // Palotte/Querpalotte
+  Palotte_oder_Querpalotte String? // "Keine", "Ja, Palotte", "Ja, Querpalotte 1-5", "Ja, Querpalotte 2-5"
+
+  // Korrektur der Fußstellung
+  Korrektur_der_Fußstellung String? // "Keine", "Innenranderhöhung", "Aussenranderhöhung"
+
+  // Zehenelemente
+  Zehenelemente_Details     String? // "bei folgenden Zehen: ______"
+  eine_korrektur_nötig_ist String? // "In welchem Bereich? Wenn"
+  Spezielles_Fußproblem    String? // free text
+
+  // Zusatzkorrekturen
+  Zusatzkorrektur_Absatzerhöhung String?
+  Vertiefungen_Aussparungen       String?
+  Oberfläche_finish              String?
+
+  //page 3
+  Überzug_Stärke        String?
+  // Anmerkungen zur Bettung
+  Anmerkungen_zur_Bettung String?
+
+  // Leistenkonfigurator
+  Leisten_mit_ohne_Platzhalter String? // "Ohne Platzhalter", "Mit Platzhalter"
+  Schuhleisten_Typ             String? // "Halbschuh", "Knöchelhoch"
+  Material_des_Leisten         String? // "Kunststoff (Standard)", "Buchenholz"
+  Leisten_gleiche_Länge       Boolean?
+  Absatzhöhe                  String? // "5cm", "10cm", "15cm", "20cm"
+  Abrollhilfe                  String? // "Standard", "Verbesserte Mittelfußrolle", "Verbesserte Ballenrolle"
+
+  //page 3
+  // Spezielle Fußprobleme für Leisten
+  Spezielle_Fußprobleme_Leisten String?
+
+  // Anmerkungen zum Leisten
+  Anmerkungen_zum_Leisten String?
+
+  /**
+   * Massschafterstellung Ended
+   * --------------------------------------------------------------------------
+   * --------------------------------------------------------------------------
+   */
+
+  /**
+   * Bodenkonstruktion Started
+   * --------------------------------------------------------------------------
+   * --------------------------------------------------------------------------
+   */
+  Konstruktionsart              String? // "Әeklebt", "Rohmengendht (Maschine)"
+  Fersenkappe                   String? // "Normal", "Verstärkt"
+  Farbauswahl_Bodenkonstruktion String? // "Nach Produktfoto", "Nach Personal (passendstes)", "Eigene Angabe"
+  Sohlenmaterial                String? // "EVA Shore 58 (Lunalight)", "EVA Shore 53 (AL)", "EVA Shore 30 (SLW)", "Leder"
+  Absatz_Höhe                  String? // first "mm" field
+  Absatz_Form                   String? // "Keilabsatz", "Steckteil", "Absatzkeil", "Flügelabsatz innen", "Flügelabsatz außen"
+  Abrollhilfe_Rolle             String? // "Keine", "Mittelfußrolle", "Absatzrolle", "Ballenrolle"
+  Laufsohle_Profil_Art          String? // From "Select" dropdown
+  Sohlenstärke                 String? // "4 mm", "6 mm"
+  Besondere_Hinweise            String? // Textfield
+  /**
+   * Bodenkonstruktion Ended
+   * --------------------------------------------------------------------------
+   * --------------------------------------------------------------------------
+   */
+
+  //relation-------------------------------------------------
+  maßschaft_kollektion maßschaft_kollektion? @relation(fields: [maßschaftKollektionId], references: [id]) // সংশ্লিষ্ট বেস জুতা
+  customer              customers?             @relation(fields: [customerId], references: [id]) // সংশ্লিষ্ট কাস্টমার
 
   partnerId String? // পার্টনার আইডি
   user      User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull) // সংশ্লিষ্ট পার্টনার ইউজার
@@ -1308,9 +1388,8 @@ model custom_shafts {
 
   isCompleted Boolean? @default(false)
 
-  totalPrice Float?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status]) // স্ট্যাটাস অনুসারে দ্রুত সার্চের জন্য
   @@index([customerId]) // কাস্টমার অনুসারে দ্রুত সার্চের জন্য
@@ -1348,6 +1427,25 @@ enum custom_shafts_status {
   Bodenerstellung
 
   Geliefert
+}
+
+model maßschuhe_transitions {
+  id String @id @default(uuid())
+
+  status    massschuhe_order_status?
+  catagoary custom_shafts_catagoary?
+  price     Float?
+  note      String?
+
+  // relation with massschuhe_order
+  massschuhe_order_id String?
+  massschuhe_order    massschuhe_order? @relation(fields: [massschuhe_order_id], references: [id], onDelete: SetNull)
+
+  partnerId String?
+  partner   User?   @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 //---------------------------------------------------------------------------
