@@ -237,8 +237,10 @@ export const createOrder = async (req: Request, res: Response) => {
     // Calculate price
     const basePrice = Number(fussanalysePreis || 0) + Number(einlagenversorgungPreis || 0);
     const orderQuantity = quantity ? parseInt(quantity, 10) : 1;
-    const discountAmount = discount ? parseFloat(discount) : 0;
-    const totalPrice = Math.max(0, basePrice * orderQuantity - discountAmount);
+    const totalBeforeDiscount = basePrice * orderQuantity;
+    const discountPercent = discount ? parseFloat(discount) : 0;
+    const discountAmount = totalBeforeDiscount * (discountPercent / 100);
+    const totalPrice = Math.max(0, totalBeforeDiscount - discountAmount);
 
     let matchedSizeKey = determineProductSize(customer, versorgung);
 
@@ -302,7 +304,7 @@ export const createOrder = async (req: Request, res: Response) => {
       if (finalEmployeeId) orderData.employee = { connect: { id: finalEmployeeId } };
       if (fussanalysePreis != null) orderData.fussanalysePreis = Number(fussanalysePreis);
       if (einlagenversorgungPreis != null) orderData.einlagenversorgungPreis = Number(einlagenversorgungPreis);
-      if (discount != null) orderData.discount = discountAmount;
+      if (discount != null) orderData.discount = discountPercent;
 
       // Create order
       const newOrder = await tx.customerOrders.create({

@@ -1852,3 +1852,106 @@ export const getMassschuheProfitCount = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const deleteAllMassschuheOrders = async (req: Request, res: Response) => {
+  try {
+    // Fetch all orders with related data to collect file paths
+    const allOrders = await prisma.massschuhe_order.findMany({
+      select: {
+        id: true,
+        bodenerstellungpdf: true,
+        geliefertpdf: true,
+        customShafts: {
+          select: {
+            id: true,
+            invoice: true,
+            image3d_1: true,
+            image3d_2: true,
+          },
+        },
+      },
+    });
+
+    // Collect all file paths
+    const filesToDelete: string[] = [];
+
+    allOrders.forEach((order) => {
+      if (order.bodenerstellungpdf) {
+        filesToDelete.push(order.bodenerstellungpdf);
+      }
+      if (order.geliefertpdf) {
+        filesToDelete.push(order.geliefertpdf);
+      }
+
+      order.customShafts.forEach((shaft) => {
+        if (shaft.invoice) {
+          filesToDelete.push(shaft.invoice);
+        }
+        if (shaft.image3d_1) {
+          filesToDelete.push(shaft.image3d_1);
+        }
+        if (shaft.image3d_2) {
+          filesToDelete.push(shaft.image3d_2);
+        }
+      });
+    });
+
+    // Delete all related data in transaction
+    await prisma.$transaction(async (tx) => {
+      // Delete all custom_shafts (related to massschuhe_order)
+      await tx.custom_shafts.deleteMany({
+        where: {
+          massschuhe_order_id: { not: null },
+        },
+      });
+
+      // Delete all maßschuhe_transitions
+      await tx.maßschuhe_transitions.deleteMany({
+        where: {
+          massschuhe_order_id: { not: null },
+        },
+      });
+
+      // Delete all massschuhe_order (history will cascade automatically)
+      await tx.massschuhe_order.deleteMany({});
+    });
+
+    // Delete physical files
+    const uploadsDir = path.join(process.cwd(), "uploads");
+    let deletedFilesCount = 0;
+    let failedFilesCount = 0;
+
+    for (const filename of filesToDelete) {
+      if (!filename) continue;
+
+      const filePath = path.join(uploadsDir, filename);
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          deletedFilesCount++;
+        }
+      } catch (error) {
+        console.error(`Failed to delete file ${filePath}:`, error);
+        failedFilesCount++;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "All massschuhe orders deleted successfully",
+      data: {
+        deletedOrdersCount: allOrders.length,
+        deletedFilesCount,
+        failedFilesCount,
+        totalFilesProcessed: filesToDelete.length,
+      },
+    });
+  } catch (error: any) {
+    console.error("Delete All Massschuhe Orders Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while deleting all massschuhe orders",
+      error: error?.message || "Unknown error",
+    });
+  }
+};

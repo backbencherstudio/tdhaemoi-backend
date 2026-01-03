@@ -2581,8 +2581,13 @@ export const filterCustomer = async (req: Request, res: Response) => {
       thisMonth,
       month,
       year,
+      //---------------------
       completedOrders,
       noOrder,
+      oneAllOrders,
+      oneOrdersInProduction,
+      finishedOrders,
+      //--------------------
       paymnentType,
       geschaeftsstandort,
       page = "1",
@@ -2628,14 +2633,25 @@ export const filterCustomer = async (req: Request, res: Response) => {
 
     const completedOrdersFilter = parseBoolean(completedOrders);
     const noOrderFilter = parseBoolean(noOrder);
+    const oneAllOrdersFilter = parseBoolean(oneAllOrders);
+    const oneOrdersInProductionFilter = parseBoolean(oneOrdersInProduction);
+    const finishedOrdersFilter = parseBoolean(finishedOrders);
     const normalizedPaymnentType = normalizeString(paymnentType)?.toLowerCase();
     const normalizedGeschaeftsstandort = normalizeString(geschaeftsstandort)?.trim();
 
-    if (completedOrdersFilter && noOrderFilter) {
+    // Validate mutually exclusive filters
+    const activeOrderFilters = [
+      { name: "completedOrders", active: completedOrdersFilter },
+      { name: "noOrder", active: noOrderFilter },
+      { name: "oneAllOrders", active: oneAllOrdersFilter },
+      { name: "oneOrdersInProduction", active: oneOrdersInProductionFilter },
+      { name: "finishedOrders", active: finishedOrdersFilter },
+    ].filter((f) => f.active);
+
+    if (activeOrderFilters.length > 1) {
       return res.status(400).json({
         success: false,
-        message:
-          "Filters 'completedOrders' and 'noOrder' cannot be used together.",
+        message: `Only one order filter can be used at a time. Active filters: ${activeOrderFilters.map((f) => f.name).join(", ")}`,
       });
     }
 
@@ -2779,21 +2795,55 @@ export const filterCustomer = async (req: Request, res: Response) => {
     }
 
     if (completedOrdersFilter) {
+      // Customers with orders that have "Ausgeführt" status
       whereConditions.push({
         customerOrders: {
           some: {
-            orderStatus: {
-              in: ["Ausgeführt"],
-            },
+            orderStatus: "Ausgeführt",
           },
         },
       });
     }
 
     if (noOrderFilter) {
+      // Customers with no customerOrders records
       whereConditions.push({
         customerOrders: {
           none: {},
+        },
+      });
+    }
+
+    if (finishedOrdersFilter) {
+      // Customers who have at least one order with "Ausgeführt" status
+      whereConditions.push({
+        customerOrders: {
+          some: {
+            orderStatus: "Ausgeführt",
+          },
+        },
+      });
+    }
+
+    // Add initial filtering for count-based filters (exact count will be checked in post-processing)
+    if (oneAllOrdersFilter) {
+      // Customers with at least one order (exact count of 1 will be checked in post-processing)
+      whereConditions.push({
+        customerOrders: {
+          some: {},
+        },
+      });
+    }
+
+    if (oneOrdersInProductionFilter) {
+      // Customers with at least one order that is NOT "Ausgeführt" (exact count will be checked in post-processing)
+      whereConditions.push({
+        customerOrders: {
+          some: {
+            orderStatus: {
+              not: "Ausgeführt",
+            },
+          },
         },
       });
     }
@@ -2818,9 +2868,9 @@ export const filterCustomer = async (req: Request, res: Response) => {
 
     const where: any = whereConditions.length ? { AND: whereConditions } : {};
 
-    // If payment type or geschaeftsstandort filter is applied, fetch more records to account for filtering
+    // If payment type, geschaeftsstandort, or count-based filters are applied, fetch more records to account for filtering
     // We'll filter after fetching, so we need a larger batch to ensure we get enough results
-    const needsPostFilter = normalizedPaymnentType || normalizedGeschaeftsstandort;
+    const needsPostFilter = normalizedPaymnentType || normalizedGeschaeftsstandort || oneAllOrdersFilter || oneOrdersInProductionFilter;
     const fetchLimit = needsPostFilter
       ? limitNumber * 5 // Fetch 5x more to account for filtering
       : limitNumber;
@@ -2917,6 +2967,8 @@ export const filterCustomer = async (req: Request, res: Response) => {
         latestScreener,
         latestMassschuheOrder,
         billingType,
+        // Keep customerOrders for filtering logic (will be removed before response if needed)
+        _customerOrders: customer.customerOrders,
       };
     });
 
@@ -2955,17 +3007,41 @@ export const filterCustomer = async (req: Request, res: Response) => {
       });
     }
 
+    // Post-process filters that require exact counts
+    if (oneAllOrdersFilter) {
+      // Customers with exactly one customerOrders record (any status)
+      responseData = responseData.filter((customer) => {
+        return customer.totalOrders === 1;
+      });
+    }
+
+    if (oneOrdersInProductionFilter) {
+      // Customers with exactly one order that is NOT "Ausgeführt"
+      responseData = responseData.filter((customer: any) => {
+        const nonFinishedOrders = customer._customerOrders.filter(
+          (order: any) => order.orderStatus !== "Ausgeführt"
+        );
+        return nonFinishedOrders.length === 1 && customer.totalOrders === 1;
+      });
+    }
+
     // Apply pagination after filtering (if any post-fetch filters were applied)
-    if (needsPostFilter) {
+    if (needsPostFilter || oneAllOrdersFilter || oneOrdersInProductionFilter) {
       const startIndex = skip;
       const endIndex = skip + limitNumber;
       responseData = responseData.slice(startIndex, endIndex);
     }
 
+    // Remove internal _customerOrders field before sending response
+    responseData = responseData.map((customer: any) => {
+      const { _customerOrders, ...rest } = customer;
+      return rest;
+    });
+
     // Calculate total for pagination
-    // Note: When payment type or geschaeftsstandort filter is applied, totalItems is approximate
+    // Note: When payment type, geschaeftsstandort, or count-based filters are applied, totalItems is approximate
     // as we only count the filtered results from the fetched batch
-    const filteredTotal = needsPostFilter
+    const filteredTotal = needsPostFilter || oneAllOrdersFilter || oneOrdersInProductionFilter
       ? Math.min(responseData.length + skip, totalCount) // Approximate
       : totalCount;
 
@@ -2989,6 +3065,9 @@ export const filterCustomer = async (req: Request, res: Response) => {
         year: yearNumber,
         completedOrders: completedOrdersFilter,
         noOrder: noOrderFilter,
+        oneAllOrders: oneAllOrdersFilter,
+        oneOrdersInProduction: oneOrdersInProductionFilter,
+        finishedOrders: finishedOrdersFilter,
         paymnentType: normalizedPaymnentType || undefined,
         geschaeftsstandort: normalizedGeschaeftsstandort || undefined,
         search: normalizedSearch || undefined,

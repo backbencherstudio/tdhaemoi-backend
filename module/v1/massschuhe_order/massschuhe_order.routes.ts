@@ -16,6 +16,7 @@ import {
   getMassschuheProductionSummary,
   uploadMassschuheOrderPdf,
   getMassschuheProfitCount,
+  deleteAllMassschuheOrders,
 } from "./massschuhe_order.controllers";
 import upload from "../../../config/multer.config";
 
@@ -82,6 +83,7 @@ router.get(
 
 // router.put("/:id", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrder);
 // router.patch("/:id", verifyUser("ADMIN", "PARTNER"), updateMassschuheOrder);
+router.delete("/delete-all",  deleteAllMassschuheOrders);
 router.delete("/:id", verifyUser("ADMIN", "PARTNER"), deleteMassschuheOrder);
 
 // router.post("/create", verifyUser("ADMIN", "PARTNER"), createMassschuheOrder);
