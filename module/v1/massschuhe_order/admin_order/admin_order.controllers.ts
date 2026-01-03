@@ -658,18 +658,9 @@ export const getAllAdminOrders = async (req: Request, res: Response) => {
       whereCondition.catagoary = catagoary;
     }
 
+    // Build search conditions based on category
     if (search) {
-      whereCondition.OR = [
-        { lederfarbe: { contains: search, mode: "insensitive" } },
-        { innenfutter: { contains: search, mode: "insensitive" } },
-        { schafthohe: { contains: search, mode: "insensitive" } },
-        { polsterung: { contains: search, mode: "insensitive" } },
-        { vestarkungen: { contains: search, mode: "insensitive" } },
-        { polsterung_text: { contains: search, mode: "insensitive" } },
-        { vestarkungen_text: { contains: search, mode: "insensitive" } },
-        { nahtfarbe: { contains: search, mode: "insensitive" } },
-        { nahtfarbe_text: { contains: search, mode: "insensitive" } },
-        { lederType: { contains: search, mode: "insensitive" } },
+      const searchConditions: any[] = [
         {
           customer: {
             OR: [
@@ -700,7 +691,176 @@ export const getAllAdminOrders = async (req: Request, res: Response) => {
             ],
           },
         },
+        { orderNumber: { contains: search, mode: "insensitive" } },
+        { other_customer_number: { contains: search, mode: "insensitive" } },
       ];
+
+      // Add category-specific search fields
+      if (catagoary === "Halbprobenerstellung") {
+        searchConditions.push(
+          { Bettungsdicke: { contains: search, mode: "insensitive" } },
+          { Haertegrad_Shore: { contains: search, mode: "insensitive" } },
+          { Fersenschale: { contains: search, mode: "insensitive" } },
+          { Laengsgewölbestütze: { contains: search, mode: "insensitive" } },
+          { Palotte_oder_Querpalotte: { contains: search, mode: "insensitive" } },
+          { Korrektur_der_Fußstellung: { contains: search, mode: "insensitive" } },
+          { Zehenelemente_Details: { contains: search, mode: "insensitive" } },
+          { eine_korrektur_nötig_ist: { contains: search, mode: "insensitive" } },
+          { Spezielles_Fußproblem: { contains: search, mode: "insensitive" } },
+          { Zusatzkorrektur_Absatzerhöhung: { contains: search, mode: "insensitive" } },
+          { Vertiefungen_Aussparungen: { contains: search, mode: "insensitive" } },
+          { Oberfläche_finish: { contains: search, mode: "insensitive" } },
+          { Überzug_Stärke: { contains: search, mode: "insensitive" } },
+          { Anmerkungen_zur_Bettung: { contains: search, mode: "insensitive" } },
+          { Leisten_mit_ohne_Platzhalter: { contains: search, mode: "insensitive" } },
+          { Schuhleisten_Typ: { contains: search, mode: "insensitive" } },
+          { Material_des_Leisten: { contains: search, mode: "insensitive" } },
+          { Absatzhöhe: { contains: search, mode: "insensitive" } },
+          { Abrollhilfe: { contains: search, mode: "insensitive" } },
+          { Spezielle_Fußprobleme_Leisten: { contains: search, mode: "insensitive" } },
+          { Anmerkungen_zum_Leisten: { contains: search, mode: "insensitive" } }
+        );
+      } else if (catagoary === "Massschafterstellung") {
+        searchConditions.push(
+          { lederfarbe: { contains: search, mode: "insensitive" } },
+          { innenfutter: { contains: search, mode: "insensitive" } },
+          { schafthohe: { contains: search, mode: "insensitive" } },
+          { polsterung: { contains: search, mode: "insensitive" } },
+          { vestarkungen: { contains: search, mode: "insensitive" } },
+          { polsterung_text: { contains: search, mode: "insensitive" } },
+          { vestarkungen_text: { contains: search, mode: "insensitive" } },
+          { nahtfarbe: { contains: search, mode: "insensitive" } },
+          { nahtfarbe_text: { contains: search, mode: "insensitive" } },
+          { lederType: { contains: search, mode: "insensitive" } }
+        );
+      } else if (catagoary === "Bodenkonstruktion") {
+        searchConditions.push(
+          { Konstruktionsart: { contains: search, mode: "insensitive" } },
+          { Fersenkappe: { contains: search, mode: "insensitive" } },
+          { Farbauswahl_Bodenkonstruktion: { contains: search, mode: "insensitive" } },
+          { Sohlenmaterial: { contains: search, mode: "insensitive" } },
+          { Absatz_Höhe: { contains: search, mode: "insensitive" } },
+          { Absatz_Form: { contains: search, mode: "insensitive" } },
+          { Abrollhilfe_Rolle: { contains: search, mode: "insensitive" } },
+          { Laufsohle_Profil_Art: { contains: search, mode: "insensitive" } },
+          { Sohlenstärke: { contains: search, mode: "insensitive" } },
+          { Besondere_Hinweise: { contains: search, mode: "insensitive" } }
+        );
+      } else {
+        // No category filter - search all fields
+        searchConditions.push(
+          { lederfarbe: { contains: search, mode: "insensitive" } },
+          { innenfutter: { contains: search, mode: "insensitive" } },
+          { schafthohe: { contains: search, mode: "insensitive" } },
+          { polsterung: { contains: search, mode: "insensitive" } },
+          { vestarkungen: { contains: search, mode: "insensitive" } },
+          { polsterung_text: { contains: search, mode: "insensitive" } },
+          { vestarkungen_text: { contains: search, mode: "insensitive" } },
+          { nahtfarbe: { contains: search, mode: "insensitive" } },
+          { nahtfarbe_text: { contains: search, mode: "insensitive" } },
+          { lederType: { contains: search, mode: "insensitive" } },
+          { Bettungsdicke: { contains: search, mode: "insensitive" } },
+          { Haertegrad_Shore: { contains: search, mode: "insensitive" } },
+          { Fersenschale: { contains: search, mode: "insensitive" } },
+          { Laengsgewölbestütze: { contains: search, mode: "insensitive" } },
+          { Konstruktionsart: { contains: search, mode: "insensitive" } },
+          { Fersenkappe: { contains: search, mode: "insensitive" } }
+        );
+      }
+
+      whereCondition.OR = searchConditions;
+    }
+
+    // Build select fields based on category
+    const commonFields = {
+      id: true,
+      orderNumber: true,
+      other_customer_number: true,
+      customerId: true,
+      invoice: true,
+      totalPrice: true,
+      image3d_1: true,
+      image3d_2: true,
+      status: true,
+      catagoary: true,
+      isCompleted: true,
+      createdAt: true,
+      updatedAt: true,
+      partnerId: true,
+      massschuhe_order_id: true,
+    };
+
+    const halbprobenerstellungFields = {
+      Bettungsdicke: true,
+      Haertegrad_Shore: true,
+      Fersenschale: true,
+      Laengsgewölbestütze: true,
+      Palotte_oder_Querpalotte: true,
+      Korrektur_der_Fußstellung: true,
+      Zehenelemente_Details: true,
+      eine_korrektur_nötig_ist: true,
+      Spezielles_Fußproblem: true,
+      Zusatzkorrektur_Absatzerhöhung: true,
+      Vertiefungen_Aussparungen: true,
+      Oberfläche_finish: true,
+      Überzug_Stärke: true,
+      Anmerkungen_zur_Bettung: true,
+      Leisten_mit_ohne_Platzhalter: true,
+      Schuhleisten_Typ: true,
+      Material_des_Leisten: true,
+      Leisten_gleiche_Länge: true,
+      Absatzhöhe: true,
+      Abrollhilfe: true,
+      Spezielle_Fußprobleme_Leisten: true,
+      Anmerkungen_zum_Leisten: true,
+    };
+
+    const massschafterstellungFields = {
+      lederfarbe: true,
+      innenfutter: true,
+      schafthohe: true,
+      polsterung: true,
+      vestarkungen: true,
+      vestarkungen_text: true,
+      polsterung_text: true,
+      osen_einsetzen_price: true,
+      Passenden_schnursenkel_price: true,
+      nahtfarbe: true,
+      nahtfarbe_text: true,
+      lederType: true,
+      maßschaftKollektionId: true,
+    };
+
+    const bodenkonstruktionFields = {
+      Konstruktionsart: true,
+      Fersenkappe: true,
+      Farbauswahl_Bodenkonstruktion: true,
+      Sohlenmaterial: true,
+      Absatz_Höhe: true,
+      Absatz_Form: true,
+      Abrollhilfe_Rolle: true,
+      Laufsohle_Profil_Art: true,
+      Sohlenstärke: true,
+      Besondere_Hinweise: true,
+    };
+
+    // Build select object based on category
+    let selectFields: any = { ...commonFields };
+    
+    if (catagoary === "Halbprobenerstellung") {
+      selectFields = { ...commonFields, ...halbprobenerstellungFields };
+    } else if (catagoary === "Massschafterstellung") {
+      selectFields = { ...commonFields, ...massschafterstellungFields };
+    } else if (catagoary === "Bodenkonstruktion") {
+      selectFields = { ...commonFields, ...bodenkonstruktionFields };
+    } else {
+      // No category filter - include all fields
+      selectFields = {
+        ...commonFields,
+        ...halbprobenerstellungFields,
+        ...massschafterstellungFields,
+        ...bodenkonstruktionFields,
+      };
     }
 
     const [totalCount, customShafts] = await Promise.all([
@@ -712,7 +872,8 @@ export const getAllAdminOrders = async (req: Request, res: Response) => {
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
-        include: {
+        select: {
+          ...selectFields,
           customer: {
             select: {
               id: true,
@@ -755,34 +916,44 @@ export const getAllAdminOrders = async (req: Request, res: Response) => {
       }),
     ]);
 
-    const formattedCustomShafts = customShafts.map(({ user, ...shaft }) => ({
-      ...shaft,
-      image3d_1: shaft.image3d_1
-        ? getImageUrl(`/uploads/${shaft.image3d_1}`)
-        : null,
-      image3d_2: shaft.image3d_2
-        ? getImageUrl(`/uploads/${shaft.image3d_2}`)
-        : null,
-      customer: shaft.customer
-        ? {
-            ...shaft.customer,
-          }
-        : null,
-      maßschaft_kollektion: shaft.maßschaft_kollektion
-        ? {
-            ...shaft.maßschaft_kollektion,
-            image: shaft.maßschaft_kollektion.image
-              ? getImageUrl(`/uploads/${shaft.maßschaft_kollektion.image}`)
-              : null,
-          }
-        : null,
-      partner: user
-        ? {
-            ...user,
-            image: user.image ? getImageUrl(`/uploads/${user.image}`) : null,
-          }
-        : null,
-    }));
+    // Format response with image URLs
+    const formatImage = (filename: string | null) =>
+      filename ? getImageUrl(`/uploads/${filename}`) : null;
+
+    const formattedCustomShafts = customShafts.map((item: any) => {
+      const { user, maßschaft_kollektion, customer, ...shaft } = item;
+      
+      const formatted: any = {
+        ...shaft,
+        // Format common images
+        image3d_1: formatImage(shaft.image3d_1),
+        image3d_2: formatImage(shaft.image3d_2),
+        // Format relations
+        customer: customer || null,
+      };
+
+      // Format maßschaft_kollektion if it exists
+      if (maßschaft_kollektion) {
+        formatted.maßschaft_kollektion = {
+          ...maßschaft_kollektion,
+          image: formatImage(maßschaft_kollektion.image),
+        };
+      } else {
+        formatted.maßschaft_kollektion = null;
+      }
+
+      // Format partner (user) if it exists
+      if (user) {
+        formatted.partner = {
+          ...user,
+          image: formatImage(user.image),
+        };
+      } else {
+        formatted.partner = null;
+      }
+
+      return formatted;
+    });
 
     // Calculate pagination values
     const totalPages = Math.ceil(totalCount / limit);
