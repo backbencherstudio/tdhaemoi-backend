@@ -6,7 +6,8 @@ import {
   sendToAdminOrder_1,
   sendToAdminOrder_2,
   sendToAdminOrder_3,
-  getAllAdminOrders
+  getAllAdminOrders,
+  getSingleAllAdminOrders
 } from "./admin_order.controllers";
 
 //make send to admin a order by partner it's first step
@@ -51,5 +52,6 @@ router.post(
 );
 
 router.get("/get", verifyUser("PARTNER", "ADMIN"), getAllAdminOrders);
+router.get("/get/:id", verifyUser("PARTNER", "ADMIN"), getSingleAllAdminOrders);
 
 export default router;

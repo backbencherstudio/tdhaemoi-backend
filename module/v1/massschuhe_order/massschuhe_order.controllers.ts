@@ -465,6 +465,7 @@ export const getMassschuheOrder = async (req: Request, res: Response) => {
           express: true,
           isByPartner_1: true,
           isByPartner_2: true,
+          isPanding: true,
           customer: {
             select: {
               id: true,
@@ -607,6 +608,7 @@ export const getMassschuheOrderByCustomerId = async (
           location: true,
           status: true,
           express: true,
+          isPanding: true,
           user: {
             select: {
               name: true,

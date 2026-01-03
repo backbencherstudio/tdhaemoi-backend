@@ -1144,7 +1144,7 @@ model massschuhe_order {
   express       Boolean?                @default(false)
 
   //-------------------------------------------------
-
+  
   //
   isByPartner_1 Boolean? @default(false)
   isByPartner_2 Boolean? @default(false)
@@ -1167,6 +1167,8 @@ model massschuhe_order {
   // massschuheOrderAdmin1s   massschuhe_order_admin_1[]
   customShafts             custom_shafts[]
   maßschuheTransitions    maßschuhe_transitions[]
+
+  isPanding     Boolean? @default(false)
 
   @@unique([userId, orderNumber]) // Unique per partner
   @@index([createdAt])
@@ -1301,7 +1303,7 @@ model custom_shafts {
   // Upload 3D-Datei
   // image3d_1 String? 
   // image3d_2 String? 
- 
+
   // 
   Bettungsdicke         String? // "Min. 5mm", "Min. 7mm", "Min. 10mm"
   Haertegrad_Shore      String? // "A30 (Weich)", "A40 (Mittel)", "A30 Vorfuß A50 Rückfuß", "A65/25/20 (Diabetesbettung)"
@@ -1350,7 +1352,7 @@ model custom_shafts {
    * --------------------------------------------------------------------------
    * --------------------------------------------------------------------------
    */
- 
+
   /**
    * Bodenkonstruktion Started
    * --------------------------------------------------------------------------
@@ -1383,7 +1385,7 @@ model custom_shafts {
   massschuhe_order_id String?
   massschuhe_order    massschuhe_order? @relation(fields: [massschuhe_order_id], references: [id], onDelete: SetNull)
 
-  status    custom_shafts_status?    @default(Bestellung_eingegangen) // অর্ডার স্ট্যাটাস (ডিফল্ট: অর্ডার প্রাপ্ত)
+  status    custom_shafts_status?    @default(Neu) // অর্ডার স্ট্যাটাস (ডিফল্ট: অর্ডার প্রাপ্ত)
   catagoary custom_shafts_catagoary?
 
   isCompleted Boolean? @default(false)
@@ -1506,6 +1508,7 @@ model notification {
 enum notificationType {
   Appointment_Reminder
   Appointment_Created
+  updated_massschuhe_order_status
   test
 }
 

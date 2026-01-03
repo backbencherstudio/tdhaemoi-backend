@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 
 import fs from "fs";
 import { getImageUrl } from "../../../utils/base_utl";
+import { notificationSend } from "../../../utils/notification.utils";
 
 const prisma = new PrismaClient();
 
@@ -433,12 +434,11 @@ export const createTustomShafts = async (req, res) => {
       }
     }
 
- 
     const [customer, kollektion] = await Promise.all([
       hasCustomerId
         ? prisma.customers.findUnique({
             where: { id: customerId },
-            select: { id: true },  
+            select: { id: true },
           })
         : Promise.resolve(null),
 
@@ -559,9 +559,7 @@ export const createTustomShafts = async (req, res) => {
         ? {
             ...customShaft.maßschaft_kollektion,
             image: customShaft.maßschaft_kollektion.image
-              ? getImageUrl(
-                  `${customShaft.maßschaft_kollektion.image}`
-                )
+              ? getImageUrl(`${customShaft.maßschaft_kollektion.image}`)
               : null,
           }
         : null,
@@ -612,7 +610,6 @@ export const createTustomShafts = async (req, res) => {
     });
   }
 };
-
 
 //==============================Importent==================================================
 export const getTustomShafts = async (req: Request, res: Response) => {
@@ -905,9 +902,7 @@ export const getSingleCustomShaft = async (req: Request, res: Response) => {
         ? {
             ...customShaft.maßschaft_kollektion,
             image: customShaft.maßschaft_kollektion.image
-              ? getImageUrl(
-                  `${customShaft.maßschaft_kollektion.image}`
-                )
+              ? getImageUrl(`${customShaft.maßschaft_kollektion.image}`)
               : null,
           }
         : null,
@@ -960,6 +955,12 @@ export const updateCustomShaftStatus = async (req: Request, res: Response) => {
       "Qualitätskontrolle",
       "Versandt",
       "Ausgeführt",
+
+      // "Bestellung_eingegangen",
+      // "In_Produktiony",
+      // "Qualitätskontrolle",
+      // "Versandt",
+      // "Ausgeführt"
     ] as const;
 
     if (!validStatuses.includes(status as any)) {
@@ -972,32 +973,6 @@ export const updateCustomShaftStatus = async (req: Request, res: Response) => {
 
     const existingCustomShaft = await prisma.custom_shafts.findUnique({
       where: { id },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            vorname: true,
-            nachname: true,
-            email: true,
-          },
-        },
-        maßschaft_kollektion: {
-          select: {
-            id: true,
-            name: true,
-            price: true,
-            image: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
-      },
     });
 
     if (!existingCustomShaft) {
@@ -1014,86 +989,112 @@ export const updateCustomShaftStatus = async (req: Request, res: Response) => {
         status: status as any,
         updatedAt: new Date(),
       },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            customerNumber: true,
-            vorname: true,
-            nachname: true,
-            email: true,
-            telefon: true,
-            ort: true,
-            land: true,
-            straße: true,
-            geburtsdatum: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        },
-        maßschaft_kollektion: {
-          select: {
-            id: true,
-            ide: true,
-            name: true,
-            price: true,
-            image: true,
-            catagoary: true,
-            gender: true,
-            description: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
+      select: {
+        id: true,
+        status: true,
       },
     });
 
-    // Format the response
-    const { user, ...shaftWithoutUser } = updatedCustomShaft;
+    //=======================khanba logic=======================
+    if (status === "Ausgeführt") {
 
-    const formattedShaft = {
-      ...shaftWithoutUser,
-      image3d_1: updatedCustomShaft.image3d_1
-        ? getImageUrl(`/uploads/${updatedCustomShaft.image3d_1}`)
-        : null,
-      image3d_2: updatedCustomShaft.image3d_2
-        ? getImageUrl(`/uploads/${updatedCustomShaft.image3d_2}`)
-        : null,
-      customer: updatedCustomShaft.customer
-        ? {
-            ...updatedCustomShaft.customer,
-          }
-        : null,
-      maßschaft_kollektion: updatedCustomShaft.maßschaft_kollektion
-        ? {
-            ...updatedCustomShaft.maßschaft_kollektion,
-            image: updatedCustomShaft.maßschaft_kollektion.image
-              ? getImageUrl(
-                  `${updatedCustomShaft.maßschaft_kollektion.image}`
-                )
-              : null,
-          }
-        : null,
-      partner: user
-        ? {
-            ...user,
-            image: user.image ? getImageUrl(`/uploads/${user.image}`) : null,
-          }
-        : null,
-    };
+      const massschuheOrder = await prisma.massschuhe_order.findUnique({
+        where: { id: existingCustomShaft.massschuhe_order_id },
+        select: {
+          id: true,
+          status: true,
+          userId: true,
+          orderNumber: true,
+          customerId: true,
+          customer: {
+            select: {
+              customerNumber: true,
+            },
+          },
+        },
+      });
+
+      if (!massschuheOrder) {
+        await prisma.massschuhe_order.update({
+          where: { id: massschuheOrder.id },
+          data: { status: "Geliefert" },
+          select: {
+            id: true,
+            status: true,
+          },
+        });
+
+        return res.status(400).json({
+          success: false,
+          message: "sun issue in massschuhe order",
+          data: massschuheOrder,
+        });
+      }
+
+      // if tound the order then update the status
+      // if status is Leistenerstellung then update the status to Schafterstellung
+      if (massschuheOrder.status === "Leistenerstellung") {
+        await prisma.massschuhe_order.update({
+          where: { id: massschuheOrder.id },
+          data: { status: "Schafterstellung", isPanding: false },
+          select: {
+            id: true,
+          },
+        });
+
+        // .. send notification to the partner
+        notificationSend(
+          massschuheOrder.userId,
+          "updated_massschuhe order_status" as any,
+          `The production status for order #${massschuheOrder.orderNumber} (Customer: ${massschuheOrder.customerId})
+           has been updated to the next phase.`,
+          massschuheOrder.id,
+          false,
+          "/dashboard/massschuhauftraege"
+        );
+      }
+
+      if (massschuheOrder.status === "Schafterstellung") {
+        await prisma.massschuhe_order.update({
+          where: { id: massschuheOrder.id },
+          data: { status: "Bodenerstellung", isPanding: false },
+        });
+
+        notificationSend(
+          massschuheOrder.userId,
+          "updated_massschuhe order_status" as any,
+          `The production status for order #${massschuheOrder.orderNumber} (Customer: ${massschuheOrder.customerId})
+           has been updated to the next phase.`,
+          massschuheOrder.id,
+          false,
+          "/dashboard/massschuhauftraege"
+        );
+      }
+
+      if (massschuheOrder.status === "Bodenerstellung") {
+        await prisma.massschuhe_order.update({
+          where: { id: massschuheOrder.id },
+          data: { status: "Geliefert", isPanding: false },
+        });
+
+        notificationSend(
+          massschuheOrder.userId,
+          "updated_massschuhe order_status" as any,
+          `The production status for order #${massschuheOrder.orderNumber} (Customer: ${massschuheOrder.customerId})
+           has been updated to the next phase.`,
+          massschuheOrder.id,
+          false,
+          "/dashboard/massschuhauftraege"
+        );
+      }
+    }
+
+    //=======================khanba logic end=======================
 
     res.status(200).json({
       success: true,
       message: "Custom shaft status updated successfully",
-      data: formattedShaft,
+      data: updatedCustomShaft,
     });
   } catch (error: any) {
     console.error("Update Custom Shaft Status Error:", error);
@@ -1154,13 +1155,13 @@ export const deleteCustomShaft = async (req: Request, res: Response) => {
   }
 };
 
-
 export const totalPriceResponse = async (req: Request, res: Response) => {
   try {
     const { id } = req.user; // Get partner ID from authenticated user
-    
+
     // Get month and year from query parameters (default to current month/year)
-    const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
+    const month =
+      parseInt(req.query.month as string) || new Date().getMonth() + 1;
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
 
     // Validate month (1-12)
@@ -1220,18 +1221,18 @@ export const totalPriceResponse = async (req: Request, res: Response) => {
     // Helper function to format date as YYYY-MM-DD (using local time, not UTC)
     const formatDateLocal = (date: Date): string => {
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     };
 
     // Calculate total price (Current Balance)
     let currentBalance = 0;
-    
+
     // Calculate daily totals for the graph
     const daysInMonth = endDate.getDate();
     const dailyData: { date: string; value: number; count: number }[] = [];
-    
+
     // Initialize all days with 0
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month - 1, day);
@@ -1245,22 +1246,22 @@ export const totalPriceResponse = async (req: Request, res: Response) => {
     // Recalculate daily data properly (cumulative balance per day)
     let runningTotal = 0;
     const dailyTotals: { [key: string]: number } = {};
-    
+
     // Group orders by date and calculate daily totals
     // Total = sum of prices from maßschuhe_transitions
     customShafts.forEach((shaft) => {
       const orderDate = new Date(shaft.createdAt);
       // Use local date to avoid timezone issues
       const dateKey = formatDateLocal(orderDate);
-      
+
       // Calculate total price from maßschuhe_transitions
       const transitions = shaft.massschuhe_order?.maßschuheTransitions || [];
       const orderTotal = transitions.reduce((sum, transition) => {
         return sum + (transition.price || 0);
       }, 0);
-      
+
       currentBalance += orderTotal;
-      
+
       if (!dailyTotals[dateKey]) {
         dailyTotals[dateKey] = 0;
       }
@@ -1271,13 +1272,13 @@ export const totalPriceResponse = async (req: Request, res: Response) => {
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month - 1, day);
       const dateKey = formatDateLocal(date);
-      
+
       // Add today's total to running total BEFORE assigning value
       // This ensures the value includes today's orders
       if (dailyTotals[dateKey]) {
         runningTotal += dailyTotals[dateKey];
       }
-      
+
       // Count orders for this day (using local date comparison)
       const dayOrders = customShafts.filter((shaft) => {
         const orderDate = new Date(shaft.createdAt);
@@ -1294,8 +1295,18 @@ export const totalPriceResponse = async (req: Request, res: Response) => {
 
     // Format month name for display
     const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
     ];
 
     res.status(200).json({

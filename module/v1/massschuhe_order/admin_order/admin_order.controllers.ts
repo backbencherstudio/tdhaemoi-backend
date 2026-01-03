@@ -201,6 +201,12 @@ export const sendToAdminOrder_1 = async (req: Request, res: Response) => {
       });
     }
 
+    // update the massschuhe_order to isPanding true
+    await prisma.massschuhe_order.update({
+      where: { id: orderId },
+      data: { isPanding: true, production_startedAt: new Date() },
+    });
+
     // Create transition record
     try {
       await prisma.maßschuhe_transitions.create({
@@ -270,6 +276,11 @@ export const sendToAdminOrder_2 = async (req, res) => {
         message: "Order not found",
       });
     }
+
+    await prisma.massschuhe_order.update({
+      where: { id: orderId },
+      data: { isPanding: true },
+    });
 
     // Check if order already sent to admin 2
     const isOrderSent = await prisma.custom_shafts.findFirst({
@@ -583,6 +594,11 @@ export const sendToAdminOrder_3 = async (req, res) => {
       catagoary: adminOrder.catagoary,
     };
 
+    await prisma.massschuhe_order.update({
+      where: { id: orderId },
+      data: { isPanding: true },
+    });
+
     await prisma.maßschuhe_transitions.create({
       data: {
         massschuhe_order_id: orderId,
@@ -702,22 +718,53 @@ export const getAllAdminOrders = async (req: Request, res: Response) => {
           { Haertegrad_Shore: { contains: search, mode: "insensitive" } },
           { Fersenschale: { contains: search, mode: "insensitive" } },
           { Laengsgewölbestütze: { contains: search, mode: "insensitive" } },
-          { Palotte_oder_Querpalotte: { contains: search, mode: "insensitive" } },
-          { Korrektur_der_Fußstellung: { contains: search, mode: "insensitive" } },
+          {
+            Palotte_oder_Querpalotte: { contains: search, mode: "insensitive" },
+          },
+          {
+            Korrektur_der_Fußstellung: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
           { Zehenelemente_Details: { contains: search, mode: "insensitive" } },
-          { eine_korrektur_nötig_ist: { contains: search, mode: "insensitive" } },
+          {
+            eine_korrektur_nötig_ist: { contains: search, mode: "insensitive" },
+          },
           { Spezielles_Fußproblem: { contains: search, mode: "insensitive" } },
-          { Zusatzkorrektur_Absatzerhöhung: { contains: search, mode: "insensitive" } },
-          { Vertiefungen_Aussparungen: { contains: search, mode: "insensitive" } },
+          {
+            Zusatzkorrektur_Absatzerhöhung: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
+            Vertiefungen_Aussparungen: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
           { Oberfläche_finish: { contains: search, mode: "insensitive" } },
           { Überzug_Stärke: { contains: search, mode: "insensitive" } },
-          { Anmerkungen_zur_Bettung: { contains: search, mode: "insensitive" } },
-          { Leisten_mit_ohne_Platzhalter: { contains: search, mode: "insensitive" } },
+          {
+            Anmerkungen_zur_Bettung: { contains: search, mode: "insensitive" },
+          },
+          {
+            Leisten_mit_ohne_Platzhalter: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
           { Schuhleisten_Typ: { contains: search, mode: "insensitive" } },
           { Material_des_Leisten: { contains: search, mode: "insensitive" } },
           { Absatzhöhe: { contains: search, mode: "insensitive" } },
           { Abrollhilfe: { contains: search, mode: "insensitive" } },
-          { Spezielle_Fußprobleme_Leisten: { contains: search, mode: "insensitive" } },
+          {
+            Spezielle_Fußprobleme_Leisten: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
           { Anmerkungen_zum_Leisten: { contains: search, mode: "insensitive" } }
         );
       } else if (catagoary === "Massschafterstellung") {
@@ -737,7 +784,12 @@ export const getAllAdminOrders = async (req: Request, res: Response) => {
         searchConditions.push(
           { Konstruktionsart: { contains: search, mode: "insensitive" } },
           { Fersenkappe: { contains: search, mode: "insensitive" } },
-          { Farbauswahl_Bodenkonstruktion: { contains: search, mode: "insensitive" } },
+          {
+            Farbauswahl_Bodenkonstruktion: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
           { Sohlenmaterial: { contains: search, mode: "insensitive" } },
           { Absatz_Höhe: { contains: search, mode: "insensitive" } },
           { Absatz_Form: { contains: search, mode: "insensitive" } },
@@ -846,7 +898,7 @@ export const getAllAdminOrders = async (req: Request, res: Response) => {
 
     // Build select object based on category
     let selectFields: any = { ...commonFields };
-    
+
     if (catagoary === "Halbprobenerstellung") {
       selectFields = { ...commonFields, ...halbprobenerstellungFields };
     } else if (catagoary === "Massschafterstellung") {
@@ -912,6 +964,12 @@ export const getAllAdminOrders = async (req: Request, res: Response) => {
               image: true,
             },
           },
+          massschuhe_order: {
+            select: {
+              id: true,
+              isPanding: true,
+            },
+          },
         },
       }),
     ]);
@@ -921,16 +979,20 @@ export const getAllAdminOrders = async (req: Request, res: Response) => {
       filename ? getImageUrl(`/uploads/${filename}`) : null;
 
     const formattedCustomShafts = customShafts.map((item: any) => {
-      const { user, maßschaft_kollektion, customer, ...shaft } = item;
-      
+      const { user, maßschaft_kollektion, customer, massschuhe_order, ...shaft } = item;
+
       const formatted: any = {
         ...shaft,
         // Format common images
         image3d_1: formatImage(shaft.image3d_1),
         image3d_2: formatImage(shaft.image3d_2),
+        // Include isPanding from massschuhe_order relation
+        isPanding: massschuhe_order?.isPanding || false,
         // Format relations
         customer: customer || null,
       };
+
+      // Remove massschuhe_order from formatted (we only need isPanding)
 
       // Format maßschaft_kollektion if it exists
       if (maßschaft_kollektion) {
@@ -978,6 +1040,247 @@ export const getAllAdminOrders = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong while fetching custom shafts",
+      error: error.message,
+    });
+  }
+};
+
+export const getSingleAllAdminOrders = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Custom shaft ID is required",
+      });
+    }
+
+    // First, get the category to determine which fields to select
+    const categoryCheck = await prisma.custom_shafts.findUnique({
+      where: { id },
+      select: { catagoary: true },
+    });
+
+    if (!categoryCheck) {
+      return res.status(404).json({
+        success: false,
+        message: "Custom shaft not found",
+      });
+    }
+
+    // Define field sets (same as getAllAdminOrders)
+    const commonFields = {
+      id: true,
+      orderNumber: true,
+      other_customer_number: true,
+      customerId: true,
+      invoice: true,
+      totalPrice: true,
+      image3d_1: true,
+      image3d_2: true,
+      status: true,
+      catagoary: true,
+      isCompleted: true,
+      createdAt: true,
+      updatedAt: true,
+      partnerId: true,
+      massschuhe_order_id: true,
+    };
+
+    const halbprobenerstellungFields = {
+      Bettungsdicke: true,
+      Haertegrad_Shore: true,
+      Fersenschale: true,
+      Laengsgewölbestütze: true,
+      Palotte_oder_Querpalotte: true,
+      Korrektur_der_Fußstellung: true,
+      Zehenelemente_Details: true,
+      eine_korrektur_nötig_ist: true,
+      Spezielles_Fußproblem: true,
+      Zusatzkorrektur_Absatzerhöhung: true,
+      Vertiefungen_Aussparungen: true,
+      Oberfläche_finish: true,
+      Überzug_Stärke: true,
+      Anmerkungen_zur_Bettung: true,
+      Leisten_mit_ohne_Platzhalter: true,
+      Schuhleisten_Typ: true,
+      Material_des_Leisten: true,
+      Leisten_gleiche_Länge: true,
+      Absatzhöhe: true,
+      Abrollhilfe: true,
+      Spezielle_Fußprobleme_Leisten: true,
+      Anmerkungen_zum_Leisten: true,
+    };
+
+    const massschafterstellungFields = {
+      lederfarbe: true,
+      innenfutter: true,
+      schafthohe: true,
+      polsterung: true,
+      vestarkungen: true,
+      vestarkungen_text: true,
+      polsterung_text: true,
+      osen_einsetzen_price: true,
+      Passenden_schnursenkel_price: true,
+      nahtfarbe: true,
+      nahtfarbe_text: true,
+      lederType: true,
+      maßschaftKollektionId: true,
+    };
+
+    const bodenkonstruktionFields = {
+      Konstruktionsart: true,
+      Fersenkappe: true,
+      Farbauswahl_Bodenkonstruktion: true,
+      Sohlenmaterial: true,
+      Absatz_Höhe: true,
+      Absatz_Form: true,
+      Abrollhilfe_Rolle: true,
+      Laufsohle_Profil_Art: true,
+      Sohlenstärke: true,
+      Besondere_Hinweise: true,
+    };
+
+    // Build select fields based on category
+    let selectFields: any = { ...commonFields };
+
+    if (categoryCheck.catagoary === "Halbprobenerstellung") {
+      selectFields = { ...commonFields, ...halbprobenerstellungFields };
+    } else if (categoryCheck.catagoary === "Massschafterstellung") {
+      selectFields = { ...commonFields, ...massschafterstellungFields };
+    } else if (categoryCheck.catagoary === "Bodenkonstruktion") {
+      selectFields = { ...commonFields, ...bodenkonstruktionFields };
+    } else {
+      // No category or unknown category - include all fields
+      selectFields = {
+        ...commonFields,
+        ...halbprobenerstellungFields,
+        ...massschafterstellungFields,
+        ...bodenkonstruktionFields,
+      };
+    }
+
+    // Fetch the custom shaft with category-specific fields
+    const customShaft = await prisma.custom_shafts.findUnique({
+      where: { id },
+      select: {
+        ...selectFields,
+        customer: {
+          select: {
+            id: true,
+            customerNumber: true,
+            vorname: true,
+            nachname: true,
+            email: true,
+            telefon: true,
+            ort: true,
+            land: true,
+            straße: true,
+            geburtsdatum: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        maßschaft_kollektion: {
+          select: {
+            id: true,
+            ide: true,
+            name: true,
+            price: true,
+            image: true,
+            catagoary: true,
+            gender: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+        massschuhe_order: {
+          select: {
+            id: true,
+            isPanding: true,
+          },
+        },
+      },
+    });
+
+    if (!customShaft) {
+      return res.status(404).json({
+        success: false,
+        message: "Custom shaft not found",
+      });
+    }
+
+    // Format image URLs
+    const formatImage = (filename: string | null) =>
+      filename ? getImageUrl(`/uploads/${filename}`) : null;
+
+    // Format the response
+    const shaftData: any = customShaft;
+    const formattedShaft: any = {
+      ...shaftData,
+      // Format common images
+      image3d_1: formatImage(shaftData.image3d_1),
+      image3d_2: formatImage(shaftData.image3d_2),
+      // Include isPanding from massschuhe_order relation
+      isPanding: shaftData.massschuhe_order?.isPanding || false,
+      // Format relations
+      customer: shaftData.customer || null,
+    };
+
+    // Format maßschaft_kollektion if it exists
+    if (shaftData.maßschaft_kollektion) {
+      const kollektion: any = shaftData.maßschaft_kollektion;
+      formattedShaft.maßschaft_kollektion = {
+        ...kollektion,
+        image: formatImage(kollektion.image),
+      };
+    } else {
+      formattedShaft.maßschaft_kollektion = null;
+    }
+
+    // Format partner (user) if it exists
+    if (shaftData.user) {
+      const user: any = shaftData.user;
+      formattedShaft.partner = {
+        ...user,
+        image: formatImage(user.image),
+      };
+    } else {
+      formattedShaft.partner = null;
+    }
+
+    // Remove user and massschuhe_order fields (we use partner and isPanding instead)
+    delete formattedShaft.user;
+    delete formattedShaft.massschuhe_order;
+
+    res.status(200).json({
+      success: true,
+      message: "Custom shaft fetched successfully",
+      data: formattedShaft,
+    });
+  } catch (error: any) {
+    console.error("Get Single Custom Shaft Error:", error);
+
+    if (error.code === "P2025") {
+      return res.status(404).json({
+        success: false,
+        message: "Custom shaft not found",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching the custom shaft",
       error: error.message,
     });
   }
